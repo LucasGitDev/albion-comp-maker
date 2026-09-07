@@ -1,9 +1,10 @@
 ---
 id: ACM-010
 title: Spell picker per item — Q/W/E/Passive (RF-2)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 13:32'
+updated_date: '2026-09-07 17:40'
 labels: []
 milestone: m-2
 dependencies:
