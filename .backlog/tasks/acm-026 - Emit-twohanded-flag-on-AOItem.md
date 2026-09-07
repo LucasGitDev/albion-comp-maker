@@ -1,9 +1,10 @@
 ---
 id: ACM-026
 title: Emit twohanded flag on AOItem
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 16:30'
+updated_date: '2026-09-07 16:31'
 labels: []
 dependencies: []
 ordinal: 26000
