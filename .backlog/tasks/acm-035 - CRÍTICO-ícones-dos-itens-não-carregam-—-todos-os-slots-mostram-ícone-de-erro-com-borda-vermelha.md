@@ -3,10 +3,10 @@ id: ACM-035
 title: >-
   CRÍTICO: ícones dos itens não carregam — todos os slots mostram ícone de erro
   (!) com borda vermelha
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 17:42'
+updated_date: '2026-09-07 17:52'
 labels: []
 dependencies: []
 priority: high
@@ -26,3 +26,9 @@ Todos os slots de equipamento em /build/new exibem um placeholder de imagem queb
 - [ ] #3 Slot preenchido continua carregando o icone oficial via /api/icon
 - [ ] #4 Teste automatizado assegura que slot vazio nao renderiza estado de erro
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Root cause: SlotCard.tsx rendered ItemIcon with itemId="" for empty slots, which fails ICON_ID_PATTERN and forces the permanent error glyph/red ring. Fixed by rendering a neutral per-category (weapon/armor/utility/consumable) SVG silhouette instead for empty slots; ItemIcon is never mounted for an empty slot. Filled slots unaffected, still load via /api/icon. Test: src/__tests__/slot-card-picker.test.tsx. make check green. Implemented together with ACM-034 (shared SlotCard.tsx) in PR #25.
+<!-- SECTION:NOTES:END -->

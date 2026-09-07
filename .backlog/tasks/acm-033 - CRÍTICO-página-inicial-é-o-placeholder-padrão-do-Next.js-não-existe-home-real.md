@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 17:42'
+updated_date: '2026-09-07 17:48'
 labels: []
 dependencies: []
 priority: high
@@ -26,3 +26,25 @@ A rota / renderiza o boilerplate 'create-next-app' (logo Next.js, texto 'To get 
 - [ ] #3 Home tem empty state explicito quando nao ha builds salvas
 - [ ] #4 metadata.title/description em layout.tsx descrevem o produto, nao 'Create Next App'
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+REVIEW PR #21 (branch task/33-home-and-theme, commit da48112) — foco em ACM-033.
+
+AC #1 (sem vestígios do boilerplate create-next-app): OK. next.svg/vercel.svg/file.svg/globe.svg/window.svg removidos de public/ e grep confirma zero referências restantes em src/, public/, configs (manifest/metadata) ou docs — sem risco de 404.
+AC #2 (CTA primário "Nova build" → /build/new): OK, presente tanto na home (page.tsx) quanto no Header.
+AC #3 (empty state "nenhuma comp ainda"): OK, seção "Minhas comps" com estado vazio explícito.
+AC #4 (metadata.title/description do produto): OK, layout.tsx atualizado para "Albion Comp Maker" com descrição do produto.
+
+Escopo: diff real do commit (git diff origin/main...origin/task/33-home-and-theme, three-dot) toca apenas src/app/page.tsx, src/app/layout.tsx, src/app/globals.css, public/*.svg (deleção) e novo src/components/layout/Header.tsx — dentro do limite definido (arquivos + novos arquivos em src/components/layout/). Nenhuma edição fora do escopo autorizado.
+
+Nota de processo: um diff two-dot (origin/main..HEAD) mostra divergência adicional no arquivo de tarefa ACM-032 (branch cortado antes do claim dessa task em main); isso NÃO está no commit do PR — recomenda-se rebase antes do merge por higiene, mas não é um finding de código deste PR.
+
+Achado MEDIUM (compartilhado com ACM-038): Header global montado no layout raiz agora aparece também em /build/new, duplicando cabeçalho/CTA acima do BuildHeader do editor. Não viola nenhum AC de ACM-033, mas é dívida de UX a considerar em ACM-037 (action bar do editor).
+
+Bloqueio real desta rodada vem de ACM-038 AC #4 (contraste), não de ACM-033 — ver notas em ACM-038 para a matemática de contraste. Os 4 ACs de ACM-033 estão atendidos.
+
+VEREDITO (para ACM-033 isoladamente): LGTM.
+VEREDITO GERAL DO PR: BLOCKED: 1 finding (HIGH) — ver ACM-038.
+<!-- SECTION:NOTES:END -->
