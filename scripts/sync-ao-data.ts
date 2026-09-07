@@ -15,9 +15,9 @@ import { buildItemIndex, resolveSpells } from "../src/lib/spell-resolver";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-const BASE = "https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master/formatted";
+const BASE = "https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master";
 const SOURCES = [
-  { name: "items.json",        url: `${BASE}/items.json` },
+  { name: "items.json",        url: `${BASE}/formatted/items.json` },
   { name: "spells.json",       url: `${BASE}/spells.json` },
   { name: "localization.json", url: `${BASE}/localization.json` },
 ] as const;
@@ -63,44 +63,37 @@ function extractText(seg: SegValue): string {
   return seg["#text"] ?? "";
 }
 
-type LocalizationEntry = { "@itemid": string; tupleofstrings?: { seg?: SegValue | SegValue[] } };
+const TARGET_LOCALES = ["EN-US", "PT-BR"] as const;
+
+type TmxVariant = { "@xml:lang"?: string; seg?: SegValue };
+type TmxEntry = { "@tuid"?: string; tuv?: TmxVariant | TmxVariant[] };
 
 function buildLocaleIndex(raw: unknown): Map<string, Record<string, string>> {
   // Map: itemId → { locale → name }
   const index = new Map<string, Record<string, string>>();
 
-  // ao-bin-dumps localization.json shape:
-  //   { "localization": { "tu": [ { "@itemid": "...", "tupleofstrings": { "seg": [...] } } ] } }
-  // or wrapped differently — we try multiple shapes.
-  let entries: LocalizationEntry[] = [];
-
+  // ao-bin-dumps localization.json is a TMX v1.4 document converted to JSON:
+  //   { "tmx": { "body": { "tu": [ { "@tuid": "...", "tuv": [ { "@xml:lang": "EN-US", "seg": "..." }, ... ] } ] } } }
   const r = raw as Record<string, unknown>;
-  const loc = r["localization"] as Record<string, unknown> | undefined;
-  if (loc) {
-    const tu = loc["tu"];
-    entries = Array.isArray(tu) ? (tu as LocalizationEntry[]) : [];
-  } else if (Array.isArray(raw)) {
-    entries = raw as LocalizationEntry[];
-  }
+  const tmx = r["tmx"] as Record<string, unknown> | undefined;
+  const body = tmx?.["body"] as Record<string, unknown> | undefined;
+  const tuRaw = body?.["tu"];
+  const entries: TmxEntry[] = Array.isArray(tuRaw) ? (tuRaw as TmxEntry[]) : [];
 
   for (const entry of entries) {
-    const id = entry["@itemid"];
+    const id = entry["@tuid"];
     if (!id) continue;
 
-    // tupleofstrings.seg is an array aligned to the locales list in the file.
-    // ao-bin-dumps uses a fixed locale order; EN-US is typically index 0.
-    // We only index the two target locales by scanning all segs for matching ids.
-    const segs = entry.tupleofstrings?.seg;
-    if (!segs) continue;
+    const tuvRaw = entry.tuv;
+    const variants: TmxVariant[] = Array.isArray(tuvRaw) ? tuvRaw : tuvRaw ? [tuvRaw] : [];
 
-    const segArr: SegValue[] = Array.isArray(segs) ? segs : [segs];
     const names: Record<string, string> = {};
-
-    // The localization file encodes locale names in the tu/@tuid attribute or uses
-    // a parallel structure. Simplified: store all non-empty segs keyed by position.
-    // Caller maps position 0 → EN-US, 1 → PT-BR (ao-bin-dumps convention).
-    if (segArr[0]) names["EN-US"] = extractText(segArr[0]);
-    if (segArr[1]) names["PT-BR"] = extractText(segArr[1]);
+    for (const variant of variants) {
+      const lang = variant["@xml:lang"];
+      if (!lang || !(TARGET_LOCALES as readonly string[]).includes(lang)) continue;
+      const text = extractText(variant.seg);
+      if (text) names[lang] = text;
+    }
 
     if (Object.keys(names).length > 0) index.set(id, names);
   }
@@ -110,13 +103,21 @@ function buildLocaleIndex(raw: unknown): Map<string, Record<string, string>> {
 
 // ─── Step 3: Spell index from spells.json ────────────────────────────────────
 
+const SPELL_KINDS = ["activespell", "passivespell", "togglespell"] as const;
+
 function buildSpellLocaleIndex(raw: unknown, locIndex: Map<string, Record<string, string>>) {
   const r = raw as Record<string, unknown>;
   const spellsRoot = r["spells"] as Record<string, unknown> | undefined;
-  const spellArr = spellsRoot ? spellsRoot["spell"] : raw;
-  const arr: Array<Record<string, unknown>> = Array.isArray(spellArr)
-    ? (spellArr as Array<Record<string, unknown>>)
-    : [];
+
+  const arr: Array<Record<string, unknown>> = [];
+  if (spellsRoot) {
+    for (const kind of SPELL_KINDS) {
+      const kindArr = spellsRoot[kind];
+      if (Array.isArray(kindArr)) arr.push(...(kindArr as Array<Record<string, unknown>>));
+    }
+  } else if (Array.isArray(raw)) {
+    arr.push(...(raw as Array<Record<string, unknown>>));
+  }
 
   const map = new Map<string, { uniquename: string; localizedNames: Record<string, string> }>();
   for (const s of arr) {
