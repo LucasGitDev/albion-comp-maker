@@ -1,10 +1,10 @@
 ---
 id: ACM-050
 title: 'Migracoes: foreign_key_check roda apos o commit, viola sem rollback'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 19:08'
-updated_date: '2026-09-07 20:02'
+updated_date: '2026-09-07 20:07'
 labels: []
 dependencies: []
 ordinal: 50000
