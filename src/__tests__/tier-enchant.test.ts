@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AOItem } from "@/data/ao-data.d";
-import { getTierVariants, parseUniquename } from "@/components/editor/tier-enchant";
+import corpus from "./fixtures/ao-corpus.json";
+import { getEnchantOptions, getTierVariants, parseUniquename } from "@/components/editor/tier-enchant";
 
 function item(uniquename: string): AOItem {
   return {
@@ -56,5 +57,27 @@ describe("getTierVariants (AC #1)", () => {
   it("only lists tiers that actually exist in the catalogue for this base", () => {
     const options = getTierVariants(CATALOG, "T4_MAIN_SWORD");
     expect(options.map((o) => o.tier)).toEqual([4, 5]);
+  });
+});
+
+describe("getEnchantOptions (ACM-031 AC#1, decision-011)", () => {
+  const items = corpus.items as Array<Pick<AOItem, "uniquename" | "maxEnchant">>;
+
+  it("derives 0..maxEnchant from a real fixture item with maxEnchant 4", () => {
+    const item = items.find((i) => i.uniquename === "T4_HEAD_PLATE_SET1");
+    expect(item?.maxEnchant).toBe(4);
+    expect(getEnchantOptions(item!)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it("returns only [0] for a real fixture item with maxEnchant 0", () => {
+    const item = items.find((i) => i.maxEnchant === 0);
+    expect(item).toBeDefined();
+    expect(getEnchantOptions(item!)).toEqual([0]);
+  });
+
+  it("never derives options from the uniquename (no @N parsing)", () => {
+    // A fabricated "@1" suffix must have zero influence: only maxEnchant matters.
+    const item = { uniquename: "T8_HEAD_PLATE_SET1@1", maxEnchant: 2 };
+    expect(getEnchantOptions(item)).toEqual([0, 1, 2]);
   });
 });

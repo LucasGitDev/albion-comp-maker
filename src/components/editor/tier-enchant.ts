@@ -24,6 +24,25 @@ export type TierOption = {
   itemId: string;
 };
 
+export type EnchantOption = 0 | 1 | 2 | 3 | 4;
+
+/**
+ * Every enchant level available for `item`, derived from the real
+ * `AOItem.maxEnchant` field (decision-011) — never from parsing
+ * `uniquename`. `[0]` for items with `maxEnchant` 0 (mounts, food,
+ * potions, ...): they still have "level 0", they just have no upgrade
+ * levels, so callers gate the enchant UI on `maxEnchant > 0` rather than on
+ * this array being empty.
+ */
+export function getEnchantOptions(item: Pick<AOItem, "maxEnchant">): EnchantOption[] {
+  const max = Math.max(0, Math.min(4, Math.trunc(item.maxEnchant)));
+  const options: EnchantOption[] = [];
+  for (let level = 0; level <= max; level++) {
+    options.push(level as EnchantOption);
+  }
+  return options;
+}
+
 type ParsedUniquename = {
   tier: number; // 0 when the id has no T-prefix (not a tiered item)
   base: string;

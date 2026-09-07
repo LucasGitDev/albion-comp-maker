@@ -6,8 +6,8 @@ import { CategorySilhouette, type IconCategory } from "@/components/icons/catego
 import type { EquippedItem, SpellGroup } from "@/types/build";
 import type { SpellCandidate } from "./spell-groups";
 import { SpellPicker } from "./SpellPicker";
-import { TierSelect } from "./TierEnchantSelectors";
-import type { TierOption } from "./tier-enchant";
+import { EnchantSelect, TierSelect } from "./TierEnchantSelectors";
+import type { EnchantOption, TierOption } from "./tier-enchant";
 
 export const SLOT_LABELS: Record<Slot, string> = {
   mainhand: "Mão principal",
@@ -49,9 +49,17 @@ export type SlotCardProps = {
    * never fetches the catalogue itself.
    */
   tierOptions?: readonly TierOption[];
+  /**
+   * Enchant levels available for the equipped item, derived by the caller
+   * from `AOItem.maxEnchant` (ACM-031 AC#1). Omitted, empty, or a single
+   * `[0]` entry hides the enchant selector — items with `maxEnchant` 0
+   * (mounts, food, potions) never show one (AC#2).
+   */
+  enchantOptions?: readonly EnchantOption[];
   onRequestItemPick: (slot: Slot) => void;
   onClear?: (slot: Slot) => void;
   onTierChange?: (slot: Slot, option: TierOption) => void;
+  onEnchantChange?: (slot: Slot, enchant: EnchantOption) => void;
   onSpellChange?: (slot: Slot, group: SpellGroup, spellId: string | null) => void;
 };
 
@@ -92,9 +100,11 @@ export function SlotCard({
   spellCandidatesByGroup = {},
   locked = false,
   tierOptions = [],
+  enchantOptions = [],
   onRequestItemPick,
   onClear,
   onTierChange,
+  onEnchantChange,
   onSpellChange,
 }: SlotCardProps): React.JSX.Element {
   const label = SLOT_LABELS[slot] ?? slot;
@@ -190,24 +200,38 @@ export function SlotCard({
               T{item.tier}
             </span>
           )}
-          {/*
-            Enchant badge intentionally omitted until ACM-030 lands
-            `AOItem.maxEnchant`: `item.enchant` is always 0 for real data today
-            (see decision-011), so there is nothing genuine to display yet.
-          */}
+          {item.enchant > 0 && (
+            <span
+              data-testid="enchant-badge"
+              className="absolute bottom-0 right-0 rounded px-1 text-[10px] font-bold text-white"
+              style={{ backgroundColor: "var(--color-enchant)", lineHeight: "16px" }}
+            >
+              .{item.enchant}
+            </span>
+          )}
         </div>
         <p className="line-clamp-2 text-[13px] font-medium" title={itemName ?? item.itemId}>
           {itemName ?? item.itemId}
         </p>
       </button>
-      {tierOptions.length > 0 && onTierChange && (
+      {((tierOptions.length > 0 && onTierChange) || (enchantOptions.length > 1 && onEnchantChange)) && (
         <div className="flex flex-wrap items-center gap-2" data-testid="tier-enchant-selectors">
-          <TierSelect
-            slotLabel={label}
-            tier={item.tier}
-            options={tierOptions}
-            onChange={(option) => onTierChange(slot, option)}
-          />
+          {tierOptions.length > 0 && onTierChange && (
+            <TierSelect
+              slotLabel={label}
+              tier={item.tier}
+              options={tierOptions}
+              onChange={(option) => onTierChange(slot, option)}
+            />
+          )}
+          {enchantOptions.length > 1 && onEnchantChange && (
+            <EnchantSelect
+              slotLabel={label}
+              enchant={item.enchant}
+              options={enchantOptions}
+              onChange={(enchant) => onEnchantChange(slot, enchant)}
+            />
+          )}
         </div>
       )}
       {onSpellChange && (

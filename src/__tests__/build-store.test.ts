@@ -125,6 +125,34 @@ describe("build store", () => {
     assertNoFunctionsOrUndefined(build);
   });
 
+  it("ACM-031: setEnchant updates the enchant level without touching tier/spells", () => {
+    const { setItem, setSpell, setEnchant } = selectActions(useBuildStore.getState());
+    setItem("head", { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false }, 4, 0);
+    setSpell("head", "q", "ENERGY_BARRIER");
+    setEnchant("head", 3);
+
+    const build = selectBuild(useBuildStore.getState());
+    expect(build.slots.head).toMatchObject({ itemId: "T4_HEAD_PLATE_SET1", tier: 4, enchant: 3 });
+    expect(build.slots.head?.spells.q).toBe("ENERGY_BARRIER");
+  });
+
+  it("ACM-031: setEnchant on an empty slot is a no-op", () => {
+    const { setEnchant } = selectActions(useBuildStore.getState());
+    setEnchant("head", 2);
+    expect(selectBuild(useBuildStore.getState()).slots.head).toBeNull();
+  });
+
+  it("ACM-031: setEnchant clamps out-of-range values to 0..4", () => {
+    const { setItem, setEnchant } = selectActions(useBuildStore.getState());
+    setItem("head", { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false }, 4, 0);
+
+    setEnchant("head", 99);
+    expect(selectBuild(useBuildStore.getState()).slots.head?.enchant).toBe(4);
+
+    setEnchant("head", -5);
+    expect(selectBuild(useBuildStore.getState()).slots.head?.enchant).toBe(0);
+  });
+
   it("clearSlot empties a filled slot", () => {
     const { setItem, clearSlot } = selectActions(useBuildStore.getState());
     setItem("cape", { uniquename: "T8_CAPE", twohanded: false }, 8, 0);

@@ -5,7 +5,7 @@ import type { BuildState, SpellGroup } from "@/types/build";
 import { SLOT_COLUMNS } from "@/types/build";
 import { SlotCard } from "./SlotCard";
 import type { SpellCandidate } from "./spell-groups";
-import type { TierOption } from "./tier-enchant";
+import type { EnchantOption, TierOption } from "./tier-enchant";
 
 export type SlotGridProps = {
   build: BuildState;
@@ -20,9 +20,12 @@ export type SlotGridProps = {
   offhandLocked?: boolean;
   /** Tier options per slot, derived from the catalogue by the caller (ACM-009). */
   tierOptionsBySlot?: Partial<Record<Slot, readonly TierOption[]>>;
+  /** Enchant options per slot, derived by the caller from `AOItem.maxEnchant` (ACM-031). */
+  enchantOptionsBySlot?: Partial<Record<Slot, readonly EnchantOption[]>>;
   onRequestItemPick: (slot: Slot) => void;
   onClearSlot: (slot: Slot) => void;
   onTierChange?: (slot: Slot, option: TierOption) => void;
+  onEnchantChange?: (slot: Slot, enchant: EnchantOption) => void;
   onSpellChange?: (slot: Slot, group: SpellGroup, spellId: string | null) => void;
 };
 
@@ -32,9 +35,11 @@ export function SlotGrid({
   spellCandidatesBySlot,
   offhandLocked = false,
   tierOptionsBySlot,
+  enchantOptionsBySlot,
   onRequestItemPick,
   onClearSlot,
   onTierChange,
+  onEnchantChange,
   onSpellChange,
 }: SlotGridProps): React.JSX.Element {
   return (
@@ -54,9 +59,11 @@ export function SlotGrid({
                 spellCandidatesByGroup={spellCandidatesBySlot?.[slot]}
                 locked={slot === "offhand" && offhandLocked}
                 tierOptions={tierOptionsBySlot?.[slot]}
+                enchantOptions={enchantOptionsBySlot?.[slot]}
                 onRequestItemPick={onRequestItemPick}
                 onClear={onClearSlot}
                 onTierChange={onTierChange}
+                onEnchantChange={onEnchantChange}
                 onSpellChange={onSpellChange}
               />
             ))}
