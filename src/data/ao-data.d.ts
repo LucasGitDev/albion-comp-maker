@@ -22,6 +22,7 @@ export type AOItem = {
   slot: Slot;
   localizedNames: Record<string, string>; // locale → name
   spells: AOItemSpell[];
+  twohanded: boolean;
 };
 
 export type AOData = {

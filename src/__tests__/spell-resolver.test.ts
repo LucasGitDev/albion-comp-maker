@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildItemIndex,
   enumerateItemCategories,
+  isTwoHanded,
   resolveSpells,
   safeKeyedRecord,
   type RawItem,
@@ -288,5 +289,22 @@ describe("resolveSpells", () => {
 
   it("returns empty array for unknown item id", () => {
     expect(resolveSpells("UNKNOWN", new Map(), kinds({}))).toHaveLength(0);
+  });
+});
+
+describe("isTwoHanded", () => {
+  it("returns true for a two-handed weapon (T8_2H_WARBOW)", () => {
+    const item: RawItem = { "@uniquename": "T8_2H_WARBOW", "@twohanded": "true" };
+    expect(isTwoHanded(item)).toBe(true);
+  });
+
+  it("returns false for a one-handed weapon (T8_MAIN_FIRESTAFF)", () => {
+    const item: RawItem = { "@uniquename": "T8_MAIN_FIRESTAFF", "@twohanded": "false" };
+    expect(isTwoHanded(item)).toBe(false);
+  });
+
+  it("defaults to false when the @twohanded attribute is absent", () => {
+    const item: RawItem = { "@uniquename": "T4_BAG" };
+    expect(isTwoHanded(item)).toBe(false);
   });
 });
