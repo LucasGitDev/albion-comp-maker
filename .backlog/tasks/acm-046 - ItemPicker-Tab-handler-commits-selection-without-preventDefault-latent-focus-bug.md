@@ -3,9 +3,10 @@ id: ACM-046
 title: >-
   ItemPicker Tab handler commits selection without preventDefault (latent focus
   bug)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 18:43'
+updated_date: '2026-09-07 18:49'
 labels: []
 dependencies: []
 priority: medium
