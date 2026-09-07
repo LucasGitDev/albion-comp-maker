@@ -3,10 +3,10 @@ id: ACM-028
 title: >-
   ItemPicker polish — cross-locale names, mark highlighting, aria-selected,
   result virtualization (RF-1)
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 17:03'
-updated_date: '2026-09-07 17:13'
+updated_date: '2026-09-07 17:15'
 labels: []
 milestone: m-2
 dependencies:
