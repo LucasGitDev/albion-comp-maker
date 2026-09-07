@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { selectActions, selectBuild, useBuildStore } from "@/store/build-store";
+import { parseBuildContent, validateBuildContentForWrite } from "@/lib/build-schema";
 import { SLOT_ORDER } from "@/types/build";
 
 beforeEach(() => {
@@ -176,9 +177,10 @@ describe("build store — swaps (ACM-012, RF-3)", () => {
   it("addSwap appends a new swap with an empty label and no item yet", () => {
     // Empty, not pre-filled with a placeholder-like default (ACM-012
     // review round 2): the input's real placeholder ("Quando usar? ...")
-    // must stay visible until the leader types something. The min(1)
-    // guarantee `swapSchema.label` needs (ACM-049) is applied at the UI
-    // layer on blur-if-empty (`SwapRow`'s `onBlur`), not at creation.
+    // must stay visible until the leader types something. An empty label
+    // is a valid, persistable value — `swapSchema.label` allows `""`
+    // (ACM-012 review round 3, relaxed from `min(1)`/ACM-049) — so there
+    // is no need to fall back to a non-empty default at creation.
     const { addSwap } = selectActions(useBuildStore.getState());
     addSwap();
 
@@ -214,12 +216,12 @@ describe("build store — swaps (ACM-012, RF-3)", () => {
     expect(build.swaps.find((s) => s.id === second.id)?.label).toBe(second.label);
   });
 
-  it("setSwapLabel writes an empty string verbatim (ACM-060 — the min(1) guarantee is a UI-layer, blur-time concern, not a store-write concern)", () => {
+  it("setSwapLabel writes an empty string verbatim (ACM-060: '' must not be coerced to a single space)", () => {
     // Regression guard for ACM-060: coercing "" to a single space on every
     // keystroke made it impossible to select-all-and-retype a label,
     // because the field was never actually empty from the store's point of
-    // view. `SwapRow`'s `onBlur` — not this action — is what guarantees a
-    // non-empty label before the value could ever reach `swapSchema`.
+    // view. This is safe because `""` is itself a valid, persistable
+    // label (see next test) — the store never needs to protect against it.
     const { addSwap, setSwapLabel } = selectActions(useBuildStore.getState());
     addSwap();
     const [swap] = selectBuild(useBuildStore.getState()).swaps;
@@ -228,6 +230,29 @@ describe("build store — swaps (ACM-012, RF-3)", () => {
     setSwapLabel(swap.id, "");
 
     expect(selectBuild(useBuildStore.getState()).swaps[0].label).toBe("");
+  });
+
+  it("guard: an empty swap label produced by the store round-trips through validateBuildContentForWrite and parseBuildContent (ACM-012 review round 3, replaces the round-2 test that asserted the opposite of swapSchema.label)", () => {
+    // This is the store/schema agreement test deleted in round 2's diff.
+    // It now protects the opposite (deliberate) contract: swapSchema.label
+    // was relaxed to allow "" specifically so a swap the store can produce
+    // — `addSwap`'s empty label, or `setSwapLabel(id, "")` — is always
+    // saveable without ever being routed through SwapRow's onBlur. If a
+    // future change re-tightens `swapSchema.label` to `min(1)` without
+    // also normalizing at the store, this test fails loudly instead of
+    // silently breaking "add swap, don't touch it, save".
+    const { addSwap, setName } = selectActions(useBuildStore.getState());
+    setName("Bruiser de Frontline");
+    addSwap();
+    const build = selectBuild(useBuildStore.getState());
+    expect(build.swaps[0].label).toBe("");
+
+    const raw = JSON.stringify(build);
+    expect(() => validateBuildContentForWrite(raw)).not.toThrow();
+    expect(parseBuildContent(validateBuildContentForWrite(raw))).toEqual({
+      ok: true,
+      data: JSON.parse(validateBuildContentForWrite(raw)),
+    });
   });
 
   it("setSwapSlot points the swap at a new slot, clearing any previously equipped item", () => {

@@ -60,10 +60,12 @@ export type BuildActions = {
    * (not pre-filled with a placeholder-like default such as "Novo swap")
    * so the input's real placeholder — "Quando usar? ex.: fights de
    * bridge" — stays visible until the leader types something (ACM-012
-   * review round 2). `swapSchema.label` is `min(1)` (ACM-049), so a
-   * non-empty fallback is applied at the UI layer on blur-if-empty
-   * (`SwapRow`), not here — see `setSwapLabel`. A no-op once `MAX_SWAPS`
-   * is reached.
+   * review round 2). An empty label is a valid, persistable value —
+   * `swapSchema.label` allows `""` (ACM-012 review round 3, relaxed from
+   * `min(1)`/ACM-049) precisely so a swap can be saved without ever
+   * touching the label field. `SwapRow` still substitutes a friendly
+   * default on blur-if-empty purely for display/UX, not for validity. A
+   * no-op once `MAX_SWAPS` is reached.
    */
   addSwap(): void;
   removeSwap(id: string): void;
@@ -71,13 +73,13 @@ export type BuildActions = {
   moveSwap(id: string, direction: "up" | "down"): void;
   /**
    * Writes `label` verbatim, including `""` while the leader is mid-edit
-   * (e.g. selecting all text and typing over it). Previously this coerced
-   * an empty value to a single space on every keystroke (ACM-060), which
-   * silently swallowed the "empty" state and made it impossible to clear
-   * the field to type fresh text. The non-empty guarantee `swapSchema`
-   * needs (`min(1)`, ACM-049) is enforced at the UI layer instead —
-   * `SwapRow` substitutes a default label on blur if the field was left
-   * empty — not on every store write.
+   * (e.g. selecting all text and typing over it) or on save. Previously
+   * this coerced an empty value to a single space on every keystroke
+   * (ACM-060), which silently swallowed the "empty" state and made it
+   * impossible to clear the field to type fresh text. `""` is a valid,
+   * persistable label — `swapSchema.label` allows it (ACM-012 review
+   * round 3) — so there is no invariant to protect here; `SwapRow`'s
+   * blur-if-empty default is purely cosmetic, not a validity guard.
    */
   setSwapLabel(id: string, label: string): void;
   /**
