@@ -5,6 +5,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { requireSession } from "@/auth/session";
 import { getDb } from "@/db/client";
 import { builds } from "@/db/schema";
+import { validateBuildContentForWrite } from "@/lib/build-schema";
 import { checkWriteRateLimit } from "@/lib/rate-limit";
 import { generateSlug } from "@/lib/slug";
 import { BuildNotFoundError } from "./build-errors";
@@ -60,6 +61,11 @@ export async function saveBuild(input: SaveBuildInput): Promise<BuildRow> {
   const session = await requireSession();
   checkWriteRateLimit(session.user.id);
 
+  // Strict write validation (decision-013 / ACM-049): size cap, JSON parse,
+  // then shape via a shared Zod schema. Persists the re-serialized, validated
+  // object, never the caller's raw string.
+  const content = validateBuildContentForWrite(input.content);
+
   const db = getDb();
   const [row] = await db
     .insert(builds)
@@ -67,7 +73,7 @@ export async function saveBuild(input: SaveBuildInput): Promise<BuildRow> {
       userId: session.user.id,
       name: input.name,
       role: input.role ?? null,
-      content: input.content,
+      content,
       slug: generateSlug(input.name),
     })
     .returning();
@@ -94,13 +100,17 @@ export async function updateBuild(input: UpdateBuildInput): Promise<BuildRow> {
 
   await loadOwnedBuild(session.user.id, input.id);
 
+  // Strict write validation (decision-013 / ACM-049) — same rules as
+  // `saveBuild`. Only runs when `content` is actually being updated.
+  const content = input.content !== undefined ? validateBuildContentForWrite(input.content) : undefined;
+
   const db = getDb();
   const [row] = await db
     .update(builds)
     .set({
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.role !== undefined ? { role: input.role } : {}),
-      ...(input.content !== undefined ? { content: input.content } : {}),
+      ...(content !== undefined ? { content } : {}),
       updatedAt: new Date(),
     })
     .where(and(eq(builds.id, input.id), eq(builds.userId, session.user.id)))
