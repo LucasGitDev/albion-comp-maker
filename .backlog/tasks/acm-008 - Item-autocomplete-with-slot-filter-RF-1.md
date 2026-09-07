@@ -1,10 +1,10 @@
 ---
 id: ACM-008
 title: Item autocomplete with slot filter (RF-1)
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 17:00'
+updated_date: '2026-09-07 17:01'
 labels: []
 milestone: m-2
 dependencies:
