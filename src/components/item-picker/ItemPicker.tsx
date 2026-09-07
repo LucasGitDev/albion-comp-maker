@@ -126,7 +126,10 @@ export function ItemPicker({
         commitSelection(activeItem);
         break;
       case "Tab":
-        commitSelection(activeItem);
+        if (activeItem) {
+          event.preventDefault();
+          commitSelection(activeItem);
+        }
         break;
       case "Escape":
         event.preventDefault();
