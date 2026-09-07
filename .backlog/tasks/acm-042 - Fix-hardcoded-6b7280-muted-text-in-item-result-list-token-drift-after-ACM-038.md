@@ -3,10 +3,10 @@ id: ACM-042
 title: >-
   Fix hardcoded #6b7280 muted text in item-result-list (token drift after
   ACM-038)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 17:50'
-updated_date: '2026-09-07 18:49'
+updated_date: '2026-09-07 18:52'
 labels: []
 dependencies: []
 priority: medium
