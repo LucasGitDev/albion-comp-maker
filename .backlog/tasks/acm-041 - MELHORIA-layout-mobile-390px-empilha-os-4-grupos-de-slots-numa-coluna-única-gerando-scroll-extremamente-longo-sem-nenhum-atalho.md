@@ -3,9 +3,10 @@ id: ACM-041
 title: >-
   MELHORIA: layout mobile (390px) empilha os 4 grupos de slots numa coluna única
   gerando scroll extremamente longo sem nenhum atalho
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 17:36'
+updated_date: '2026-09-07 20:27'
 labels: []
 dependencies: []
 priority: medium
