@@ -1,10 +1,10 @@
 ---
 id: ACM-021
 title: SSR public pages for build and comp with slugs (RF-9)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 13:34'
-updated_date: '2026-09-07 19:35'
+updated_date: '2026-09-07 20:22'
 labels: []
 milestone: m-7
 dependencies:
