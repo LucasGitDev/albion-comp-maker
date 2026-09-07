@@ -1,10 +1,10 @@
 ---
 id: ACM-005
 title: Write Phase 1 acceptance tests (4 mandatory cases)
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 16:44'
+updated_date: '2026-09-07 16:45'
 labels: []
 milestone: m-0
 dependencies:
