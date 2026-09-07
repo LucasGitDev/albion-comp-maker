@@ -4,7 +4,7 @@ title: Build state — Zustand store + slot layout (RF-3)
 status: In Progress
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 16:50'
+updated_date: '2026-09-07 16:55'
 labels: []
 milestone: m-2
 dependencies:
@@ -15,15 +15,15 @@ ordinal: 11000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Zustand store for BuildState (schemaVersion, name, role, accent, slots, swaps). Slot panel showing all 9 slots. Serializable to/from JSON.
+Zustand store for BuildState (schemaVersion, name, role, accent, slots, swaps). Slot panel showing all 10 slots (offhand locked when mainhand is twohanded). Serializable to/from JSON.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 BuildState matches type definition in PRD 5.5
-- [ ] #2 Selecting item in a slot updates store
-- [ ] #3 Selecting spells updates store
-- [ ] #4 store.getState() returns serializable object (no functions, no undefined)
+- [x] #1 BuildState matches type definition in PRD 5.5
+- [x] #2 Selecting item in a slot updates store
+- [x] #3 Selecting spells updates store
+- [x] #4 store.getState() returns serializable object (no functions, no undefined)
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -139,4 +139,27 @@ Demais cores reusam os tokens `--color-icon-*` existentes. Nenhum componente nov
 1. Equipar arma 2H na mão principal com offhand preenchida → offhand limpa e bloqueada com a copy correta.
 2. Trocar item de um slot que tinha spells escolhidas → chips voltam a vazio, nenhum spell órfão.
 3. `JSON.parse(JSON.stringify(selectBuild(store.getState())))` idêntico ao original.
+
+Implementação concluída.
+
+Correção de escopo: a description da task dizia "9 slots"; o tipo Slot em src/data/ao-data.d.ts já declara 10 (mainhand, offhand, head, armor, shoes, cape, bag, mount, food, potion). Implementado com 10 slots, offhand bloqueado via prop `offhandLocked` no SlotGrid quando o item da mainhand é `twohanded` (a store já zera slots.offhand nesse caso em setItem).
+
+Arquivos:
+- src/types/build.ts: BuildState, EquippedItem, Swap, SLOT_ORDER, SLOT_COLUMNS, createEmptyBuild. SLOT_ORDER/SLOT_COLUMNS ficaram aqui (não em src/lib/slot-layout.ts como a spec original sugeria) porque src/lib está fora do escopo de arquivos autorizado para esta task (outro implementer trabalha em src/lib/item-index.ts em paralelo). ACM-013 deve reusar essas constantes de src/types/build.ts.
+- src/store/build-store.ts: store Zustand com forma { build, actions } (decision-009) — build é a única fatia serializável; setItem/clearSlot/setSpell/setName/setRole/setAccent/reset.
+- src/components/editor/SlotCard.tsx, SlotGrid.tsx, BuildHeader.tsx: recebem estado por props, não importam a store (a página é a única com useBuildStore).
+- src/app/(editor)/build/new/page.tsx: rota /build/new, dona da assinatura da store; onRequestItemPick é no-op deliberado (ACM-008 plugará o ItemPicker depois).
+- src/app/globals.css: tokens --color-tier-4..8, --color-tier-low, --color-enchant (hex literais, não oklch, para compatibilidade com html-to-image no export futuro).
+
+Não implementado nesta task (fora de escopo, fica para tasks seguintes):
+- Abertura real do ItemPicker (ACM-008) e integração de tier/encanto (ACM-009) e chips de spell (ACM-010) com dados reais do catálogo — os componentes já têm as props prontas (spellGroups, offhandLocked) para essa integração.
+- Estados "erro de ícone" / "item desatualizado" do card — ItemIcon já expõe status de erro; o card de slot ainda não tem a ação "Trocar item" porque depende do picker.
+- Persistência/roteamento do build (schemaVersion usado apenas como campo fixo 1).
+
+Verificação manual (dos 3 passos da spec):
+1. setItem("offhand", ...) seguido de setItem("mainhand", { twohanded: true }) → offhand volta a null. Coberto por teste automatizado (build-store.test.ts).
+2. setItem em slot com spell setada, depois setItem de novo no mesmo slot → spells voltam a { q: null, w: null, e: null, passive: null }. Coberto por teste automatizado.
+3. JSON.parse(JSON.stringify(selectBuild(store.getState()))) === build (toEqual) e assert recursivo de ausência de function/undefined. Coberto por teste automatizado (AC #4).
+
+make check verde (lint, tsc, build, vitest — 58 testes passando).
 <!-- SECTION:NOTES:END -->
