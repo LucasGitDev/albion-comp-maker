@@ -4,6 +4,7 @@ title: Comp CRUD + comp_builds ordering (RF-7)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:33'
+updated_date: '2026-09-07 17:05'
 labels: []
 milestone: m-6
 dependencies:
@@ -26,3 +27,9 @@ Comp entity: create, edit, delete, drag-reorder builds within comp. Each comp_bu
 - [ ] #4 count field editable per comp_builds row
 - [ ] #5 label field editable inline
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+SECURITY (from ACM-016 audit, MEDIUM): comp_builds has independent FKs to comps.id and builds.id with NO constraint that both rows share the same user_id. Without an app-layer ownership check before inserting into comp_builds, a user can attach ANOTHER USER'S build to their own comp. Required: verify ownership of both the comp and the build in the Server Action before insert, and cover it with a test that attempts the cross-user attach and expects rejection.
+<!-- SECTION:NOTES:END -->
