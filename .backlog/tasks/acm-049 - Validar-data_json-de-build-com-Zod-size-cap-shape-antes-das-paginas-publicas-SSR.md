@@ -3,10 +3,10 @@ id: ACM-049
 title: >-
   Validar data_json de build com Zod (size cap + shape) antes das paginas
   publicas SSR
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 18:54'
-updated_date: '2026-09-07 18:54'
+updated_date: '2026-09-07 19:08'
 labels: []
 dependencies: []
 priority: high
