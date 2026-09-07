@@ -1,10 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Slot } from "@/data/ao-data";
 import type { AOItem } from "@/data/ao-data.d";
+import { saveBuild } from "@/actions/builds";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { BuildHeader } from "@/components/editor/BuildHeader";
+import { EditorActionBar } from "@/components/editor/EditorActionBar";
 import { SLOT_LABELS } from "@/components/editor/SlotCard";
+import { SLOT_ORDER } from "@/types/build";
 import { SlotGrid } from "@/components/editor/SlotGrid";
 import { SlotPickerPopover } from "@/components/editor/SlotPickerPopover";
 import { parseUniquename } from "@/components/editor/tier-enchant";
@@ -55,8 +59,39 @@ export default function NewBuildPage(): React.JSX.Element {
 
   const pickerOpen = Boolean(activeSlot) && !(activeSlot === "offhand" && offhandLocked);
 
+  const filledCount = SLOT_ORDER.filter((slot) => build.slots[slot] !== null).length;
+  /**
+   * `#capture-root`/the `BuildCard` preview isn't wired into this route yet
+   * (that's ACM-018/019 territory, not ACM-037). Deliberately left
+   * unattached to any DOM node — `EditorActionBar` only ever *reads*
+   * through this ref (decision-010), and with nothing mounted, "Exportar
+   * PNG" correctly reports "Card não está pronto para exportar." instead of
+   * faking success against the interactive form tree.
+   */
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleSave = useCallback(async () => {
+    // ACM-018 landed `saveBuild` (Server Action, requireSession() + ownership
+    // scoping — src/actions/builds.ts). This route always creates: there is
+    // no persisted id in `BuildState` yet, so every "Salvar" here is a new
+    // row. Editing an existing build is a future route's concern.
+    await saveBuild({
+      name: build.name,
+      role: build.role.trim() === "" ? null : build.role,
+      content: JSON.stringify(build),
+    });
+  }, [build]);
+
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 p-8">
+    <main id="main-content" tabIndex={-1} className="mx-auto flex max-w-6xl flex-col gap-6 p-8 pb-24 md:pb-8 outline-none">
+      <Breadcrumb current={build.name.trim() || "Nova build"} />
+      <EditorActionBar
+        buildName={build.name}
+        filledCount={filledCount}
+        totalSlots={SLOT_ORDER.length}
+        captureNodeRef={previewContainerRef}
+        onSave={handleSave}
+      />
       {/*
         Marked inert while the picker is open so background content can't be
         tabbed/clicked into or announced by AT — it reinforces (but doesn't
