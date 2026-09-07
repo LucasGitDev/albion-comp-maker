@@ -47,6 +47,35 @@ const MIN_ITEMS = 1500;
 // Only equippable categories are emitted as comp items.
 const EQUIPPABLE_CATEGORIES = new Set(["weapon", "equipmentitem", "mount", "transformationweapon"]);
 
+// ─── maxEnchant ───────────────────────────────────────────────────────────────
+
+/**
+ * Upstream shape (see decision-011): `enchantments.enchantment` is a nested
+ * node on the base item record, one entry per enchant level. Like every
+ * other repeated upstream node, the XML→JSON conversion collapses a
+ * single-child list to a bare object instead of a 1-element array — so this
+ * must be normalized before counting, or a maxEnchant of 1 would silently
+ * read back as 0 (or crash on `.length`).
+ */
+type RawEnchantments = {
+  enchantment?: unknown | unknown[];
+};
+
+type RawItemWithEnchantments = {
+  enchantments?: RawEnchantments;
+};
+
+/**
+ * `maxEnchant` = count of `enchantments.enchantment` entries on the raw item
+ * record, or 0 when the `enchantments` key is absent entirely (per
+ * decision-011).
+ */
+export function computeMaxEnchant(item: RawItemWithEnchantments): number {
+  const enchantment = item.enchantments?.enchantment;
+  if (enchantment === undefined || enchantment === null) return 0;
+  return Array.isArray(enchantment) ? enchantment.length : 1;
+}
+
 // ─── Step 1: Download ────────────────────────────────────────────────────────
 
 function isFresh(path: string): boolean {
@@ -230,7 +259,14 @@ async function emit(): Promise<void> {
       localizedNames: spellNameIndex.get(s.uniquename) ?? { "EN-US": s.uniquename },
     }));
 
-    items.push({ uniquename: id, slot, localizedNames: names, spells, twohanded: isTwoHanded(item) });
+    items.push({
+      uniquename: id,
+      slot,
+      localizedNames: names,
+      spells,
+      twohanded: isTwoHanded(item),
+      maxEnchant: computeMaxEnchant(item as RawItemWithEnchantments),
+    });
   }
 
   if (items.length < MIN_ITEMS) {
@@ -278,4 +314,8 @@ async function main(): Promise<void> {
   await emit();
 }
 
-main().catch((err) => { console.error(err); process.exit(1); });
+// Guard so this module can be imported (e.g. by tests) without running the
+// full download+emit pipeline as a side effect of the import itself.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => { console.error(err); process.exit(1); });
+}
