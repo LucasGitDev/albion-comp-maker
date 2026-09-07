@@ -29,6 +29,7 @@ type PrunedItem = {
   uniquename: string;
   slot: string;
   spells: PrunedSpell[];
+  maxEnchant: number;
 };
 
 type PrunedCorpus = {
@@ -46,7 +47,7 @@ function main(): void {
       referencedSpells.add(s.uniquename);
       return { uniquename: s.uniquename, slotGroup: s.slotGroup, kind: s.kind };
     });
-    return { uniquename: item.uniquename, slot: item.slot, spells };
+    return { uniquename: item.uniquename, slot: item.slot, spells, maxEnchant: item.maxEnchant };
   });
 
   const spells: Record<string, string> = Object.create(null);

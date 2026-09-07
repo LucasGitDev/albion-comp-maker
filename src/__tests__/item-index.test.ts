@@ -7,6 +7,7 @@ function item(overrides: Partial<AOItem> & { uniquename: string; slot: AOItem["s
     localizedNames: {},
     spells: [],
     twohanded: false,
+    maxEnchant: 0,
     ...overrides,
   };
 }
@@ -100,6 +101,7 @@ describe("searchItems", () => {
       uniquename: "UNIQUE_VANITY_2H_SKULL_UNDEAD_AJ",
       slot: "mainhand",
       twohanded: false,
+    maxEnchant: 0,
       localizedNames: { "en-US": "Undead Skull", "pt-BR": "Caveira Morta-Viva" },
     });
     const index = buildItemIndex([...FIXTURE, vanity]);
