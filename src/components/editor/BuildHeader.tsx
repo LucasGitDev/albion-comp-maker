@@ -1,5 +1,6 @@
 "use client";
 
+import { BUILD_NAME_MAX_LENGTH, BUILD_ROLE_MAX_LENGTH } from "@/lib/validation-constants";
 import type { BuildState } from "@/types/build";
 
 export type BuildHeaderProps = {
@@ -21,8 +22,15 @@ export function BuildHeader({ build, onNameChange, onRoleChange }: BuildHeaderPr
       <h1 className="text-sm font-semibold text-foreground/70">Detalhes da build</h1>
       <div className="flex flex-wrap items-center gap-4">
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
-          Nome do build
+        <span className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+          <span>Nome do build</span>
+          <span
+            data-testid="name-char-count"
+            aria-hidden="true"
+            className="tabular-nums normal-case tracking-normal"
+          >
+            {build.name.length}/{BUILD_NAME_MAX_LENGTH}
+          </span>
         </span>
         {/*
           No `autoFocus` here (ACM-037 review finding): with the header,
@@ -32,20 +40,31 @@ export function BuildHeader({ build, onNameChange, onRoleChange }: BuildHeaderPr
           here jumped straight to "Exportar PNG".
         */}
         <input
+          aria-label="Nome do build"
           value={build.name}
           onChange={(event) => onNameChange(event.target.value)}
           placeholder="Bruiser de frontline"
+          maxLength={BUILD_NAME_MAX_LENGTH}
           className="rounded-md border border-icon-slot-empty bg-icon-slot px-3 py-1.5 text-sm outline-none focus:border-[var(--color-enchant)]"
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
-          Papel
+        <span className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+          <span>Papel</span>
+          <span
+            data-testid="role-char-count"
+            aria-hidden="true"
+            className="tabular-nums normal-case tracking-normal"
+          >
+            {build.role.length}/{BUILD_ROLE_MAX_LENGTH}
+          </span>
         </span>
         <input
+          aria-label="Papel"
           value={build.role}
           onChange={(event) => onRoleChange(event.target.value)}
           placeholder="Tank"
+          maxLength={BUILD_ROLE_MAX_LENGTH}
           className="rounded-md border border-icon-slot-empty bg-icon-slot px-3 py-1.5 text-sm outline-none focus:border-[var(--color-enchant)]"
         />
       </label>
