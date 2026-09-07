@@ -23,6 +23,8 @@ export type AOItem = {
   localizedNames: Record<string, string>; // locale → name
   spells: AOItemSpell[];
   twohanded: boolean;
+  /** Count of upstream `enchantments.enchantment` entries; 0 when absent (see decision-011). */
+  maxEnchant: number;
 };
 
 export type AOData = {
