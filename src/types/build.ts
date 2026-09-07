@@ -9,6 +9,13 @@ export type EquippedItem = {
   tier: number; // 1..8
   enchant: 0 | 1 | 2 | 3 | 4;
   spells: Record<SpellGroup, string | null>;
+  /**
+   * `AOItem.twohanded` at equip time. Only meaningful on `mainhand`, but
+   * kept on every slot so the store can enforce the two-handed/offhand
+   * lock rule (ACM-011 review finding) without needing catalog access —
+   * `slots.mainhand` is the only place that fact is available once equipped.
+   */
+  twohanded: boolean;
 };
 
 export type Swap = {

@@ -25,6 +25,7 @@ describe("build store", () => {
       tier: 8,
       enchant: 1,
       spells: { q: null, w: null, e: null, passive: null },
+      twohanded: false,
     });
   });
 
@@ -52,6 +53,42 @@ describe("build store", () => {
 
     const build = selectBuild(useBuildStore.getState());
     expect(build.slots.offhand).toBeNull();
+  });
+
+  it("setting an offhand item while mainhand is already two-handed is a no-op (store-level lock)", () => {
+    const { setItem } = selectActions(useBuildStore.getState());
+    setItem("mainhand", { uniquename: "T8_2H_HAMMER", twohanded: true }, 8, 0);
+    setItem("offhand", { uniquename: "T8_OFFHAND_BOOK", twohanded: false }, 8, 0);
+
+    const build = selectBuild(useBuildStore.getState());
+    expect(build.slots.offhand).toBeNull();
+  });
+
+  it("clearing the two-handed mainhand does not retroactively unlock offhand from a stale call", () => {
+    const { setItem, clearSlot } = selectActions(useBuildStore.getState());
+    setItem("mainhand", { uniquename: "T8_2H_HAMMER", twohanded: true }, 8, 0);
+    clearSlot("mainhand");
+    setItem("offhand", { uniquename: "T8_OFFHAND_BOOK", twohanded: false }, 8, 0);
+
+    const build = selectBuild(useBuildStore.getState());
+    expect(build.slots.offhand?.itemId).toBe("T8_OFFHAND_BOOK");
+  });
+
+  it("ACM-009: setTier swaps the itemId and tier without resetting spells", () => {
+    const { setItem, setSpell, setTier } = selectActions(useBuildStore.getState());
+    setItem("mainhand", { uniquename: "T4_MAIN_SWORD", twohanded: false }, 4, 0);
+    setSpell("mainhand", "q", "SWORD_Q_SPELL");
+    setTier("mainhand", 8, "T8_MAIN_SWORD");
+
+    const build = selectBuild(useBuildStore.getState());
+    expect(build.slots.mainhand).toMatchObject({ itemId: "T8_MAIN_SWORD", tier: 8 });
+    expect(build.slots.mainhand?.spells.q).toBe("SWORD_Q_SPELL");
+  });
+
+  it("ACM-009: setTier on an empty slot is a no-op", () => {
+    const { setTier } = selectActions(useBuildStore.getState());
+    setTier("mainhand", 8, "T8_MAIN_SWORD");
+    expect(selectBuild(useBuildStore.getState()).slots.mainhand).toBeNull();
   });
 
   it("re-equipping a slot resets its spells", () => {
