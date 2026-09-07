@@ -4,12 +4,11 @@ title: SSR public pages for build and comp with slugs (RF-9)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:34'
-updated_date: '2026-09-07 17:05'
+updated_date: '2026-09-07 18:54'
 labels: []
 milestone: m-7
 dependencies:
-  - ACM-018
-  - ACM-019
+  - ACM-049
 ordinal: 21000
 ---
 
