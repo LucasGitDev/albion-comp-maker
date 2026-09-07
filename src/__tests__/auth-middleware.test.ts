@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-// `src/middleware.ts` calls `auth(callback)` at module load time, so `@/auth`
+// `src/proxy.ts` calls `auth(callback)` at module load time, so `@/auth`
 // must be mocked before importing it. This mirrors next-auth's real
 // `auth(handler)` signature: it invokes `handler` with a request-like object
 // carrying `.auth` (the session, or null when unauthenticated).
@@ -10,12 +10,12 @@ vi.mock("@/auth", () => ({
 
 describe("middleware", () => {
   it("scopes the matcher to /builds/:path* and /comp/new only (allow-list, not global)", async () => {
-    const { config } = await import("@/middleware");
+    const { config } = await import("@/proxy");
     expect(config.matcher).toEqual(["/builds/:path*", "/comp/new"]);
   });
 
   it("redirects unauthenticated requests to / (AC#3)", async () => {
-    const middleware = (await import("@/middleware")).default;
+    const middleware = (await import("@/proxy")).default;
 
     const req = {
       auth: null,
@@ -32,7 +32,7 @@ describe("middleware", () => {
   });
 
   it("does not redirect authenticated requests", async () => {
-    const middleware = (await import("@/middleware")).default;
+    const middleware = (await import("@/proxy")).default;
 
     const req = {
       auth: { user: { id: "user-1" }, expires: "" },
