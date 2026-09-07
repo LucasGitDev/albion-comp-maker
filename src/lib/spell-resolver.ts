@@ -28,8 +28,18 @@ export type RawCraftingSpellList = {
 export type RawItem = {
   "@uniquename": string;
   "@slottype"?: string;
+  "@twohanded"?: string;
   craftingspelllist?: RawCraftingSpellList;
 };
+
+/**
+ * Upstream `@twohanded` is the string "true"/"false", or absent for items
+ * that don't have the attribute at all (see decision-004). Compare against
+ * the literal string — never rely on truthiness — and default to false.
+ */
+export function isTwoHanded(item: RawItem): boolean {
+  return item["@twohanded"] === "true";
+}
 
 export type SpellKind = "active" | "passive" | "toggle";
 

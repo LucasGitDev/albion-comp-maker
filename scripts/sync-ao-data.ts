@@ -18,6 +18,7 @@ import { join } from "path";
 import {
   buildItemIndex,
   enumerateItemCategories,
+  isTwoHanded,
   resolveSpells,
   safeKeyedRecord,
   type SpellKind,
@@ -229,7 +230,7 @@ async function emit(): Promise<void> {
       localizedNames: spellNameIndex.get(s.uniquename) ?? { "EN-US": s.uniquename },
     }));
 
-    items.push({ uniquename: id, slot, localizedNames: names, spells });
+    items.push({ uniquename: id, slot, localizedNames: names, spells, twohanded: isTwoHanded(item) });
   }
 
   if (items.length < MIN_ITEMS) {
