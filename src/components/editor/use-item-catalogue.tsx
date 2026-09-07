@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AOItem } from "@/data/ao-data.d";
 
 type CatalogueState =
@@ -19,10 +19,15 @@ let inflight: Promise<CatalogueState> | null = null;
  * it must be served through a route handler that reads it with Node `fs`
  * (same pattern as `src/app/api/icon/route.ts`), not imported client-side.
  *
- * Result is cached at module scope so re-opening the picker never refetches.
- * A failed fetch/non-2xx response is cached as `"failed"`, distinct from
- * `"loaded"` with an empty array — an empty catalogue and an unreachable one
- * must never look the same to callers.
+ * A successful load is cached at module scope so re-opening the picker never
+ * refetches. A failed fetch/non-2xx response is surfaced as `"failed"`,
+ * distinct from `"loaded"` with an empty array — an empty catalogue and an
+ * unreachable one must never look the same to callers — but is deliberately
+ * NOT written to the module cache: caching a failure permanently would make
+ * it unrecoverable for the rest of the session (e.g. running
+ * `npm run sync:ao` after the first failed attempt would never be reflected
+ * without a full page reload). `useItemCatalogue`'s `retry()` relies on this
+ * to re-run the fetch on demand.
  */
 function loadCatalogue(): Promise<CatalogueState> {
   if (cached) return Promise.resolve(cached);
@@ -31,16 +36,14 @@ function loadCatalogue(): Promise<CatalogueState> {
   inflight = fetch("/api/items")
     .then(async (response) => {
       if (!response.ok) {
-        cached = { status: "failed" };
-        return cached;
+        return { status: "failed" } as const;
       }
       const items = (await response.json()) as AOItem[];
       cached = { status: "loaded", items };
       return cached;
     })
     .catch(() => {
-      cached = { status: "failed" };
-      return cached;
+      return { status: "failed" } as const;
     })
     .finally(() => {
       inflight = null;
@@ -58,6 +61,15 @@ export type UseItemCatalogueResult = {
    * from a successful load that simply has no matches for the user's query.
    */
   failed: boolean;
+  /**
+   * Re-runs the fetch on demand. Needed because failure is not cached
+   * (see `loadCatalogue`) but the consuming component (the editor page)
+   * mounts `useItemCatalogue` once and stays mounted while the picker
+   * popover opens/closes — without this, recovering from a failed
+   * catalogue would require a full page reload even after
+   * `npm run sync:ao` has since been run.
+   */
+  retry: () => void;
 };
 
 /** Test-only escape hatch: resets the module-level cache between test cases. */
@@ -68,6 +80,7 @@ export function __resetItemCatalogueCacheForTests(): void {
 
 export function useItemCatalogue(): UseItemCatalogueResult {
   const [state, setState] = useState<CatalogueState>(cached ?? { status: "loading" });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (cached) return;
@@ -78,11 +91,17 @@ export function useItemCatalogue(): UseItemCatalogueResult {
     return () => {
       cancelled = true;
     };
+  }, [attempt]);
+
+  const retry = useCallback(() => {
+    setState({ status: "loading" });
+    setAttempt((current) => current + 1);
   }, []);
 
   return {
     items: state.status === "loaded" ? state.items : [],
     loading: state.status === "loading",
     failed: state.status === "failed",
+    retry,
   };
 }

@@ -130,4 +130,23 @@ describe("SlotPickerPopover accessibility (ACM-034 follow-up)", () => {
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("offers a retry affordance in the failed state that calls onRetryCatalogue", () => {
+    const onRetryCatalogue = vi.fn();
+    render(
+      <SlotPickerPopover
+        slot="head"
+        items={[]}
+        catalogueFailed
+        onRetryCatalogue={onRetryCatalogue}
+        value={null}
+        label="Cabeça"
+        onSelect={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /tentar novamente/i }));
+    expect(onRetryCatalogue).toHaveBeenCalledTimes(1);
+  });
 });

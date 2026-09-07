@@ -11,6 +11,12 @@ export type SlotPickerPopoverProps = {
   catalogueLoading?: boolean;
   /** True when the catalogue failed to load — distinct from "no matches". */
   catalogueFailed?: boolean;
+  /**
+   * Re-runs the catalogue fetch (ACM-034 follow-up review). Optional so
+   * existing call sites/tests that don't exercise the failed state keep
+   * working unchanged; the retry affordance is only rendered when provided.
+   */
+  onRetryCatalogue?: () => void;
   value: string | null;
   label: string;
   /**
@@ -46,6 +52,7 @@ export function SlotPickerPopover({
   items,
   catalogueLoading = false,
   catalogueFailed = false,
+  onRetryCatalogue,
   value,
   label,
   restoreFocusTo = null,
@@ -137,10 +144,21 @@ export function SlotPickerPopover({
         {catalogueFailed ? (
           <div
             role="alert"
-            className="rounded-md border border-[#5a2a2a] bg-[#1d1414] p-3 text-[13px] text-[#f2b8b8]"
+            className="flex flex-col items-start gap-2 rounded-md border border-[#5a2a2a] bg-[#1d1414] p-3 text-[13px] text-[#f2b8b8]"
           >
-            Catálogo de itens indisponível. Rode <code>npm run sync:ao</code> para gerá-lo e tente
-            novamente.
+            <span>
+              Catálogo de itens indisponível. Rode <code>npm run sync:ao</code> para gerá-lo e tente
+              novamente.
+            </span>
+            {onRetryCatalogue && (
+              <button
+                type="button"
+                onClick={onRetryCatalogue}
+                className="rounded-md border border-[#5a2a2a] px-2 py-1 text-[12px] font-medium text-[#f2b8b8] transition-colors duration-150 ease-out hover:bg-[#2a1818]"
+              >
+                Tentar novamente
+              </button>
+            )}
           </div>
         ) : catalogueLoading ? (
           <div

@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   __resetItemCatalogueCacheForTests,
@@ -47,5 +47,30 @@ describe("useItemCatalogue (ACM-034/043)", () => {
 
     expect(result.current.failed).toBe(true);
     expect(result.current.items).toEqual([]);
+  });
+
+  it("recovers from a failed catalogue via retry() without requiring a reload", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ uniquename: "T4_HEAD_PLATE_SET1", slot: "head" }],
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useItemCatalogue());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.failed).toBe(true);
+
+    act(() => {
+      result.current.retry();
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.failed).toBe(false);
+    expect(result.current.items).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

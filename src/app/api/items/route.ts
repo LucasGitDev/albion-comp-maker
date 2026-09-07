@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -6,14 +7,22 @@ import type { AOData, AOItem } from "@/data/ao-data.d";
 
 const ARTIFACT_PATH = path.join(process.cwd(), "src", "data", "ao-data.json");
 
-// Immutable for the lifetime of a deploy: the artifact only changes when a
-// new `sync:ao` run replaces it, which always ships as a new deploy. Safe to
-// cache hard on both the CDN/browser and this route's own in-memory cache.
-const CACHE_CONTROL = "public, max-age=31536000, immutable";
+// The URL is bare and unversioned (`/api/items`, see
+// use-item-catalogue.tsx), so `immutable`/a long max-age is NOT legitimate
+// here: the artifact DOES change on every `sync:ao` + deploy (Albion adds
+// items every patch), and there is no cache-busting query/path segment for a
+// returning user's browser to pick up the change with. Instead we force
+// revalidation on every request (`max-age=0, must-revalidate`) and make that
+// revalidation cheap via a content-hash ETag: a returning user still pays
+// only a 304 (no body) once the in-memory cache below is warm, not a full
+// re-download, while a genuinely new artifact is served immediately.
+const CACHE_CONTROL = "public, max-age=0, must-revalidate";
 
 let cachedItems: AOItem[] | null = null;
 let cachedItemsJson: string | null = null;
 let cachedItemsGzip: Buffer | null = null;
+let cachedItemsEtag: string | null = null;
+let inflightItemsJson: Promise<string> | null = null;
 
 /**
  * Only the fields ItemPicker/SlotCard actually read (see AOItem). Excludes
@@ -33,13 +42,33 @@ function toWireItem(item: AOItem): AOItem {
   };
 }
 
+/**
+ * Reads and parses the artifact exactly once even under concurrent callers.
+ * Without this, every request hitting a cold instance (e.g. right after a
+ * deploy/scale-out, before `cachedItemsJson` is populated) would each pay
+ * its own 2MB `readFile` + `JSON.parse` + gzip — same in-flight-dedup
+ * pattern already used client-side in use-item-catalogue.tsx. A rejected
+ * in-flight promise clears itself so a transient fs error doesn't
+ * permanently poison the cache for later requests.
+ */
 async function loadItemsJson(): Promise<string> {
   if (cachedItemsJson) return cachedItemsJson;
-  const raw = await fs.readFile(ARTIFACT_PATH, "utf-8");
-  const data = JSON.parse(raw) as AOData;
-  cachedItems = data.items.map(toWireItem);
-  cachedItemsJson = JSON.stringify(cachedItems);
-  return cachedItemsJson;
+  if (inflightItemsJson) return inflightItemsJson;
+
+  inflightItemsJson = (async () => {
+    const raw = await fs.readFile(ARTIFACT_PATH, "utf-8");
+    const data = JSON.parse(raw) as AOData;
+    cachedItems = data.items.map(toWireItem);
+    cachedItemsJson = JSON.stringify(cachedItems);
+    cachedItemsEtag = `"${createHash("sha1").update(cachedItemsJson).digest("hex")}"`;
+    return cachedItemsJson;
+  })();
+
+  try {
+    return await inflightItemsJson;
+  } finally {
+    inflightItemsJson = null;
+  }
 }
 
 /**
@@ -74,6 +103,18 @@ export type ItemsErrorResponse = {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const json = await loadItemsJson();
+    const etag = cachedItemsEtag as string;
+
+    if (request.headers.get("if-none-match") === etag) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: {
+          ETag: etag,
+          "Cache-Control": CACHE_CONTROL,
+        },
+      });
+    }
+
     const acceptEncoding = request.headers.get("accept-encoding") ?? "";
 
     if (acceptEncoding.includes("gzip")) {
@@ -84,6 +125,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           "Content-Type": "application/json",
           "Content-Encoding": "gzip",
           "Cache-Control": CACHE_CONTROL,
+          ETag: etag,
         },
       });
     }
@@ -93,6 +135,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": CACHE_CONTROL,
+        ETag: etag,
       },
     });
   } catch (error) {
