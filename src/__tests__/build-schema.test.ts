@@ -175,5 +175,70 @@ describe("build-schema (ACM-049 / decision-013)", () => {
     it("tolerates an arbitrary legacy shape without throwing", () => {
       expect(() => parseBuildContent(JSON.stringify({ some: "old", shape: 1 }))).not.toThrow();
     });
+
+    it("ACM-031 review fix: accepts a pre-ACM-031 equipped item with NO maxEnchant key and backfills it to the domain max (4), preserving the legacy enchant value", () => {
+      const raw = JSON.stringify(
+        validBuild({
+          slots: {
+            mainhand: {
+              itemId: "T4_HEAD_PLATE_SET1",
+              tier: 4,
+              enchant: 3,
+              spells: { q: null, w: null, e: null, passive: null },
+              twohanded: false,
+              // no maxEnchant key at all — this is the exact pre-ACM-031 shape
+            },
+            offhand: null,
+            head: null,
+            armor: null,
+            shoes: null,
+            cape: null,
+            bag: null,
+            mount: null,
+            food: null,
+            potion: null,
+          },
+        }),
+      );
+
+      const result = parseBuildContent(raw);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data.slots.mainhand).toMatchObject({ enchant: 3, maxEnchant: 4 });
+      }
+    });
+
+    it("re-validating a backfilled legacy read through the strict write schema succeeds (duplicateBuild/forkBuild path)", () => {
+      const raw = JSON.stringify(
+        validBuild({
+          slots: {
+            mainhand: {
+              itemId: "T4_HEAD_PLATE_SET1",
+              tier: 4,
+              enchant: 2,
+              spells: { q: null, w: null, e: null, passive: null },
+              twohanded: false,
+            },
+            offhand: null,
+            head: null,
+            armor: null,
+            shoes: null,
+            cape: null,
+            bag: null,
+            mount: null,
+            food: null,
+            potion: null,
+          },
+        }),
+      );
+
+      const read = parseBuildContent(raw);
+      expect(read.ok).toBe(true);
+      if (!read.ok) return;
+
+      const rewritten = validateBuildContentForWrite(JSON.stringify(read.data));
+      expect(JSON.parse(rewritten).slots.mainhand).toMatchObject({ enchant: 2, maxEnchant: 4 });
+    });
   });
 });
