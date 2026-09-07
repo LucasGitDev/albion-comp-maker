@@ -5,7 +5,7 @@ export type SpellKind = "active" | "passive" | "toggle";
 /** A spell as attached to a specific item's resolved spell list. */
 export type AOItemSpell = {
   uniquename: string;
-  slot: string; // index within the spell's own group, e.g. "1" | "2"
+  slotGroup: string; // index within the spell's own group, e.g. "1" | "2"
   kind: SpellKind;
   localizedNames: Record<string, string>; // locale → name
 };

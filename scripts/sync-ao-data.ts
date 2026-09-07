@@ -15,7 +15,13 @@
 import { createWriteStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import { pipeline } from "stream/promises";
 import { join } from "path";
-import { buildItemIndex, resolveSpells, type SpellKind } from "../src/lib/spell-resolver";
+import {
+  buildItemIndex,
+  enumerateItemCategories,
+  resolveSpells,
+  safeKeyedRecord,
+  type SpellKind,
+} from "../src/lib/spell-resolver";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -192,13 +198,10 @@ async function emit(): Promise<void> {
   console.log("[emit] indexing items…");
   const itemIndex = buildItemIndex(rawItemsRaw);
 
-  const rawRoot = rawItemsRaw as Record<string, unknown>;
-  const categoriesRoot = (rawRoot["items"] as Record<string, unknown> | undefined) ?? {};
   const categoryOf = new Map<string, string>();
-  for (const [category, value] of Object.entries(categoriesRoot)) {
-    if (!Array.isArray(value)) continue;
-    for (const it of value as Array<Record<string, unknown>>) {
-      const name = it["@uniquename"] as string | undefined;
+  for (const [category, categoryItems] of enumerateItemCategories(rawItemsRaw)) {
+    for (const it of categoryItems) {
+      const name = it["@uniquename"];
       if (name) categoryOf.set(name, category);
     }
   }
@@ -219,7 +222,7 @@ async function emit(): Promise<void> {
     const resolved = resolveSpells(id, itemIndex, spellKinds);
     const spells = resolved.map((s) => ({
       uniquename: s.uniquename,
-      slot: s.slot,
+      slotGroup: s.slot,
       kind: s.kind,
       // fallback to uniquename for utility spells absent from localization
       // (e.g. PASSIVE_BACKPACK_*) — see decision-004
@@ -242,15 +245,18 @@ async function emit(): Promise<void> {
     throw new Error("[fatal] no passive spells emitted across any item — spell classification is broken");
   }
 
-  // Spells registry (all known spells, keyed by uniquename)
-  const spells: Record<string, unknown> = {};
-  for (const [uniquename, kind] of spellKinds) {
-    spells[uniquename] = {
+  // Spells registry (all known spells, keyed by upstream-controlled uniquename —
+  // see safeKeyedRecord for why this must not be a plain object literal).
+  const spells = safeKeyedRecord(
+    [...spellKinds].map(([uniquename, kind]) => [
       uniquename,
-      kind,
-      localizedNames: spellNameIndex.get(uniquename) ?? { "EN-US": uniquename },
-    };
-  }
+      {
+        uniquename,
+        kind,
+        localizedNames: spellNameIndex.get(uniquename) ?? { "EN-US": uniquename },
+      },
+    ]),
+  );
 
   const output = {
     version: new Date().toISOString().slice(0, 10),

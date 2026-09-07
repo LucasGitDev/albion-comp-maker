@@ -40,6 +40,24 @@ export type ResolvedSpell = {
   kind: SpellKind;
 };
 
+/**
+ * Build a plain-object-shaped registry keyed by an upstream-controlled string
+ * (e.g. a spell or item `uniquename`) without risking prototype pollution.
+ * A literal `{}` would let a key of `__proto__` silently rewrite the
+ * object's prototype instead of being stored, dropping that entry from the
+ * output with no error — this uses a null-prototype object instead, which
+ * `JSON.stringify` serializes identically to a plain object.
+ */
+export function safeKeyedRecord<T>(
+  entries: Iterable<[string, T]>,
+): Record<string, T> {
+  const out: Record<string, T> = Object.create(null);
+  for (const [key, value] of entries) {
+    out[key] = value;
+  }
+  return out;
+}
+
 /** Normalize a potentially single-object or array field to always be an array. */
 function toArray<T>(v: T | T[] | undefined): T[] {
   if (v === undefined || v === null) return [];
@@ -54,29 +72,45 @@ const NON_CATEGORY_KEYS = new Set([
 ]);
 
 /**
- * Build a lookup map from uniquename → item, indexing every equippable
- * category under the root `items` object. References in craftingspelllist
- * can cross categories (e.g. a weapon referencing another weapon), so all
- * array-valued categories are indexed into a single flat map.
+ * Enumerate every equippable item category under the root `items` object,
+ * normalizing single-object categories (a classic xml2json collapse failure
+ * mode) into arrays via `toArray`. Shared by `buildItemIndex` and any
+ * consumer (e.g. sync-ao-data's `categoryOf`) that needs to know which item
+ * belongs to which category, so `NON_CATEGORY_KEYS` has exactly one
+ * authoritative definition.
  */
-export function buildItemIndex(rawItems: unknown): Map<string, RawItem> {
-  const map = new Map<string, RawItem>();
-
+export function enumerateItemCategories(
+  rawItems: unknown,
+): Array<[string, RawItem[]]> {
   if (Array.isArray(rawItems)) {
-    for (const it of rawItems as RawItem[]) {
-      if (it["@uniquename"]) map.set(it["@uniquename"], it);
-    }
-    return map;
+    return [["items", rawItems as RawItem[]]];
   }
 
   const root = rawItems as Record<string, unknown>;
   const items = root["items"] as Record<string, unknown> | undefined;
-  if (!items) return map;
+  if (!items) return [];
 
+  const categories: Array<[string, RawItem[]]> = [];
   for (const [key, value] of Object.entries(items)) {
     if (NON_CATEGORY_KEYS.has(key)) continue;
-    if (!Array.isArray(value)) continue;
-    for (const it of value as RawItem[]) {
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "object") continue;
+    categories.push([key, toArray(value as RawItem | RawItem[])]);
+  }
+  return categories;
+}
+
+/**
+ * Build a lookup map from uniquename → item, indexing every equippable
+ * category under the root `items` object. References in craftingspelllist
+ * can cross categories (e.g. a weapon referencing another weapon), so all
+ * categories are indexed into a single flat map.
+ */
+export function buildItemIndex(rawItems: unknown): Map<string, RawItem> {
+  const map = new Map<string, RawItem>();
+
+  for (const [, categoryItems] of enumerateItemCategories(rawItems)) {
+    for (const it of categoryItems) {
       const name = it?.["@uniquename"];
       if (name) map.set(name, it);
     }
