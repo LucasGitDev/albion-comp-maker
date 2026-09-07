@@ -1,7 +1,7 @@
 ---
 id: ACM-015
 title: PNG export — download and clipboard for single build (RF-8)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 13:33'
 updated_date: '2026-09-07 17:40'
