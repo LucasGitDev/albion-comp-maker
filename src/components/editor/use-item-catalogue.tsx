@@ -1,49 +1,46 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { AOData, AOItem } from "@/data/ao-data.d";
+import type { AOItem } from "@/data/ao-data.d";
 
-let cachedItems: AOItem[] | null = null;
-let inflight: Promise<AOItem[]> | null = null;
+type CatalogueState =
+  | { status: "loading" }
+  | { status: "loaded"; items: AOItem[] }
+  | { status: "failed" };
+
+let cached: CatalogueState | null = null;
+let inflight: Promise<CatalogueState> | null = null;
 
 /**
- * Lazily loads the ao-data.json catalogue emitted by the data pipeline
- * (ACM-002/004) at `src/data/ao-data.json`. That artifact is gitignored
- * (generated, committed only after a full sync — see .gitignore) and is
- * NOT guaranteed to exist in every checkout/CI run, so it must not be a
- * statically-resolvable `import`/`require` specifier: `tsc`/`next build`
- * fails outright with "module not found" whenever the pipeline has not
- * run yet, which is the state of every CI build today (the `check`
- * workflow never runs `pnpm sync:ao`).
+ * Fetches the ao-data.json catalogue (ACM-002/004) via `/api/items`
+ * (ACM-034/043). The raw artifact lives at `src/data/ao-data.json`, which is
+ * a build-time asset the browser cannot resolve as a module specifier (and
+ * is gitignored — absent until `npm run sync:ao` runs, see .gitignore), so
+ * it must be served through a route handler that reads it with Node `fs`
+ * (same pattern as `src/app/api/icon/route.ts`), not imported client-side.
  *
- * `turbopackIgnore` tells the bundler to leave this specifier alone instead
- * of trying to resolve it at build time, so `next build` always succeeds
- * regardless of whether the artifact exists. The tradeoff (tracked as a
- * known gap in ACM-027's implementation notes, not solved here — this task
- * is scoped to wiring the picker open/close/select flow, not the data
- * pipeline → editor plumbing) is that this becomes a genuine runtime
- * module specifier the browser must resolve itself; today nothing serves
- * `@/data/ao-data.json` to the browser, so the import always rejects and
- * we fall back to an empty catalogue rather than crashing the editor. Once
- * a follow-up task wires a real fetch/serving path for the artifact, only
- * this function needs to change — every caller here just awaits `AOItem[]`.
- *
- * Result is cached at module scope so re-opening the picker never re-loads.
+ * Result is cached at module scope so re-opening the picker never refetches.
+ * A failed fetch/non-2xx response is cached as `"failed"`, distinct from
+ * `"loaded"` with an empty array — an empty catalogue and an unreachable one
+ * must never look the same to callers.
  */
-function loadCatalogue(): Promise<AOItem[]> {
-  if (cachedItems) return Promise.resolve(cachedItems);
+function loadCatalogue(): Promise<CatalogueState> {
+  if (cached) return Promise.resolve(cached);
   if (inflight) return inflight;
 
-  const dir = "@/data/";
-  const file = "ao-data.json";
-  inflight = import(/* turbopackIgnore: true */ dir + file)
-    .then((mod: { default: AOData }) => {
-      cachedItems = mod.default.items;
-      return cachedItems;
+  inflight = fetch("/api/items")
+    .then(async (response) => {
+      if (!response.ok) {
+        cached = { status: "failed" };
+        return cached;
+      }
+      const items = (await response.json()) as AOItem[];
+      cached = { status: "loaded", items };
+      return cached;
     })
     .catch(() => {
-      cachedItems = [];
-      return cachedItems;
+      cached = { status: "failed" };
+      return cached;
     })
     .finally(() => {
       inflight = null;
@@ -53,32 +50,39 @@ function loadCatalogue(): Promise<AOItem[]> {
 
 export type UseItemCatalogueResult = {
   items: AOItem[];
+  /** True while the initial fetch is in flight. */
   loading: boolean;
+  /**
+   * True when the catalogue fetch failed or the server reported the
+   * artifact as unavailable (e.g. `npm run sync:ao` was never run). Distinct
+   * from a successful load that simply has no matches for the user's query.
+   */
+  failed: boolean;
 };
 
 /** Test-only escape hatch: resets the module-level cache between test cases. */
 export function __resetItemCatalogueCacheForTests(): void {
-  cachedItems = null;
+  cached = null;
   inflight = null;
 }
 
 export function useItemCatalogue(): UseItemCatalogueResult {
-  const [items, setItems] = useState<AOItem[]>(cachedItems ?? []);
-  const [loading, setLoading] = useState(cachedItems === null);
+  const [state, setState] = useState<CatalogueState>(cached ?? { status: "loading" });
 
   useEffect(() => {
-    if (cachedItems) return;
+    if (cached) return;
     let cancelled = false;
     loadCatalogue().then((loaded) => {
-      if (!cancelled) {
-        setItems(loaded);
-        setLoading(false);
-      }
+      if (!cancelled) setState(loaded);
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return { items, loading };
+  return {
+    items: state.status === "loaded" ? state.items : [],
+    loading: state.status === "loading",
+    failed: state.status === "failed",
+  };
 }
