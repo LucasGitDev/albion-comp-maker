@@ -4,7 +4,7 @@ title: 'Build card preview component — single source of truth (RF-4, RF-5)'
 status: In Progress
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 16:58'
+updated_date: '2026-09-07 17:05'
 labels: []
 milestone: m-3
 dependencies:
@@ -24,10 +24,10 @@ The preview component IS the export component. No separate layout for export. Su
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Renders BuildState as visual card
-- [ ] #2 vertical layout: icon left, name right, spells below
-- [ ] #3 grid layout: builds side by side, role as column header
-- [ ] #4 Same React component tree used for both screen preview and PNG export
+- [x] #1 Renders BuildState as visual card
+- [x] #2 vertical layout: icon left, name right, spells below
+- [x] #3 grid layout: builds side by side, role as column header
+- [x] #4 Same React component tree used for both screen preview and PNG export
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -143,4 +143,57 @@ Tokens novos: `--color-card-surface:#12141a; --color-card-surface-2:#171a21; --c
 1. Exportar com o mouse sobre um slot e fora da janela → PNGs idênticos.
 2. Abrir o PNG dentro do Discord em dark mode → borda do card visível contra `#313338`, texto legível sem zoom.
 3. Build só com mão principal → card renderiza sem buracos e sem áreas tracejadas.
+
+Implementação (agente implementer):
+
+Componentes novos em src/components/build-card/ (nenhum importa Zustand/store; recebem
+BuildState + lookups por prop):
+- BuildCard.tsx — raiz de captura (#capture-root), escolhe entre BuildCardVertical/BuildCardGrid via prop `layout`.
+- BuildCardVertical.tsx — layout single-build 960px largura fixa (wireframe §2 da spec): barra accent 6px, hero da mão principal (ícone 80px — ver desvio abaixo), equipamento (CardSlotTile, só slots preenchidos), swaps, rodapé "albioncomp.gg".
+- BuildCardGrid.tsx — variante coluna 320px do MESMO BuildState, para compor comps lado a lado (ACM-020 compõe N colunas; este componente só renderiza uma).
+- CardSlotTile.tsx — tile 80px não-interativo (sem button/onClick/hover), distinto do SlotCard de 168px do editor.
+- SpellRow.tsx — chips de spell reusados no hero e nos tiles de equipamento.
+- tokens.ts — todas as cores em hex literal (nunca oklch/palette Tailwind), reaproveitando os valores hex de --color-tier-*/--color-enchant do ACM-011 sem tocar em globals.css (fora do escopo desta task).
+- types.ts — BuildCardTheme (showItemNames/showSpellNames) e BuildCardLookups (itemNames/spellNames/spellGroupsByItem), lookups read-only injetados pelo caller.
+
+Decisão registrada: decision-010 "Capture root sem chrome interativo" — BuildCard nunca
+renderiza chrome interativo (hover/botão/tooltip); isso vive num overlay irmão que o editor
+vai possuir (fora do escopo de ACM-013).
+
+Testes: src/__tests__/build-card.test.tsx (10 casos) cobrindo:
+- renderização pura a partir de BuildState (sem store/contexto);
+- #capture-root único;
+- ausência de classes de paleta Tailwind (bg-blue-500 etc.) e de "oklch(" literal no HTML renderizado — prova mecânica da restrição de cor;
+- zero elementos interativos (button/input/select/textarea/a[href]) dentro do capture root;
+- slots vazios não são renderizados no card exportado;
+- placeholder do estado vazio (sem mainhand);
+- swaps renderizados quando presentes;
+- dois renders do mesmo BuildState produzem HTML idêntico — proxy automatizável para "mouse sobre slot vs. fora da janela produz PNGs idênticos" (spec §6);
+- layout grid como coluna estreita do mesmo BuildState.
+
+Desvios da UX spec (documentados, não bloqueantes):
+1. Ícone "herói" da mão principal usa ItemIcon size="xl" (80px), não 144px — não existe
+   tamanho maior em ICON_SIZE_PX (icon-tokens.ts, fora do escopo desta task) e ItemIcon não
+   pode ser modificado (reuso read-only). Diferenciação hero vs. equipamento é dada pelo
+   layout (ícone sozinho + nome grande) em vez do tamanho.
+2. BuildCardGrid usa CardSlotTile em 80px (não 48px como o §2 da spec sugere para o modo
+   grid) para não criar um segundo componente de tile só para essa densidade — mantém "um
+   card de slot" em todo o sistema, ao custo de uma coluna de 320px conseguir ~2 tiles por
+   linha em vez de mais.
+3. EditOverlay (hover, tooltip, botão "×") não foi implementado nesta task — pertence ao
+   editor (fora do `touches` autorizado: apenas src/components/build-card/**). Fica
+   registrado em decision-010 como trabalho de acompanhamento.
+4. Estados "loading"/"erro de ícones" com botões de ação ("Tentar novamente" etc., §5 da
+   spec) são chrome interativo e pertencem ao editor/barra de export (ACM-015), não ao
+   capture root — BuildCard delega o status visual de cada ícone ao próprio ItemIcon/SpellIcon
+   (já existente), sem adicionar UI de decisão.
+
+make check verde (lint 0 erros/2 warnings pré-existentes em ItemIcon/SpellIcon fora do
+escopo, tsc, build, 68 testes vitest incluindo os 10 novos).
+
+Verificação manual (item 3 da spec — os únicos aplicáveis sem export real, que é ACM-015):
+"Build só com mão principal → card renderiza sem buracos e sem áreas tracejadas" — coberto
+pelo teste "does not render empty equipment slots". Itens 1 e 2 da spec (comparar PNGs,
+abrir no Discord) dependem do export real (ACM-015) e ficam para a verificação manual
+daquela task, que vai consumir #capture-root produzido aqui.
 <!-- SECTION:NOTES:END -->
