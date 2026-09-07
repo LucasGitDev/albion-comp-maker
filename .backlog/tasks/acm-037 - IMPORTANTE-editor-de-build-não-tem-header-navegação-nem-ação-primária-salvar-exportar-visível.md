@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-07 17:36'
+updated_date: '2026-09-07 18:47'
 labels: []
 dependencies: []
 priority: high
@@ -17,3 +18,13 @@ ordinal: 37000
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Em /build/new não existe nenhum header/nav global, breadcrumb, botão de voltar, nem botão de salvar/exportar PNG — a página é só o formulário de nome+papel e a grade de slots, sem chrome nenhum. Um usuário não sabe onde está no fluxo do produto nem como finalizar a comp que está montando. Comparar com https://www.albiononlinebuilds.com/pt/comp/dragon-raid-meele-comp: header fixo com logo/nav/busca/CTA 'Criar', título da comp e tag de categoria (ex: 'PVE GROUP') logo abaixo, botão 'Compartilhar' no canto superior direito da área de conteúdo. Ação: adicionar header persistente com navegação e, na página de edição, uma barra de ação fixa (sticky) com botão primário 'Salvar' / 'Exportar PNG' sempre visível, mesmo com scroll longo.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Header global persistente com logo/marca, navegacao (Home, Builds) e CTA primario 'Criar build', presente em todas as rotas via layout
+- [ ] #2 Na pagina de edicao de build existe uma action bar sticky sempre visivel durante scroll longo, com acao primaria 'Salvar' e secundaria 'Exportar PNG'
+- [ ] #3 Existe caminho de volta explicito a partir do editor (breadcrumb ou botao voltar) sem depender do back do navegador
+- [ ] #4 Header e action bar sao navegaveis por teclado, com foco visivel e landmarks semanticos (header/nav/main)
+- [ ] #5 A action bar sticky nao aparece dentro do capture-root do export PNG (nao vaza para a imagem exportada)
+- [ ] #6 make check verde e testes cobrindo a presenca do header e o disparo das acoes primarias
+<!-- AC:END -->
