@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 18:12'
+updated_date: '2026-09-07 18:15'
 labels: []
 dependencies: []
 priority: high
@@ -113,4 +113,28 @@ Also fixed (follow-up review HIGH/MEDIUM): real focus trap (Tab/Shift+Tab cycle 
 End-to-end verified via Playwright against a production build (`next build && next start`): opened /build/new, searched "sword" in the mainhand slot, selected T8_2H_DUALSWORD, it landed in the slot with a real icon from /api/icon (CDN fetch succeeded, 217x217 PNG). Also verified /api/items returns 2036 items and the gzip path (content-encoding: gzip, 62683 bytes) end-to-end.
 
 Merged origin/main into the branch (not rebased -- the branch already contains a merge commit reconciling the ACM-010 SpellPicker refactor; rebasing replayed and re-triggered that already-resolved conflict) to pick up unrelated backlog-status commits; only conflict was in this task's own backlog notes (timestamps/review text), resolved by keeping both. PR #25 verified CLEAN/MERGEABLE after push. make check green (166 tests).
+
+Final review (attempt 2) of PR #25 branch task/34-wire-itempicker: LGTM.
+
+All 5 previously-blocking findings verified fixed in code + tests:
+1. Runtime-unresolvable dynamic import replaced by src/app/api/items/route.ts (Node fs), no silent .catch(()=>[]) swallow.
+2. loading/failed states now surfaced end-to-end (useItemCatalogue -> SlotPickerPopover) with visible UI for each.
+3. Real Tab-cycle focus trap in SlotPickerPopover (verified via slot-picker-popover-a11y.test.tsx, jsdom-real not mocked).
+4. Focus restored to trigger button on close; capture happens synchronously in the click handler in page.tsx BEFORE inert/re-render, so not fragile to render ordering.
+5. Background scroll locked + marked inert while picker open.
+
+Scrutinized claims, all hold up:
+- Gzip only sent when Accept-Encoding includes gzip; plain body otherwise. Round-trip verified by test (gunzip decodes back to original items).
+- Cache-Control: public, max-age=31536000, immutable is sane for a build-time artifact that only changes via redeploy. In-memory module-scope cache of parsed items/json/gzip avoids re-reading the 2MB file and re-gzipping per request; correctly scoped to the process lifetime.
+- 503 CATALOGUE_UNAVAILABLE path: ENOENT and malformed-JSON (JSON.parse throw) both caught by the same try/catch, both typed 503s; dedicated malformed-artifact test exists. Client maps any non-2xx to the failed state, never an empty list.
+- Field stripping: twohanded, maxEnchant, and per-item spells (already resolved incl. localizedNames per AOItem.spells) all preserved on the wire; only the redundant top-level spells registry is dropped. Nothing SlotCard/SpellPicker needs is missing.
+- ACM-010 SpellPicker/spell-groups.ts confirmed present and untouched by this diff post-merge -- not regressed.
+- Single store subscription preserved: only page.tsx calls useBuildStore; SlotCard/SlotGrid take plain props (grep-verified).
+- Tests: 166/166 pass, none skipped/deleted. New hook/route tests exercise real fetch/fs-mocked-at-boundary failure paths (missing artifact, malformed artifact, non-2xx, network reject) -- not tautological mock-of-a-mock tests, this was the exact prior-review gap and it's now closed.
+- make check green on task branch (lint/tsc/build/test).
+- Scope: only files relevant to ACM-034/035/043 touched.
+
+Non-blocking follow-up (MEDIUM): useItemCatalogue's module-level cache permanently memoizes a failed catalogue fetch for the session lifetime -- a user who opens the picker before npm run sync:ao runs, then re-runs it, needs a full page reload (not just reopening the picker) to recover. Suggest a retry/invalidate-on-reopen follow-up task, not a merge blocker.
+
+Verdict: LGTM.
 <!-- SECTION:NOTES:END -->
