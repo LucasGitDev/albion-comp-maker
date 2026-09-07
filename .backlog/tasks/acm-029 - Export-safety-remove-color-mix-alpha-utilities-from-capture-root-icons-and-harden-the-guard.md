@@ -3,10 +3,10 @@ id: ACM-029
 title: >-
   Export safety: remove color-mix/alpha utilities from capture-root icons and
   harden the guard
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 17:11'
-updated_date: '2026-09-07 17:23'
+updated_date: '2026-09-07 17:29'
 labels: []
 milestone: m-2
 dependencies:
@@ -98,4 +98,81 @@ the shipped fix — it remains an open verification item for decision-007 to clo
 during ACM-015. Not recording a new decision: I found no evidence contradicting
 decision-007 (only an unresolved unknown it already flagged), so overriding it would be
 speculation, not a finding.
+
+## Review (PR #20, task/29-export-safety)
+
+### 1. Guard mutation test — CONFIRMED real
+Reintroduced `bg-black/70` into SpellIcon.tsx (removing the rgba style) and reran
+`vitest run src/__tests__/build-card.test.tsx`: 12/13 pass, 1 fails — exactly the new
+"never uses a Tailwind alpha-slash utility" assertion. Reverted: 13/13 pass. The
+implementer's mutation-test claim is not decorative.
+
+### 2. Guard coverage boundary — real gap found, MEDIUM
+Tried to defeat the hardened guard with several evasion routes (each verified by
+actually mutating SpellIcon.tsx and rerunning the suite):
+
+- CAUGHT: `bg-black/70` (literal alpha-slash utility).
+- CAUGHT: `bg-black/[0.7]` (bracket-arbitrary alpha-slash syntax) — matches
+  `ALPHA_SLASH_UTILITY`'s `/(?:\[)` branch.
+- CAUGHT: inline `style={{ backgroundColor: "oklab(0% 0 0 / 0.7)" }}` — matches the
+  inline-style walk over `#capture-root`.
+- NOT CAUGHT (but not a real risk): `bg-[rgb(0_0_0/0.7)]` arbitrary-value class evades
+  the classname regex (no alnum run between `bg-` and `/`), but Tailwind compiles this
+  literally to `background-color: rgb(0 0 0/0.7)`, not `color-mix()` — so it's a false
+  negative for a class of input that isn't actually the risk this guard targets.
+- **NOT CAUGHT, real risk**: CSS custom-property indirection.
+  `style={{ backgroundColor: "var(--brand-overlay-color-mix-risk)" }}` with
+  `--brand-overlay-color-mix-risk: oklab(0% 0 0 / 0.7);` added to globals.css →
+  **all 13 tests pass**. The guard only greps rendered className/innerHTML/style-attribute
+  *text*; it never resolves custom properties or reads stylesheet content, and jsdom
+  doesn't compute resolved styles from `<link>`/`<style>` sources here anyway. Any future
+  component that references a `var(--token)` whose value is defined as oklab/oklch/color-mix
+  in globals.css (or any imported CSS) will render fully green on this guard while still
+  carrying the exact defect class ACM-029 exists to prevent.
+  Currently NOT exploited: every token in `src/app/globals.css` today is a literal hex
+  value, so this is a latent gap, not an active bug. Recommend recording this boundary
+  explicitly (in the test's docstring and/or decision-007) so it isn't mistaken for
+  exhaustive protection when ACM-014/ACM-015 land.
+
+### 3. Visual equivalence — confirmed
+`bg-black/70` = black @ 70% alpha; `rgba(0, 0, 0, 0.7)` is the exact same color/alpha,
+not an approximation.
+
+### 4. AC#4 honesty check — PASS, no fabrication
+The note correctly distinguishes "browser support for the `color-mix()` function"
+(verified via `pnpm build` output: Tailwind v4 emits a hex fallback + an
+`@supports (color:color-mix(...))`-gated override) from the actual open question
+("does html-to-image's DOM-to-SVG serialization read the `@supports`-gated computed
+value"), which cannot be verified without html-to-image installed (ACM-015 not yet
+built) and without headless-browser tooling in this repo. This is an honest, technically
+accurate limitation, not hand-waving, and reasonable to leave open for ACM-015 to close
+empirically. No new decision was warranted since nothing here contradicts decision-007.
+
+### 5. Scope — verified clean
+Diff touches only `src/components/icons/SpellIcon.tsx` and
+`src/__tests__/build-card.test.tsx` (plus the task file). Traced `SlotCard.tsx` usage:
+it is imported only by `src/components/editor/SlotGrid.tsx`; `BuildCard`'s
+`#capture-root` renders `CardSlotTile` (a distinct component), never `SlotCard`. This
+matches decision-010's architecture (interactive editor chrome lives outside
+`src/components/build-card/**` by construction), so the out-of-scope flag on
+`SlotCard.tsx:117` (`bg-black/60`) is TRUE, not a scope violation to fix here.
+
+### 6. Regression check — confirmed additive only
+`git diff main...HEAD -- src/__tests__/build-card.test.tsx` shows zero removed lines —
+all prior ACM-013 assertions (palette-utility regex, literal `oklch(` check, capture-root
+identity, no-interactive-elements, etc.) are intact and still pass. `make check` green on
+branch: lint (0 errors, 2 pre-existing unrelated `<img>` warnings), tsc, build, and
+123/123 vitest tests pass.
+
+## Findings
+- MEDIUM: Guard has a real, currently-latent coverage gap for CSS-custom-property-mediated
+  color-mix/oklab/oklch (see #2 above). Not exploited by current code, but the guard's
+  actual protection boundary is narrower than "rejects color-mix/oklab/oklch anywhere in
+  the capture-root subtree" (AC#2 wording) implies. Recommend a follow-up note in the
+  test's docstring and/or decision-007 documenting this limitation before ACM-015/ACM-014
+  introduce any `var(--token)`-based color usage in the capture root.
+- No CRITICAL/HIGH findings. AC#1-#5 all verifiably met. Mutation test is real,
+  scope is respected, AC#4 account is honest, ACM-013 tests strengthened not weakened.
+
+## Verdict: LGTM (1 MEDIUM finding recorded, non-blocking)
 <!-- SECTION:NOTES:END -->
