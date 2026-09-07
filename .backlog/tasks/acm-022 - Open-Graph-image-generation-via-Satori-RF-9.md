@@ -4,6 +4,7 @@ title: Open Graph image generation via Satori (RF-9)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:34'
+updated_date: '2026-09-07 16:35'
 labels: []
 milestone: m-7
 dependencies:
@@ -25,3 +26,9 @@ ordinal: 22000
 - [ ] #3 Link pasted in Discord shows OG preview
 - [ ] #4 meta og:image, og:title, og:description set on public pages
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+ATENCAO: decision-008 (OG/Satori) foi criada vazia e marcada 'accepted' por engano, e removida. NAO existe decisao registrada sobre Satori — spawn architect antes de implementar.
+<!-- SECTION:NOTES:END -->

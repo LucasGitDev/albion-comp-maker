@@ -4,6 +4,7 @@ title: Auth.js v5 with Discord provider
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:33'
+updated_date: '2026-09-07 16:35'
 labels: []
 milestone: m-5
 dependencies:
@@ -24,3 +25,9 @@ NextAuth v5 configured with Discord OAuth. Uses Drizzle adapter. Session stored 
 - [ ] #3 Unauthenticated access to protected routes redirects to /
 - [ ] #4 User row created in users table on first login
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+ATENCAO: decision-009 (Auth.js v5 Discord) foi criada vazia e marcada 'accepted' por engano, e removida. NAO existe decisao registrada sobre estrategia de sessao — spawn architect antes de implementar.
+<!-- SECTION:NOTES:END -->
