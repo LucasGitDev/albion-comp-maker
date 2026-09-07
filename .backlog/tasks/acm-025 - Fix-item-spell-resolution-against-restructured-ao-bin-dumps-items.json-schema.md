@@ -1,10 +1,10 @@
 ---
 id: ACM-025
 title: Fix item-spell resolution against restructured ao-bin-dumps items.json schema
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 15:56'
-updated_date: '2026-09-07 16:13'
+updated_date: '2026-09-07 16:24'
 labels: []
 dependencies: []
 ordinal: 25000

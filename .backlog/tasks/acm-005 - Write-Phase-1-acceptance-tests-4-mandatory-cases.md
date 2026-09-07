@@ -1,10 +1,10 @@
 ---
 id: ACM-005
 title: Write Phase 1 acceptance tests (4 mandatory cases)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 15:47'
+updated_date: '2026-09-07 16:25'
 labels: []
 milestone: m-0
 dependencies:
@@ -33,4 +33,6 @@ Vitest tests covering the 4 acceptance cases from PRD Section 3. Must pass befor
 
 <!-- SECTION:NOTES:BEGIN -->
 BLOQUEADO: upstream ao-bin-dumps removeu formatted/spells.json e formatted/localization.json (404). sync-ao-data.ts não consegue gerar ao-data.json. AC-3 e AC-4 não podem rodar contra dados reais. Precisa corrigir ACM-002 (sync script) antes de retomar.
+
+DESBLOQUEADO por ACM-025. Pipeline emite 2036 items / 9044 spells. Branch task/5-phase1-tests e PR #5 descartados: foram escritos contra schema presumido que decision-004 refutou. Reimplementar do zero a partir de main.
 <!-- SECTION:NOTES:END -->
