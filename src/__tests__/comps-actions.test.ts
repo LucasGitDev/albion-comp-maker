@@ -324,6 +324,67 @@ describe("comp Server Actions (ACM-019)", () => {
     });
   });
 
+  describe("text size bounds (ACM-057)", () => {
+    it("createComp rejects a name over the limit", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp } = await import("@/actions/comps");
+
+      await expect(createComp({ name: "a".repeat(101) })).rejects.toThrow(/at most 100 characters/);
+    });
+
+    it("updateComp rejects a name over the limit", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, updateComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Fine" });
+
+      await expect(updateComp({ id: comp.id, name: "a".repeat(101) })).rejects.toThrow(/at most 100 characters/);
+    });
+
+    it("addBuildToComp rejects a label over the limit", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const [aBuild] = await db
+        .insert(builds)
+        .values({ userId: "user-a", name: "User A Build", slug: "bound-add-label-slug", content: "{}" })
+        .returning();
+      const { createComp, addBuildToComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Bound Comp" });
+
+      await expect(
+        addBuildToComp({ compId: comp.id, buildId: aBuild.id, label: "a".repeat(201) }),
+      ).rejects.toThrow(/at most 200 characters/);
+    });
+
+    it("updateCompBuild rejects a label over the limit", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const [aBuild] = await db
+        .insert(builds)
+        .values({ userId: "user-a", name: "User A Build", slug: "bound-update-label-slug", content: "{}" })
+        .returning();
+      const { createComp, addBuildToComp, updateCompBuild } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Bound Comp 2" });
+      const compBuild = await addBuildToComp({ compId: comp.id, buildId: aBuild.id });
+
+      await expect(
+        updateCompBuild({ compId: comp.id, compBuildId: compBuild.id, label: "a".repeat(201) }),
+      ).rejects.toThrow(/at most 200 characters/);
+    });
+
+    it("createComp rejects an all-whitespace name", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp } = await import("@/actions/comps");
+
+      await expect(createComp({ name: "   " })).rejects.toThrow(/Name is required/);
+    });
+
+    it("createComp trims surrounding whitespace before persisting", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp } = await import("@/actions/comps");
+
+      const comp = await createComp({ name: "  Padded Name  " });
+      expect(comp.name).toBe("Padded Name");
+    });
+  });
+
   describe("rate limiting", () => {
     it("rejects the 31st write within a minute for the same user", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
