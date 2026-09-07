@@ -37,6 +37,19 @@ const PALETTE_COLOR_UTILITY = new RegExp(
     String.raw`(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-\d{2,3}\b`
 );
 
+/**
+ * Tailwind v4's alpha-slash utilities (bg-black/70, text-white/50,
+ * border-black/[.08], etc.) compile to `color-mix(in oklab, ...)` under an
+ * `@supports` progressive-enhancement rule — the exact defect that slipped
+ * past ACM-013's guard (see ACM-029). This matches any `<prefix>-<token>/<NN>`
+ * or `<prefix>-<token>/[...]` className, regardless of whether <token> is a
+ * palette color or a bare keyword like black/white.
+ */
+const ALPHA_SLASH_UTILITY = new RegExp(
+  String.raw`\b(?:bg|text|border|ring|from|to|via|outline|shadow|decoration|accent|caret|fill|stroke|divide|placeholder)-` +
+    String.raw`[a-zA-Z0-9_-]+/(?:\d{1,3}\b|\[)`
+);
+
 function collectClassNames(root: Element): string[] {
   const classNames: string[] = [];
   const walk = (el: Element) => {
@@ -74,6 +87,34 @@ describe("BuildCard", () => {
     const state = buildWithMainhand();
     const { container } = render(<BuildCard state={state} />);
     expect(container.innerHTML).not.toContain("oklch(");
+  });
+
+  it("never uses a Tailwind alpha-slash utility (would compile to color-mix())", () => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} />);
+    const offenders = collectClassNames(container).filter((cls) => ALPHA_SLASH_UTILITY.test(cls));
+    expect(offenders).toEqual([]);
+  });
+
+  it("never emits a literal color-mix( or oklab( anywhere in its rendered markup", () => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} />);
+    expect(container.innerHTML).not.toContain("color-mix(");
+    expect(container.innerHTML).not.toContain("oklab(");
+  });
+
+  it("never sets an inline style color/background to color-mix(), oklab(), or oklch()", () => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} />);
+    const root = container.querySelector("#capture-root")!;
+    const offenders: string[] = [];
+    const walk = (el: Element) => {
+      const style = el.getAttribute("style");
+      if (style && /color-mix\(|oklab\(|oklch\(/.test(style)) offenders.push(style);
+      for (const child of Array.from(el.children)) walk(child);
+    };
+    walk(root);
+    expect(offenders).toEqual([]);
   });
 
   it("renders no interactive elements inside the capture root", () => {
