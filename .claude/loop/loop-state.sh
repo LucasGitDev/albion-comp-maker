@@ -17,6 +17,26 @@ BUDGET="${LOOP_MAX_ATTEMPTS:-3}"
 ACTION="${1:-status}"
 TASK="${2:-}"
 
+# claim-atomic: backlog edit → git commit → push → worktree add (mutex distribuído)
+# Uso: loop-state.sh claim-atomic <TASK-ID> <branch-slug> <worktree-path>
+if [[ "$ACTION" == "claim-atomic" ]]; then
+  BRANCH_SLUG="${3:-}"
+  WORKTREE_PATH="${4:-}"
+  [[ -z "$TASK" || -z "$BRANCH_SLUG" || -z "$WORKTREE_PATH" ]] && {
+    echo "uso: loop-state.sh claim-atomic <TASK-ID> <branch-slug> <worktree-path>" >&2
+    exit 1
+  }
+  REPO_ROOT="$(git -C "$(dirname "$LOOP_DIR")" rev-parse --show-toplevel 2>/dev/null || git rev-parse --show-toplevel)"
+  backlog task edit "$TASK" --status "In Progress"
+  git -C "$REPO_ROOT" add ".backlog/tasks/" || true
+  git -C "$REPO_ROOT" commit -m "chore(config): claim $TASK" 2>/dev/null || true
+  git -C "$REPO_ROOT" push origin main
+  git -C "$REPO_ROOT" worktree add "$WORKTREE_PATH" -b "task/$BRANCH_SLUG"
+  # registra no state local também
+  "$BASH_SOURCE" claim "$TASK"
+  exit 0
+fi
+
 ACTION="$ACTION" TASK="$TASK" STATE="$STATE" BUDGET="$BUDGET" python3 - <<'PY'
 import json, os, sys, datetime
 
