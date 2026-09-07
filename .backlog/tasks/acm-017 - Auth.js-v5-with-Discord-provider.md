@@ -4,7 +4,7 @@ title: Auth.js v5 with Discord provider
 status: In Review
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 17:16'
+updated_date: '2026-09-07 17:17'
 labels: []
 milestone: m-5
 dependencies:
@@ -102,4 +102,6 @@ Verified independently (not just re-reading the implementer's claims):
 No CRITICAL or HIGH findings against the code itself. One MEDIUM (missing ADR for the session-strategy/middleware-runtime decision, item 2) that should be closed before Done — this is a process gap, not a functional defect, and does not block merge of the PR, but must be resolved (decision doc created) before the task can be moved to Done per CLAUDE.md's Definition of Done ("architecture decisions documented").
 
 Verdict: LGTM (merge-blocking findings: none). MEDIUM outstanding: create the missing decision doc for Auth.js session strategy + middleware Node.js runtime before marking ACM-017 Done.
+
+Process gap closed: decision-012 (Auth.js v5 database sessions and Node.js middleware runtime) recorded, covering the session strategy choice, the Edge->Node middleware runtime tradeoff, the security property (session callback never sees account/OAuth tokens under database strategy), and the JWT-migration hazard for session.user.id pinning (relevant to ACM-018/019 IDOR defense). Closes the MEDIUM finding from the ACM-017 PR #18 review.
 <!-- SECTION:NOTES:END -->
