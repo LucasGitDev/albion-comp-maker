@@ -107,6 +107,11 @@ describe("ItemPicker", () => {
     await waitFor(() => {
       expect(screen.queryByText("Broadsword")).not.toBeInTheDocument();
     });
-    expect(screen.getByText("Sacred Hammer")).toBeInTheDocument();
+    // Full text asserted via textContent (not the default text-node-only
+    // matcher) because ACM-028 wraps the matched substring in <mark>,
+    // splitting "Sacred Hammer" across sibling nodes.
+    expect(
+      screen.getByText((_, element) => element?.textContent === "Sacred Hammer")
+    ).toBeInTheDocument();
   });
 });
