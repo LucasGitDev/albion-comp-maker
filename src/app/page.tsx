@@ -13,7 +13,7 @@ export default function Home() {
         </p>
         <Link
           href="/build/new"
-          className="mt-2 rounded-full bg-[var(--color-accent)] px-6 py-3 font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)]"
+          className="mt-2 rounded-full bg-[var(--color-accent)] px-6 py-3 font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
         >
           Nova build
         </Link>
