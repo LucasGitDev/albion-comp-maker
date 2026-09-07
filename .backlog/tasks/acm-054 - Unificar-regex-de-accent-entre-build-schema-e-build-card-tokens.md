@@ -1,10 +1,10 @@
 ---
 id: ACM-054
 title: Unificar regex de accent entre build-schema e build-card/tokens
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 19:23'
-updated_date: '2026-09-07 20:01'
+updated_date: '2026-09-07 23:59'
 labels: []
 dependencies:
   - ACM-059
