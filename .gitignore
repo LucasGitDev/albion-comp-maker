@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -45,6 +46,9 @@ next-env.d.ts
 
 # processed data artifact (generated — committed only after full pipeline)
 src/data/ao-data.json
+
+# local SQLite database file (DATABASE_PATH default)
+/data/
 
 # Loop runtime state
 .claude/loop/events.jsonl
