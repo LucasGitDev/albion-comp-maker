@@ -2,8 +2,9 @@
 
 import type { Slot } from "@/data/ao-data";
 import { ItemIcon } from "@/components/icons/ItemIcon";
-import { SpellIcon, type SpellSlotLabel } from "@/components/icons/SpellIcon";
 import type { EquippedItem, SpellGroup } from "@/types/build";
+import type { SpellCandidate } from "./spell-groups";
+import { SpellPicker } from "./SpellPicker";
 import { TierSelect } from "./TierEnchantSelectors";
 import type { TierOption } from "./tier-enchant";
 
@@ -28,23 +29,17 @@ const TIER_COLOR_VAR: Record<number, string> = {
   8: "var(--color-tier-8)",
 };
 
-const SPELL_GROUP_ORDER: readonly { group: SpellGroup; label: SpellSlotLabel }[] = [
-  { group: "q", label: "Q" },
-  { group: "w", label: "W" },
-  { group: "e", label: "E" },
-  { group: "passive", label: "Passive" },
-];
-
 export type SlotCardProps = {
   slot: Slot;
   item: EquippedItem | null;
   itemName?: string;
   /**
-   * Spell groups the equipped item actually exposes (from `AOItem.spells`).
-   * Only these render as chips — a slot without a given group never shows a
-   * row for it. Defaults to all four groups when omitted.
+   * Candidate spells the equipped item actually exposes, keyed by group
+   * (ACM-010). A group absent here renders no row at all — the product's
+   * differentiator is never offering an ability the item doesn't have.
+   * Omitted or empty hides the spell picker entirely (no catalogue data).
    */
-  spellGroups?: readonly SpellGroup[];
+  spellCandidatesByGroup?: Partial<Record<SpellGroup, readonly SpellCandidate[]>>;
   /** true when this is the offhand slot and mainhand holds a two-handed item. */
   locked?: boolean;
   /**
@@ -56,20 +51,20 @@ export type SlotCardProps = {
   onRequestItemPick: (slot: Slot) => void;
   onClear?: (slot: Slot) => void;
   onTierChange?: (slot: Slot, option: TierOption) => void;
+  onSpellChange?: (slot: Slot, group: SpellGroup, spellId: string | null) => void;
 };
-
-const ALL_SPELL_GROUPS: readonly SpellGroup[] = ["q", "w", "e", "passive"];
 
 export function SlotCard({
   slot,
   item,
   itemName,
-  spellGroups = ALL_SPELL_GROUPS,
+  spellCandidatesByGroup = {},
   locked = false,
   tierOptions = [],
   onRequestItemPick,
   onClear,
   onTierChange,
+  onSpellChange,
 }: SlotCardProps): React.JSX.Element {
   const label = SLOT_LABELS[slot] ?? slot;
   const tierColor = item && item.tier > 0 ? (TIER_COLOR_VAR[item.tier] ?? "var(--color-tier-low)") : undefined;
@@ -172,18 +167,13 @@ export function SlotCard({
           />
         </div>
       )}
-      {spellGroups.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {SPELL_GROUP_ORDER.filter(({ group }) => spellGroups.includes(group)).map(({ group, label: spellLabel }) => (
-            <SpellIcon
-              key={group}
-              sprite={item.spells[group]}
-              alt={`${spellLabel} de ${itemName ?? item.itemId}`}
-              size="sm"
-              slotLabel={spellLabel}
-            />
-          ))}
-        </div>
+      {onSpellChange && (
+        <SpellPicker
+          itemName={itemName ?? item.itemId}
+          selected={item.spells}
+          candidatesByGroup={spellCandidatesByGroup}
+          onSelect={(group, spellId) => onSpellChange(slot, group, spellId)}
+        />
       )}
     </div>
   );
