@@ -1,23 +1,40 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type KeyboardEvent } from "react";
 import type { AOItem, Slot } from "@/data/ao-data.d";
 import { ItemPicker } from "@/components/item-picker/ItemPicker";
 
 export type SlotPickerPopoverProps = {
   slot: Slot;
   items: AOItem[];
+  /** True while the initial catalogue fetch is in flight (ACM-034/043). */
+  catalogueLoading?: boolean;
+  /** True when the catalogue failed to load — distinct from "no matches". */
+  catalogueFailed?: boolean;
   value: string | null;
   label: string;
+  /**
+   * Element to return focus to on close. Must be captured by the caller
+   * *before* it re-renders any ancestor `inert`/hidden (see page.tsx) —
+   * reading `document.activeElement` from an effect here is too late once
+   * the background has already been marked inert, since that force-blurs
+   * the focused element as part of the same commit. Falls back to
+   * `document.activeElement` at mount for callers that don't pass one.
+   */
+  restoreFocusTo?: HTMLElement | null;
   onSelect: (item: AOItem) => void;
   onClose: () => void;
 };
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 /**
  * Modal shell around the uncontrolled ACM-008 `ItemPicker` (ACM-034). The
  * picker itself renders inline with no open/close prop and no
- * modal/portal — this component owns the overlay, backdrop-click-to-close
- * and initial focus.
+ * modal/portal — this component owns the overlay, backdrop-click-to-close,
+ * initial focus, a real focus trap, background scroll lock and focus
+ * restoration to the trigger on close (ACM-034 follow-up review).
  *
  * Escape-to-close is delegated to `ItemPicker`'s own key handling
  * (doc-002 section 7: Escape clears the query first, then closes on the
@@ -27,17 +44,79 @@ export type SlotPickerPopoverProps = {
 export function SlotPickerPopover({
   slot,
   items,
+  catalogueLoading = false,
+  catalogueFailed = false,
   value,
   label,
+  restoreFocusTo = null,
   onSelect,
   onClose,
 }: SlotPickerPopoverProps): React.JSX.Element {
   const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<Element | null>(restoreFocusTo ?? document.activeElement);
 
+  const showPicker = !catalogueLoading && !catalogueFailed;
+
+  // Runs once: lock background scroll for the lifetime of the dialog. The
+  // trigger to restore focus to is captured above (lazily, at first render)
+  // rather than here, since an ancestor may already have been marked inert
+  // by the time this effect runs — see `restoreFocusTo`'s doc comment.
+  useEffect(() => {
+    const trigger = triggerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (trigger instanceof HTMLElement) {
+        trigger.focus();
+      }
+    };
+  }, []);
+
+  // Re-runs whenever the picker becomes available (loading -> loaded/failed)
+  // so focus always lands on something inside the dialog.
   useEffect(() => {
     const input = panelRef.current?.querySelector<HTMLInputElement>('input[role="combobox"]');
-    input?.focus();
-  }, []);
+    if (input) {
+      input.focus();
+    } else {
+      panelRef.current?.focus();
+    }
+  }, [showPicker]);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (event.key === "Escape" && !showPicker) {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+      (el) => !el.hasAttribute("data-focus-trap-ignore")
+    );
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const current = document.activeElement;
+
+    if (event.shiftKey) {
+      if (current === first || !panel.contains(current)) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (current === last || !panel.contains(current)) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   return (
     <div
@@ -50,17 +129,41 @@ export function SlotPickerPopover({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="w-[320px]"
+        tabIndex={-1}
+        className="flex w-[320px] flex-col gap-2 outline-none"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={handleKeyDown}
       >
-        <ItemPicker
-          slot={slot}
-          items={items}
-          value={value}
-          label={label}
-          onSelect={onSelect}
-          onClose={onClose}
-        />
+        {catalogueFailed ? (
+          <div
+            role="alert"
+            className="rounded-md border border-[#5a2a2a] bg-[#1d1414] p-3 text-[13px] text-[#f2b8b8]"
+          >
+            Catálogo de itens indisponível. Rode <code>npm run sync:ao</code> para gerá-lo e tente
+            novamente.
+          </div>
+        ) : catalogueLoading ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 rounded-md border border-[#2a2e37] bg-[#14171d] p-3 text-[13px] text-icon-muted"
+          >
+            <span
+              aria-hidden="true"
+              className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+            />
+            Carregando catálogo de itens…
+          </div>
+        ) : (
+          <ItemPicker
+            slot={slot}
+            items={items}
+            value={value}
+            label={label}
+            onSelect={onSelect}
+            onClose={onClose}
+          />
+        )}
       </div>
     </div>
   );
