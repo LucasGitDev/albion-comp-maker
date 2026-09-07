@@ -174,6 +174,152 @@ describe("runMigrations", () => {
     }
   });
 
+  it("restores the pre-migration snapshot and throws when a rebuild migration leaves a foreign key violation", () => {
+    // Simulate the exact failure mode this task fixes: a table-rebuild
+    // migration (0001) that manages to leave a dangling foreign key behind
+    // (e.g. a bug in a future rebuild migration's backfill/copy step).
+    // `runMigrations` must not silently commit that state — it must restore
+    // the file to what it was before this run and throw, refusing to boot
+    // against a half-migrated database.
+    const repoMigrationsDir = path.resolve(process.cwd(), "drizzle");
+    const phase1Dir = path.join(tmpDir, "migrations-phase1");
+    fs.mkdirSync(path.join(phase1Dir, "meta"), { recursive: true });
+
+    for (const file of ["0000_overconfident_the_fury.sql"]) {
+      fs.copyFileSync(path.join(repoMigrationsDir, file), path.join(phase1Dir, file));
+    }
+    for (const file of ["0000_snapshot.json"]) {
+      fs.copyFileSync(path.join(repoMigrationsDir, "meta", file), path.join(phase1Dir, "meta", file));
+    }
+    const journal = JSON.parse(fs.readFileSync(path.join(repoMigrationsDir, "meta", "_journal.json"), "utf-8")) as {
+      entries: Array<{ when: number; tag: string }>;
+    };
+    fs.writeFileSync(
+      path.join(phase1Dir, "meta", "_journal.json"),
+      JSON.stringify({ ...journal, entries: journal.entries.slice(0, 1) }),
+    );
+
+    runMigrations(dbPath, phase1Dir);
+
+    // Seed a comps/comp_builds row referencing a build, exactly like the
+    // cascade-delete regression test above.
+    const seedSqlite = new Database(dbPath);
+    seedSqlite.pragma("foreign_keys = ON");
+    try {
+      seedSqlite.prepare(`INSERT INTO user (id, name, email) VALUES (@id, @name, @email)`).run({
+        id: "seed-user-3",
+        name: "Seed User 3",
+        email: "seed-user-3@example.com",
+      });
+      seedSqlite
+        .prepare(
+          `INSERT INTO builds (id, user_id, name, role, content)
+           VALUES (@id, @userId, @name, @role, @content)`,
+        )
+        .run({
+          id: "build-to-survive",
+          userId: "seed-user-3",
+          name: "Build To Survive",
+          role: null,
+          content: "{}",
+        });
+      seedSqlite
+        .prepare(`INSERT INTO comps (id, user_id, name) VALUES (@id, @userId, @name)`)
+        .run({ id: "comp-2", userId: "seed-user-3", name: "Comp 2" });
+      seedSqlite
+        .prepare(
+          `INSERT INTO comp_builds (id, comp_id, build_id, position, count)
+           VALUES (@id, @compId, @buildId, @position, @count)`,
+        )
+        .run({ id: "comp-build-2", compId: "comp-2", buildId: "build-to-survive", position: 0, count: 1 });
+    } finally {
+      seedSqlite.close();
+    }
+
+    const preMigrationSnapshot = fs.readFileSync(dbPath);
+
+    // Build a broken variant of migration 0001 that rebuilds `builds` but
+    // (unlike the real migration) does NOT copy the pre-existing row into
+    // the new table, so `comp_builds.build_id` is left dangling once FK
+    // enforcement is switched back on.
+    const brokenDir = path.join(tmpDir, "migrations-broken");
+    fs.mkdirSync(path.join(brokenDir, "meta"), { recursive: true });
+    fs.copyFileSync(path.join(phase1Dir, "0000_overconfident_the_fury.sql"), path.join(brokenDir, "0000_overconfident_the_fury.sql"));
+    fs.copyFileSync(path.join(phase1Dir, "meta", "0000_snapshot.json"), path.join(brokenDir, "meta", "0000_snapshot.json"));
+
+    const realMigration1 = fs.readFileSync(path.join(repoMigrationsDir, "0001_add_build_slug_public_forked.sql"), "utf-8");
+    const brokenMigration1 = realMigration1.replace(
+      "INSERT INTO `__new_builds` (`id`, `user_id`, `name`, `role`, `content`, `slug`, `is_public`, `forked_from`, `created_at`, `updated_at`)\nSELECT `id`, `user_id`, `name`, `role`, `content`, `id`, false, NULL, `created_at`, `updated_at` FROM `builds`;",
+      "-- (intentionally broken for the test: no INSERT here, so pre-existing rows are lost on DROP TABLE)\nSELECT 1;",
+    );
+    expect(brokenMigration1).not.toEqual(realMigration1); // guard against the replace() silently no-op'ing
+    fs.writeFileSync(path.join(brokenDir, "0001_add_build_slug_public_forked.sql"), brokenMigration1);
+
+    fs.writeFileSync(
+      path.join(brokenDir, "meta", "_journal.json"),
+      JSON.stringify({ ...journal, entries: journal.entries.slice(0, 2) }),
+    );
+
+    expect(() => runMigrations(dbPath, brokenDir)).toThrow(/foreign key violation/i);
+
+    const restoredContents = fs.readFileSync(dbPath);
+    expect(restoredContents.equals(preMigrationSnapshot)).toBe(true);
+
+    const restoredSqlite = new Database(dbPath);
+    try {
+      const compBuild = restoredSqlite.prepare("SELECT id FROM comp_builds WHERE id = ?").get("comp-build-2");
+      expect(compBuild).toBeTruthy();
+      const build = restoredSqlite.prepare("SELECT id FROM builds WHERE id = ?").get("build-to-survive");
+      expect(build).toBeTruthy();
+    } finally {
+      restoredSqlite.close();
+    }
+
+    // The backup is deliberately left in place (not deleted) on failure, so
+    // an operator can inspect the pre-migration state independently of the
+    // now-restored main db file.
+    expect(fs.existsSync(`${dbPath}.pre-migration-backup`)).toBe(true);
+  });
+
+  it("leaves FK enforcement on for a plain (non-rebuild) migration once rebuild migrations are already applied", () => {
+    // Once 0001/0002 have been applied, a future ADD COLUMN-style migration
+    // should run with FK enforcement ON the whole time (scoped FK-off, see
+    // decision-014) — SQLite/drizzle's own transaction rollback is then the
+    // safety net, not the backup/restore dance.
+    runMigrations(dbPath);
+
+    const plainDir = path.join(tmpDir, "migrations-plain");
+    fs.cpSync(path.resolve(process.cwd(), "drizzle"), plainDir, { recursive: true });
+    const journalPath = path.join(plainDir, "meta", "_journal.json");
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8")) as {
+      entries: Array<{ when: number; tag: string; idx: number; version: string; breakpoints: boolean }>;
+    };
+    const nextTag = "0003_add_plain_column";
+    fs.writeFileSync(path.join(plainDir, `${nextTag}.sql`), "ALTER TABLE `comps` ADD `notes` text;");
+    journal.entries.push({
+      idx: journal.entries.length,
+      version: journal.entries[0].version,
+      when: Date.now(),
+      tag: nextTag,
+      breakpoints: true,
+    });
+    fs.writeFileSync(journalPath, JSON.stringify(journal));
+
+    // The plain migration applies cleanly and does not leave a
+    // pre-migration-backup file around (the scoping check determined FK-off
+    // was unnecessary, so no snapshot is taken).
+    expect(() => runMigrations(dbPath, plainDir)).not.toThrow();
+    expect(fs.existsSync(`${dbPath}.pre-migration-backup`)).toBe(false);
+
+    const sqlite = new Database(dbPath);
+    try {
+      const columns = sqlite.pragma("table_info(comps)") as Array<{ name: string }>;
+      expect(columns.some((c) => c.name === "notes")).toBe(true);
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it("creates all 7 tables on an empty database", () => {
     runMigrations(dbPath);
 
