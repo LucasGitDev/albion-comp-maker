@@ -7,7 +7,7 @@ import type { EquippedItem, SpellGroup } from "@/types/build";
 import { TierSelect } from "./TierEnchantSelectors";
 import type { TierOption } from "./tier-enchant";
 
-const SLOT_LABELS: Record<Slot, string> = {
+export const SLOT_LABELS: Record<Slot, string> = {
   mainhand: "Mão principal",
   offhand: "Mão secundária",
   head: "Cabeça",
@@ -59,6 +59,80 @@ export type SlotCardProps = {
 };
 
 const ALL_SPELL_GROUPS: readonly SpellGroup[] = ["q", "w", "e", "passive"];
+
+type SlotCategory = "weapon" | "armor" | "utility" | "consumable";
+
+const SLOT_CATEGORY: Record<Slot, SlotCategory> = {
+  mainhand: "weapon",
+  offhand: "weapon",
+  head: "armor",
+  armor: "armor",
+  shoes: "armor",
+  cape: "utility",
+  bag: "utility",
+  mount: "utility",
+  food: "consumable",
+  potion: "consumable",
+};
+
+const CATEGORY_GLYPH: Record<SlotCategory, React.JSX.Element> = {
+  weapon: (
+    <path
+      d="M6 18 18 6M14 4l6 6-2 2-6-6zM4 20l3-1 1-3"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  armor: (
+    <path
+      d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+  ),
+  utility: (
+    <path
+      d="M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8zM8 8V6a4 4 0 0 1 8 0v2"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+  ),
+  consumable: (
+    <path
+      d="M9 3h6v3l2 3v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9l2-3V3z"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+  ),
+};
+
+/**
+ * Neutral per-category silhouette for empty slots (ACM-035). Deliberately
+ * never renders `ItemIcon`: an empty slot has no `itemId`, and `ItemIcon`
+ * treats an empty id as an invalid one, forcing the error glyph/red ring —
+ * the exact bug this task fixes. The slot's own label already names it, so
+ * this glyph stays `aria-hidden`.
+ */
+function SlotPlaceholderIcon({ category }: { category: SlotCategory }): React.JSX.Element {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      data-slot-placeholder={category}
+      className="text-icon-muted"
+    >
+      {CATEGORY_GLYPH[category]}
+    </svg>
+  );
+}
 
 export function SlotCard({
   slot,
@@ -115,7 +189,7 @@ export function SlotCard({
           {label}
         </span>
         <div className="flex size-24 items-center justify-center rounded-md bg-icon-placeholder opacity-40">
-          <ItemIcon itemId="" alt="" size="xl" decorative />
+          <SlotPlaceholderIcon category={SLOT_CATEGORY[slot] ?? "weapon"} />
         </div>
         <span className="text-[12px] text-icon-muted transition-colors duration-150 ease-out hover:text-[var(--color-enchant)]">
           Adicionar
@@ -143,25 +217,32 @@ export function SlotCard({
       <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
         {label}
       </span>
-      <div className="relative flex size-24 items-center justify-center">
-        <ItemIcon itemId={item.itemId} alt={itemName ?? item.itemId} size="xl" />
-        {item.tier > 0 && (
-          <span
-            className="absolute bottom-0 left-0 rounded px-1 text-[10px] font-bold text-[#0b0d11]"
-            style={{ backgroundColor: tierColor, lineHeight: "16px" }}
-          >
-            T{item.tier}
-          </span>
-        )}
-        {/*
-          Enchant badge intentionally omitted until ACM-030 lands
-          `AOItem.maxEnchant`: `item.enchant` is always 0 for real data today
-          (see decision-011), so there is nothing genuine to display yet.
-        */}
-      </div>
-      <p className="line-clamp-2 text-[13px] font-medium" title={itemName ?? item.itemId}>
-        {itemName ?? item.itemId}
-      </p>
+      <button
+        type="button"
+        onClick={() => onRequestItemPick(slot)}
+        aria-label={`Alterar ${label}`}
+        className="flex flex-col gap-2 rounded-md text-left transition-opacity duration-150 ease-out hover:opacity-90"
+      >
+        <div className="relative flex size-24 items-center justify-center">
+          <ItemIcon itemId={item.itemId} alt={itemName ?? item.itemId} size="xl" />
+          {item.tier > 0 && (
+            <span
+              className="absolute bottom-0 left-0 rounded px-1 text-[10px] font-bold text-[#0b0d11]"
+              style={{ backgroundColor: tierColor, lineHeight: "16px" }}
+            >
+              T{item.tier}
+            </span>
+          )}
+          {/*
+            Enchant badge intentionally omitted until ACM-030 lands
+            `AOItem.maxEnchant`: `item.enchant` is always 0 for real data today
+            (see decision-011), so there is nothing genuine to display yet.
+          */}
+        </div>
+        <p className="line-clamp-2 text-[13px] font-medium" title={itemName ?? item.itemId}>
+          {itemName ?? item.itemId}
+        </p>
+      </button>
       {tierOptions.length > 0 && onTierChange && (
         <div className="flex flex-wrap items-center gap-2" data-testid="tier-enchant-selectors">
           <TierSelect
