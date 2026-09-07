@@ -2,6 +2,11 @@ import "server-only";
 
 import { z } from "zod";
 
+import {
+  COMP_BUILD_LABEL_MAX_LENGTH,
+  COMP_NAME_MAX_LENGTH,
+} from "@/lib/validation-constants";
+
 /**
  * Size bounds for the free-form text columns on `comps`/`comp_builds`
  * (ACM-057, MEDIUM finding from the ACM-019 security audit).
@@ -35,8 +40,7 @@ import { z } from "zod";
  * valid and simply means "no label".
  */
 
-export const COMP_NAME_MAX_LENGTH = 100;
-export const COMP_BUILD_LABEL_MAX_LENGTH = 200;
+export { COMP_NAME_MAX_LENGTH, COMP_BUILD_LABEL_MAX_LENGTH } from "@/lib/validation-constants";
 
 export const compNameSchema = z
   .string()
