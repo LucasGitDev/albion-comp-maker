@@ -1,10 +1,10 @@
 ---
 id: ACM-013
 title: 'Build card preview component — single source of truth (RF-4, RF-5)'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 17:10'
+updated_date: '2026-09-07 17:11'
 labels: []
 milestone: m-3
 dependencies:
