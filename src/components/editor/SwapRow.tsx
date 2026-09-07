@@ -22,6 +22,9 @@ const SLOT_CATEGORY: Record<Slot, Exclude<IconCategory, "generic">> = {
   potion: "consumable",
 };
 
+/** Applied on blur when the label is left empty — see `addSwap`/`setSwapLabel` in build-store.ts (ACM-012 review round 2, ACM-060). */
+export const DEFAULT_SWAP_LABEL = "Novo swap";
+
 export type SwapRowProps = {
   swap: Swap;
   index: number;
@@ -38,6 +41,13 @@ export type SwapRowProps = {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
+  /**
+   * Exposes the row's "Remover" button node so `SwapsSection` can move
+   * focus to it (or to a sibling row's) after a removal — a `<body>`
+   * focus target after every removal was ACM-012 review round 2's HIGH
+   * a11y finding.
+   */
+  removeButtonRef?: (element: HTMLButtonElement | null) => void;
 };
 
 /**
@@ -63,6 +73,7 @@ export function SwapRow({
   onMoveUp,
   onMoveDown,
   onRemove,
+  removeButtonRef,
 }: SwapRowProps): React.JSX.Element {
   const slot = (Object.keys(swap.slots)[0] as Slot | undefined) ?? "mainhand";
   const swapItem = swap.slots[slot] ?? null;
@@ -158,6 +169,7 @@ export function SwapRow({
             ↓
           </button>
           <button
+            ref={removeButtonRef}
             type="button"
             onClick={onRemove}
             aria-label={`Remover swap ${index + 1}`}
@@ -172,6 +184,14 @@ export function SwapRow({
         type="text"
         value={swap.label}
         onChange={(event) => onLabelChange(event.target.value)}
+        onBlur={() => {
+          // swapSchema.label is min(1) (ACM-049): a swap can never persist
+          // an empty label. Substituting the default here — instead of
+          // pre-filling it at creation — keeps the real placeholder
+          // ("Quando usar? ...") visible until the leader actually leaves
+          // the field empty (ACM-012 review round 2).
+          if (swap.label.trim() === "") onLabelChange(DEFAULT_SWAP_LABEL);
+        }}
         placeholder="Quando usar? ex.: fights de bridge"
         aria-label={`Rótulo do swap ${index + 1}`}
         maxLength={60}

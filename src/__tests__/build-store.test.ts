@@ -173,13 +173,18 @@ describe("build store", () => {
 });
 
 describe("build store — swaps (ACM-012, RF-3)", () => {
-  it("addSwap appends a new swap with a non-empty label and no item yet", () => {
+  it("addSwap appends a new swap with an empty label and no item yet", () => {
+    // Empty, not pre-filled with a placeholder-like default (ACM-012
+    // review round 2): the input's real placeholder ("Quando usar? ...")
+    // must stay visible until the leader types something. The min(1)
+    // guarantee `swapSchema.label` needs (ACM-049) is applied at the UI
+    // layer on blur-if-empty (`SwapRow`'s `onBlur`), not at creation.
     const { addSwap } = selectActions(useBuildStore.getState());
     addSwap();
 
     const build = selectBuild(useBuildStore.getState());
     expect(build.swaps).toHaveLength(1);
-    expect(build.swaps[0].label.length).toBeGreaterThan(0);
+    expect(build.swaps[0].label).toBe("");
     expect(build.swaps[0].id).toBeTruthy();
   });
 
@@ -209,14 +214,20 @@ describe("build store — swaps (ACM-012, RF-3)", () => {
     expect(build.swaps.find((s) => s.id === second.id)?.label).toBe(second.label);
   });
 
-  it("setSwapLabel never persists an empty string (swapSchema.label is min(1), ACM-049)", () => {
+  it("setSwapLabel writes an empty string verbatim (ACM-060 — the min(1) guarantee is a UI-layer, blur-time concern, not a store-write concern)", () => {
+    // Regression guard for ACM-060: coercing "" to a single space on every
+    // keystroke made it impossible to select-all-and-retype a label,
+    // because the field was never actually empty from the store's point of
+    // view. `SwapRow`'s `onBlur` — not this action — is what guarantees a
+    // non-empty label before the value could ever reach `swapSchema`.
     const { addSwap, setSwapLabel } = selectActions(useBuildStore.getState());
     addSwap();
     const [swap] = selectBuild(useBuildStore.getState()).swaps;
 
+    setSwapLabel(swap.id, "Bridge fight");
     setSwapLabel(swap.id, "");
 
-    expect(selectBuild(useBuildStore.getState()).swaps[0].label.length).toBeGreaterThan(0);
+    expect(selectBuild(useBuildStore.getState()).swaps[0].label).toBe("");
   });
 
   it("setSwapSlot points the swap at a new slot, clearing any previously equipped item", () => {

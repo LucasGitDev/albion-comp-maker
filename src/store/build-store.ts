@@ -56,19 +56,28 @@ export type BuildActions = {
   setSpell(slot: Slot, group: SpellGroup, spellId: string | null): void;
   /**
    * Appends a new swap row (ACM-012, RF-3) targeting `mainhand` with no
-   * item yet, and a non-empty placeholder label — `swapSchema.label` is
-   * `min(1)` (ACM-049), so a swap can never sit in an empty-string state
-   * that would fail write validation the moment "Salvar" runs, even before
-   * the leader edits the label. A no-op once `MAX_SWAPS` is reached.
+   * item yet and an empty label. The label is intentionally left empty
+   * (not pre-filled with a placeholder-like default such as "Novo swap")
+   * so the input's real placeholder — "Quando usar? ex.: fights de
+   * bridge" — stays visible until the leader types something (ACM-012
+   * review round 2). `swapSchema.label` is `min(1)` (ACM-049), so a
+   * non-empty fallback is applied at the UI layer on blur-if-empty
+   * (`SwapRow`), not here — see `setSwapLabel`. A no-op once `MAX_SWAPS`
+   * is reached.
    */
   addSwap(): void;
   removeSwap(id: string): void;
   /** Reorders `swaps` by moving `id` one position toward the front/back. No-op at either boundary. */
   moveSwap(id: string, direction: "up" | "down"): void;
   /**
-   * `label` is coerced to a minimum of one character (falls back to a
-   * single space) before being written — never persists `""`, which
-   * `swapSchema.label.min(1)` would reject on save (ACM-049).
+   * Writes `label` verbatim, including `""` while the leader is mid-edit
+   * (e.g. selecting all text and typing over it). Previously this coerced
+   * an empty value to a single space on every keystroke (ACM-060), which
+   * silently swallowed the "empty" state and made it impossible to clear
+   * the field to type fresh text. The non-empty guarantee `swapSchema`
+   * needs (`min(1)`, ACM-049) is enforced at the UI layer instead —
+   * `SwapRow` substitutes a default label on blur if the field was left
+   * empty — not on every store write.
    */
   setSwapLabel(id: string, label: string): void;
   /**
@@ -188,7 +197,7 @@ export const useBuildStore = create<BuildStore>((set) => ({
         if (state.build.swaps.length >= MAX_SWAPS) return {};
         const swap: Swap = {
           id: nanoid(),
-          label: "Novo swap",
+          label: "",
           slots: { mainhand: null },
         };
         return { build: { ...state.build, swaps: [...state.build.swaps, swap] } };
@@ -217,9 +226,7 @@ export const useBuildStore = create<BuildStore>((set) => ({
       set((state) => ({
         build: {
           ...state.build,
-          swaps: state.build.swaps.map((swap) =>
-            swap.id === id ? { ...swap, label: label.length > 0 ? label : " " } : swap
-          ),
+          swaps: state.build.swaps.map((swap) => (swap.id === id ? { ...swap, label } : swap)),
         },
       })),
 
