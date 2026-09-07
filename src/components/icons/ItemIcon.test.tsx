@@ -43,7 +43,27 @@ describe("ItemIcon", () => {
     Object.defineProperty(img, "naturalWidth", { value: 1, configurable: true });
     fireEvent.load(img);
     expect(container.querySelector('[data-icon-status="missing"]')).toBeTruthy();
-    expect(screen.getByText("?")).toBeInTheDocument();
+  });
+
+  it("falls back to the category silhouette (not a blank image) when the sprite is a 1x1 PNG", () => {
+    const { container } = render(
+      <ItemIcon itemId="UNIQUE_HEAD_VANITY_RANGER_HOOD" alt="Ranger Hood" category="armor" />
+    );
+    const img = getImg(container);
+    Object.defineProperty(img, "naturalWidth", { value: 1, configurable: true });
+    fireEvent.load(img);
+    expect(container.querySelector('[data-icon-status="missing"]')).toBeTruthy();
+    expect(container.querySelector('[data-category-silhouette="armor"]')).toBeTruthy();
+    // the sprite itself stays transparent (opacity-0), the silhouette is the visible layer
+    expect(img.className).toContain("opacity-0");
+  });
+
+  it("defaults the missing-state silhouette to 'generic' when no category is provided", () => {
+    const { container } = render(<ItemIcon itemId="T4_BAG" alt="Bag" />);
+    const img = getImg(container);
+    Object.defineProperty(img, "naturalWidth", { value: 1, configurable: true });
+    fireEvent.load(img);
+    expect(container.querySelector('[data-category-silhouette="generic"]')).toBeTruthy();
   });
 
   it("transitions to loaded when naturalWidth is greater than 1", () => {

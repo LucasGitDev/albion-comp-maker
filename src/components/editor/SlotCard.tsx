@@ -2,6 +2,7 @@
 
 import type { Slot } from "@/data/ao-data";
 import { ItemIcon } from "@/components/icons/ItemIcon";
+import { CategorySilhouette, type IconCategory } from "@/components/icons/category-glyphs";
 import type { EquippedItem, SpellGroup } from "@/types/build";
 import type { SpellCandidate } from "./spell-groups";
 import { SpellPicker } from "./SpellPicker";
@@ -54,7 +55,7 @@ export type SlotCardProps = {
   onSpellChange?: (slot: Slot, group: SpellGroup, spellId: string | null) => void;
 };
 
-type SlotCategory = "weapon" | "armor" | "utility" | "consumable";
+type SlotCategory = Exclude<IconCategory, "generic">;
 
 const SLOT_CATEGORY: Record<Slot, SlotCategory> = {
   mainhand: "weapon",
@@ -69,62 +70,18 @@ const SLOT_CATEGORY: Record<Slot, SlotCategory> = {
   potion: "consumable",
 };
 
-const CATEGORY_GLYPH: Record<SlotCategory, React.JSX.Element> = {
-  weapon: (
-    <path
-      d="M6 18 18 6M14 4l6 6-2 2-6-6zM4 20l3-1 1-3"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  ),
-  armor: (
-    <path
-      d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinejoin="round"
-    />
-  ),
-  utility: (
-    <path
-      d="M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8zM8 8V6a4 4 0 0 1 8 0v2"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinejoin="round"
-    />
-  ),
-  consumable: (
-    <path
-      d="M9 3h6v3l2 3v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9l2-3V3z"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinejoin="round"
-    />
-  ),
-};
-
 /**
- * Neutral per-category silhouette for empty slots (ACM-035). Deliberately
- * never renders `ItemIcon`: an empty slot has no `itemId`, and `ItemIcon`
- * treats an empty id as an invalid one, forcing the error glyph/red ring —
- * the exact bug this task fixes. The slot's own label already names it, so
- * this glyph stays `aria-hidden`.
+ * Neutral per-category silhouette for empty slots (ACM-035), reusing the
+ * same glyph set `ItemIcon` falls back to for a 1x1 CDN miss (ACM-044) so
+ * the two placeholder states never drift visually. Deliberately never
+ * renders `ItemIcon`: an empty slot has no `itemId`, and `ItemIcon` treats
+ * an empty id as an invalid one, forcing the error glyph/red ring.
  */
 function SlotPlaceholderIcon({ category }: { category: SlotCategory }): React.JSX.Element {
   return (
-    <svg
-      width="32"
-      height="32"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      data-slot-placeholder={category}
-      className="text-icon-muted"
-    >
-      {CATEGORY_GLYPH[category]}
-    </svg>
+    <span data-slot-placeholder={category}>
+      <CategorySilhouette category={category} size={32} />
+    </span>
   );
 }
 
@@ -219,7 +176,12 @@ export function SlotCard({
         className="flex flex-col gap-2 rounded-md text-left transition-opacity duration-150 ease-out hover:opacity-90"
       >
         <div className="relative flex size-24 items-center justify-center">
-          <ItemIcon itemId={item.itemId} alt={itemName ?? item.itemId} size="xl" />
+          <ItemIcon
+            itemId={item.itemId}
+            alt={itemName ?? item.itemId}
+            size="xl"
+            category={SLOT_CATEGORY[slot] ?? "weapon"}
+          />
           {item.tier > 0 && (
             <span
               className="absolute bottom-0 left-0 rounded px-1 text-[10px] font-bold text-[#0b0d11]"
