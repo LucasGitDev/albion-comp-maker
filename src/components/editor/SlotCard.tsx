@@ -4,6 +4,8 @@ import type { Slot } from "@/data/ao-data";
 import { ItemIcon } from "@/components/icons/ItemIcon";
 import { SpellIcon, type SpellSlotLabel } from "@/components/icons/SpellIcon";
 import type { EquippedItem, SpellGroup } from "@/types/build";
+import { TierSelect } from "./TierEnchantSelectors";
+import type { TierOption } from "./tier-enchant";
 
 const SLOT_LABELS: Record<Slot, string> = {
   mainhand: "Mão principal",
@@ -45,8 +47,15 @@ export type SlotCardProps = {
   spellGroups?: readonly SpellGroup[];
   /** true when this is the offhand slot and mainhand holds a two-handed item. */
   locked?: boolean;
+  /**
+   * Tier variants of the equipped item derived from the ao-data catalogue
+   * (ACM-009 AC #1). Omitted or empty hides the tier selector — SlotCard
+   * never fetches the catalogue itself.
+   */
+  tierOptions?: readonly TierOption[];
   onRequestItemPick: (slot: Slot) => void;
   onClear?: (slot: Slot) => void;
+  onTierChange?: (slot: Slot, option: TierOption) => void;
 };
 
 const ALL_SPELL_GROUPS: readonly SpellGroup[] = ["q", "w", "e", "passive"];
@@ -57,8 +66,10 @@ export function SlotCard({
   itemName,
   spellGroups = ALL_SPELL_GROUPS,
   locked = false,
+  tierOptions = [],
   onRequestItemPick,
   onClear,
+  onTierChange,
 }: SlotCardProps): React.JSX.Element {
   const label = SLOT_LABELS[slot] ?? slot;
   const tierColor = item && item.tier > 0 ? (TIER_COLOR_VAR[item.tier] ?? "var(--color-tier-low)") : undefined;
@@ -73,8 +84,18 @@ export function SlotCard({
         <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
           {label}
         </span>
-        <div className="flex size-24 items-center justify-center rounded-md bg-icon-placeholder text-2xl">
-          🔒
+        <div className="flex size-24 items-center justify-center rounded-md bg-icon-placeholder">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+            className="text-icon-muted"
+          >
+            <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.6" />
+          </svg>
         </div>
         <p className="text-[12px] text-icon-muted">Ocupada por arma de duas mãos</p>
       </div>
@@ -132,18 +153,25 @@ export function SlotCard({
             T{item.tier}
           </span>
         )}
-        {item.enchant > 0 && (
-          <span
-            className="absolute bottom-0 right-0 rounded px-1 text-[10px] font-bold text-white"
-            style={{ backgroundColor: "var(--color-enchant)", lineHeight: "16px" }}
-          >
-            .{item.enchant}
-          </span>
-        )}
+        {/*
+          Enchant badge intentionally omitted until ACM-030 lands
+          `AOItem.maxEnchant`: `item.enchant` is always 0 for real data today
+          (see decision-011), so there is nothing genuine to display yet.
+        */}
       </div>
       <p className="line-clamp-2 text-[13px] font-medium" title={itemName ?? item.itemId}>
         {itemName ?? item.itemId}
       </p>
+      {tierOptions.length > 0 && onTierChange && (
+        <div className="flex flex-wrap items-center gap-2" data-testid="tier-enchant-selectors">
+          <TierSelect
+            slotLabel={label}
+            tier={item.tier}
+            options={tierOptions}
+            onChange={(option) => onTierChange(slot, option)}
+          />
+        </div>
+      )}
       {spellGroups.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {SPELL_GROUP_ORDER.filter(({ group }) => spellGroups.includes(group)).map(({ group, label: spellLabel }) => (
