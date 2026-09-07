@@ -46,6 +46,11 @@ describe("runMigrations", () => {
 
     const seedSqlite = new Database(dbPath);
     try {
+      seedSqlite.prepare(`INSERT INTO user (id, name, email) VALUES (@id, @name, @email)`).run({
+        id: "seed-user",
+        name: "Seed User",
+        email: "seed-user@example.com",
+      });
       seedSqlite
         .prepare(
           `INSERT INTO builds (id, user_id, name, role, content)
