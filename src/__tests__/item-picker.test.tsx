@@ -81,6 +81,33 @@ describe("ItemPicker", () => {
     expect(onSelect.mock.calls[0][0].uniquename).toBe("T4_MAIN_SWORD");
   });
 
+  it("regression (ACM-046): selects the active option on Tab and prevents the native Tab from firing (non-empty catalogue)", () => {
+    const onSelect = vi.fn();
+    render(<ItemPicker slot="mainhand" items={ITEMS} onSelect={onSelect} onClose={vi.fn()} />);
+    const input = screen.getByRole("combobox");
+
+    // Empty query, tier-desc order: T8 (tier 8) is highlighted by default,
+    // so this exercises the bug's reachable path (a real highlighted
+    // result), not the previously-masked always-empty-catalogue case.
+    const event = fireEvent.keyDown(input, { key: "Tab" });
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect.mock.calls[0][0].uniquename).toBe("T8_2H_HAMMER");
+    // fireEvent.keyDown returns false when preventDefault() was called.
+    expect(event).toBe(false);
+  });
+
+  it("does not call preventDefault on Tab when there is no highlighted result to commit", () => {
+    const onSelect = vi.fn();
+    render(<ItemPicker slot="mainhand" items={[]} onSelect={onSelect} onClose={vi.fn()} />);
+    const input = screen.getByRole("combobox");
+
+    const event = fireEvent.keyDown(input, { key: "Tab" });
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(event).toBe(true);
+  });
+
   it("clears a non-empty query on Escape without closing, and closes on a second Escape", () => {
     const onClose = vi.fn();
     render(<ItemPicker slot="mainhand" items={ITEMS} onSelect={vi.fn()} onClose={onClose} />);

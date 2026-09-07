@@ -59,14 +59,15 @@ describe("SlotPickerPopover accessibility (ACM-034 follow-up)", () => {
     expect(dialog.contains(document.activeElement)).toBe(true);
   });
 
-  it("regression (ACM-034): Tab does not let ItemPicker commit the highlighted result and escape the dialog", () => {
+  it("regression (ACM-046): Tab commits the highlighted result but does not let focus escape the dialog", () => {
     // With a non-empty catalogue and an empty query, ItemPicker highlights
     // the first result by default (doc-002's default listing). Its own
     // `input[role="combobox"]` keydown handler treats a bare Tab as
-    // "commit the highlighted item, then let the browser's native Tab
-    // proceed" — which, inside this modal, previously closed the popover
-    // and let focus escape into the document. The dialog must stay open
-    // and focus must stay inside it.
+    // "commit the highlighted item" (doc-002 section 7's "fill slots
+    // without touching the mouse" design) — that commit is intentional and
+    // must still fire. What must NOT happen is the un-prevented native Tab
+    // moving focus outside the dialog once ItemPicker calls `onSelect`
+    // (ACM-046: ItemPicker now calls `preventDefault()` on a committing Tab).
     const onSelect = vi.fn();
     const onClose = vi.fn();
     render(
@@ -86,8 +87,7 @@ describe("SlotPickerPopover accessibility (ACM-034 follow-up)", () => {
 
     fireEvent.keyDown(input, { key: "Tab" });
 
-    expect(onSelect).not.toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith(ITEMS[0]);
     expect(document.body.contains(dialog)).toBe(true);
     expect(dialog.contains(document.activeElement)).toBe(true);
   });
