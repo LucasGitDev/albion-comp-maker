@@ -1,0 +1,55 @@
+"use client";
+
+import type { Slot } from "@/data/ao-data";
+import type { BuildState, SpellGroup } from "@/types/build";
+import { SLOT_COLUMNS } from "@/types/build";
+import { SlotCard } from "./SlotCard";
+
+export type SlotGridProps = {
+  build: BuildState;
+  itemNames?: Partial<Record<Slot, string>>;
+  spellGroupsBySlot?: Partial<Record<Slot, readonly SpellGroup[]>>;
+  /**
+   * True when mainhand holds a two-handed item, so the offhand card renders
+   * locked. Callers derive this from the item catalog (mainhand's
+   * `AOItem.twohanded`); this component has no catalog access.
+   */
+  offhandLocked?: boolean;
+  onRequestItemPick: (slot: Slot) => void;
+  onClearSlot: (slot: Slot) => void;
+};
+
+export function SlotGrid({
+  build,
+  itemNames,
+  spellGroupsBySlot,
+  offhandLocked = false,
+  onRequestItemPick,
+  onClearSlot,
+}: SlotGridProps): React.JSX.Element {
+  return (
+    <div className="flex flex-wrap gap-8">
+      {SLOT_COLUMNS.map((column) => (
+        <div key={column.title} className="flex flex-col gap-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+            {column.title}
+          </h3>
+          <div className="flex flex-col gap-3">
+            {column.slots.map((slot) => (
+              <SlotCard
+                key={slot}
+                slot={slot}
+                item={build.slots[slot]}
+                itemName={itemNames?.[slot]}
+                spellGroups={spellGroupsBySlot?.[slot]}
+                locked={slot === "offhand" && offhandLocked}
+                onRequestItemPick={onRequestItemPick}
+                onClear={onClearSlot}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
