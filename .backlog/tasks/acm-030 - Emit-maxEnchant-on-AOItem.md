@@ -1,10 +1,10 @@
 ---
 id: ACM-030
 title: Emit maxEnchant on AOItem
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 17:13'
-updated_date: '2026-09-07 17:22'
+updated_date: '2026-09-07 17:33'
 labels: []
 dependencies:
   - ACM-024

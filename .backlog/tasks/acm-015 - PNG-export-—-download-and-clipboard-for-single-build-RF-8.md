@@ -4,7 +4,7 @@ title: PNG export — download and clipboard for single build (RF-8)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 17:11'
+updated_date: '2026-09-07 17:40'
 labels: []
 milestone: m-4
 dependencies:
@@ -38,3 +38,11 @@ Client-side PNG export using html-to-image. pixelRatio: 2. Fonts embedded via fo
 7. [Verify] Manual test steps (per Definition of Done): (a) Download button produces a PNG matching on-screen preview pixel-for-pixel at 2x, (b) Copy button pastes a correct image into Discord/an image editor in Chrome, (c) exported PNG shows correct fonts without FOUT/fallback glyphs.
 8. [Verify] make check exits 0.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+GUARD LIMIT (from ACM-029 review, MEDIUM): the export-safety guard inspects RENDERED MARKUP TEXT only. It catches alpha-slash utilities, bracket-alpha syntax, and literal oklab(/oklch(/color-mix( in className/innerHTML/inline styles. It does NOT resolve CSS custom properties: style={{backgroundColor:'var(--x)'}} with '--x: oklab(...)' in globals.css passes all assertions. Safe today (all globals.css tokens are hex) but if you introduce var()-based colors in the capture root, the guard will NOT protect you.
+
+UNRESOLVED (ACM-029 AC#4, honestly not verified): whether html-to-image resolves color-mix(). Tailwind v4 emits a plain-hex fallback plus an @supports(color:color-mix())-gated override, so the open question is whether html-to-image's DOM-to-SVG serialization reads the gated computed value. No browser tooling was available to test. VERIFY THIS EMPIRICALLY as the first step of this task, once html-to-image is actually installed — export a card containing a spell badge and inspect the PNG.
+<!-- SECTION:NOTES:END -->
