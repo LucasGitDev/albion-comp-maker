@@ -223,6 +223,50 @@ describe("build Server Actions (ACM-018)", () => {
 
       await expect(duplicateBuild(legacy.id)).rejects.toThrow(BuildContentInvalidError);
     });
+
+    it("ACM-031 review fix: duplicates a pre-ACM-031 row whose equipped item has no maxEnchant key, preserving its legacy enchant", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { duplicateBuild } = await import("@/actions/builds");
+
+      const legacyContent = validBuildContent({
+        slots: {
+          mainhand: {
+            itemId: "T4_HEAD_PLATE_SET1",
+            tier: 4,
+            enchant: 3,
+            spells: { q: null, w: null, e: null, passive: null },
+            twohanded: false,
+          },
+          offhand: null,
+          head: null,
+          armor: null,
+          shoes: null,
+          cape: null,
+          bag: null,
+          mount: null,
+          food: null,
+          potion: null,
+        },
+      });
+
+      const [legacy] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Legacy Enchanted",
+          role: "dps",
+          content: legacyContent,
+          slug: "legacy-enchanted-abc123",
+        })
+        .returning();
+
+      const copy = await duplicateBuild(legacy.id);
+
+      expect(JSON.parse(copy.content).slots.mainhand).toMatchObject({
+        enchant: 3,
+        maxEnchant: 4,
+      });
+    });
   });
 
   describe("forkBuild", () => {
@@ -270,6 +314,51 @@ describe("build Server Actions (ACM-018)", () => {
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
       await expect(forkBuild(legacy.id)).rejects.toThrow(BuildContentInvalidError);
+    });
+
+    it("ACM-031 review fix: forks a pre-ACM-031 public row whose equipped item has no maxEnchant key, preserving its legacy enchant", async () => {
+      const legacyContent = validBuildContent({
+        slots: {
+          mainhand: {
+            itemId: "T4_HEAD_PLATE_SET1",
+            tier: 4,
+            enchant: 2,
+            spells: { q: null, w: null, e: null, passive: null },
+            twohanded: false,
+          },
+          offhand: null,
+          head: null,
+          armor: null,
+          shoes: null,
+          cape: null,
+          bag: null,
+          mount: null,
+          food: null,
+          potion: null,
+        },
+      });
+
+      const [legacy] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Legacy Public Enchanted",
+          role: "dps",
+          content: legacyContent,
+          slug: "legacy-public-enchanted-abc123",
+          isPublic: true,
+        })
+        .returning();
+
+      const { forkBuild } = await import("@/actions/builds");
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+
+      const fork = await forkBuild(legacy.id);
+
+      expect(JSON.parse(fork.content).slots.mainhand).toMatchObject({
+        enchant: 2,
+        maxEnchant: 4,
+      });
     });
   });
 
