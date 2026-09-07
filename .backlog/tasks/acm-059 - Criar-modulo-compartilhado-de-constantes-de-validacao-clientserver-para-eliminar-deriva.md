@@ -3,10 +3,10 @@ id: ACM-059
 title: >-
   Criar modulo compartilhado de constantes de validacao (client+server) para
   eliminar deriva
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 20:01'
-updated_date: '2026-09-07 20:27'
+updated_date: '2026-09-07 20:35'
 labels: []
 dependencies: []
 ordinal: 59000
