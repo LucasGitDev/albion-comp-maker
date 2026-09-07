@@ -3,10 +3,10 @@ id: ACM-027
 title: >-
   Wire ItemPicker into editor — value binding, two-handed offhand clear with
   undo (RF-1/RF-3)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 17:03'
-updated_date: '2026-09-07 17:42'
+updated_date: '2026-09-07 17:52'
 labels: []
 milestone: m-2
 dependencies:
@@ -44,4 +44,6 @@ File scope: `src/components/editor/**` (new wrapper + `SlotCard`/`SlotGrid` call
 
 <!-- SECTION:NOTES:BEGIN -->
 GAP (recurring, flagged by ACM-011, ACM-009 and ACM-013): nothing in the app actually LOADS ao-data.json into the editor yet. ItemPicker takes items as a prop, tier/enchant option lists take catalogue-derived props, and SlotCard needs item.spells to know which Q/W/E/Passive rows to render — all are currently fed only by synthetic fixtures in tests. ACM-027 must include the real catalogue load (server component read or fetch of the generated ao-data.json) and thread it to the editor, otherwise the editor is not demonstrable end-to-end. Make 'editor renders real items from ao-data.json in the browser' an explicit acceptance criterion.
+
+Subsumed by ACM-034 (same root cause: handleRequestItemPick was a no-op in build/new/page.tsx). ACM-034/ACM-035 PR #25 delivers the ItemPicker wiring described in this task's AC #4; the two-handed offhand undo-toast/lock behavior (AC #1-#3) remains open and should be split into a fresh, narrower task if still wanted — not implemented here, out of ACM-034/035 scope.
 <!-- SECTION:NOTES:END -->
