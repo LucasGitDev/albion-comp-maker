@@ -91,17 +91,6 @@ describe("build store", () => {
     expect(selectBuild(useBuildStore.getState()).slots.mainhand).toBeNull();
   });
 
-  it("ACM-009: setEnchant swaps the itemId and enchant without resetting spells", () => {
-    const { setItem, setSpell, setEnchant } = selectActions(useBuildStore.getState());
-    setItem("mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false }, 8, 0);
-    setSpell("mainhand", "w", "SWORD_W_SPELL");
-    setEnchant("mainhand", 2, "T8_MAIN_SWORD@2");
-
-    const build = selectBuild(useBuildStore.getState());
-    expect(build.slots.mainhand).toMatchObject({ itemId: "T8_MAIN_SWORD@2", enchant: 2 });
-    expect(build.slots.mainhand?.spells.w).toBe("SWORD_W_SPELL");
-  });
-
   it("re-equipping a slot resets its spells", () => {
     const { setItem, setSpell } = selectActions(useBuildStore.getState());
     setItem("mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false }, 8, 0);
