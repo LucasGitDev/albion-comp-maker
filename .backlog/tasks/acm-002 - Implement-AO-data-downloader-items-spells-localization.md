@@ -1,10 +1,10 @@
 ---
 id: ACM-002
 title: Implement AO data downloader (items + spells + localization)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 13:32'
+updated_date: '2026-09-07 14:55'
 labels: []
 milestone: m-0
 dependencies:
@@ -25,3 +25,15 @@ scripts/sync-ao-data.ts step 1: download the 3 raw dumps to .cache/ with 7-day T
 - [ ] #3 --force flag re-downloads regardless of age
 - [ ] #4 Uses streaming fetch to avoid loading 94 MB localization into RAM at once
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+DevEx audit PASS — tooling intact on both main and task-2 worktree. REQUIRED before PR: add 'sync:ao' script to package.json pointing to scripts/sync-ao-data.ts. New deps must be added via pnpm (not npm).
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+scripts/sync-ao-data.ts step 1 implemented: streaming fetch, 7-day TTL, --force. Source: ao-data/ao-bin-dumps. .cache/ gitignored. make check green on master (PR #2).
+<!-- SECTION:FINAL_SUMMARY:END -->

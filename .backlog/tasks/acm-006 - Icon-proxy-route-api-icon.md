@@ -1,9 +1,10 @@
 ---
 id: ACM-006
 title: Icon proxy route /api/icon
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-07 13:32'
+updated_date: '2026-09-07 15:48'
 labels: []
 milestone: m-1
 dependencies:

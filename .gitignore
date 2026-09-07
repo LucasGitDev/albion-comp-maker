@@ -45,3 +45,8 @@ next-env.d.ts
 
 # processed data artifact (generated — committed only after full pipeline)
 src/data/ao-data.json
+
+# Loop runtime state
+.claude/loop/events.jsonl
+.claude/loop/last-check.json
+.claude/loop/state.json
