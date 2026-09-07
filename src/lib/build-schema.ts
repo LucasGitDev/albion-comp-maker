@@ -101,15 +101,23 @@ const accentSchema = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "accent must be a 6-digit hex color literal");
 
+/**
+ * `label` allows an empty string (ACM-012 review round 3): a swap can be
+ * created and saved before the leader fills in "quando usar" — the label
+ * is a free-text annotation, not an identifier, and the UI already shows a
+ * placeholder for an empty label. Every previously persisted label has
+ * >=1 char, so relaxing `min(1)` to allow `""` is backward-compatible on
+ * both read and write. See build-store.ts `addSwap`/`setSwapLabel`.
+ */
 const swapSchema = z.strictObject({
   id: z.string().min(1).max(64),
-  label: z.string().min(1).max(60),
+  label: z.string().max(60),
   slots: z.partialRecord(z.enum(SLOT_ORDER), equippedItemOrNullSchema),
 }) satisfies z.ZodType<Swap>;
 
 const swapReadSchema = z.strictObject({
   id: z.string().min(1).max(64),
-  label: z.string().min(1).max(60),
+  label: z.string().max(60),
   slots: z.partialRecord(z.enum(SLOT_ORDER), equippedItemOrNullReadSchema),
 });
 

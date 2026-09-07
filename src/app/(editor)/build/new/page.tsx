@@ -11,10 +11,18 @@ import { SLOT_LABELS } from "@/components/editor/SlotCard";
 import { SLOT_ORDER } from "@/types/build";
 import { SlotGrid } from "@/components/editor/SlotGrid";
 import { SlotPickerPopover } from "@/components/editor/SlotPickerPopover";
+import { SwapsSection } from "@/components/editor/SwapsSection";
+import { groupSpellsForItem, type SpellCandidate } from "@/components/editor/spell-groups";
 import { getEnchantOptions, getTierVariants, parseUniquename } from "@/components/editor/tier-enchant";
 import type { EnchantOption, TierOption } from "@/components/editor/tier-enchant";
 import { useItemCatalogue } from "@/components/editor/use-item-catalogue";
+import type { SpellGroup } from "@/types/build";
 import { selectActions, selectBuild, useBuildStore } from "@/store/build-store";
+
+/** UI locale used for display and spell resolution (ACM-012, matches ItemPicker's own default). */
+const LOCALE = "en-US";
+
+type PickerTarget = { origin: "main"; slot: Slot } | { origin: "swap"; swapId: string; slot: Slot };
 
 /**
  * Owns the only store subscription in the editor tree. Slot cards and the
@@ -24,7 +32,7 @@ export default function NewBuildPage(): React.JSX.Element {
   const build = useBuildStore(selectBuild);
   const actions = useBuildStore(selectActions);
   const { items, loading, failed, failedReason, retry } = useItemCatalogue();
-  const [activeSlot, setActiveSlot] = useState<Slot | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   /**
    * Captured synchronously in the click handler, before the background is
    * marked `inert` on the next render — an inert ancestor force-blurs its
@@ -38,25 +46,39 @@ export default function NewBuildPage(): React.JSX.Element {
 
   const handleRequestItemPick = useCallback((slot: Slot) => {
     setTriggerElement(document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    setActiveSlot(slot);
+    setPickerTarget({ origin: "main", slot });
+  }, []);
+
+  const handleRequestSwapItemPick = useCallback((swapId: string, slot: Slot) => {
+    setTriggerElement(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    setPickerTarget({ origin: "swap", swapId, slot });
   }, []);
 
   const handleClosePicker = useCallback(() => {
-    setActiveSlot(null);
+    setPickerTarget(null);
   }, []);
 
   const handleSelect = useCallback(
     (item: AOItem) => {
-      if (!activeSlot) return;
+      if (!pickerTarget) return;
       const { tier } = parseUniquename(item.uniquename);
-      actions.setItem(activeSlot, item, tier, 0);
-      setActiveSlot(null);
+      if (pickerTarget.origin === "main") {
+        actions.setItem(pickerTarget.slot, item, tier, 0);
+      } else {
+        actions.setSwapItem(pickerTarget.swapId, pickerTarget.slot, item, tier, 0);
+      }
+      setPickerTarget(null);
     },
-    [activeSlot, actions]
+    [pickerTarget, actions]
   );
 
   const offhandLocked = Boolean(build.slots.mainhand?.twohanded);
-  const activeSlotItem = activeSlot ? build.slots[activeSlot] : null;
+  const activeSlotItem =
+    pickerTarget?.origin === "main"
+      ? build.slots[pickerTarget.slot]
+      : pickerTarget?.origin === "swap"
+        ? (build.swaps.find((swap) => swap.id === pickerTarget.swapId)?.slots[pickerTarget.slot] ?? null)
+        : null;
 
   /**
    * Tier variants per filled slot, derived from the loaded catalogue
@@ -92,7 +114,32 @@ export default function NewBuildPage(): React.JSX.Element {
     return map;
   }, [build.slots]);
 
-  const pickerOpen = Boolean(activeSlot) && !(activeSlot === "offhand" && offhandLocked);
+  /**
+   * Display name + spell-candidate lookups keyed by uniquename, built once
+   * from the loaded catalogue (ACM-012 AC#2 — swap rows show item name and
+   * spell icons the same way `SlotCard` does for main slots, just derived
+   * here instead of per-slot since a swap's item isn't one of the 10 fixed
+   * slots the rest of the page indexes by).
+   */
+  const itemNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const item of items) {
+      map[item.uniquename] = item.localizedNames[LOCALE] ?? item.uniquename;
+    }
+    return map;
+  }, [items]);
+
+  const spellCandidatesByItemId = useMemo(() => {
+    const map: Record<string, Partial<Record<SpellGroup, readonly SpellCandidate[]>>> = {};
+    for (const item of items) {
+      map[item.uniquename] = groupSpellsForItem(item, LOCALE);
+    }
+    return map;
+  }, [items]);
+
+  const offhandLockBlocksPicker =
+    pickerTarget?.origin === "main" && pickerTarget.slot === "offhand" && offhandLocked;
+  const pickerOpen = Boolean(pickerTarget) && !offhandLockBlocksPicker;
 
   const filledCount = SLOT_ORDER.filter((slot) => build.slots[slot] !== null).length;
   /**
@@ -145,17 +192,30 @@ export default function NewBuildPage(): React.JSX.Element {
           onEnchantChange={(slot, enchant) => actions.setEnchant(slot, enchant)}
           onSpellChange={actions.setSpell}
         />
+        <SwapsSection
+          swaps={build.swaps}
+          buildSlots={build.slots}
+          itemNames={itemNames}
+          spellCandidatesByItemId={spellCandidatesByItemId}
+          onAddSwap={actions.addSwap}
+          onRemoveSwap={actions.removeSwap}
+          onMoveSwap={actions.moveSwap}
+          onSlotChange={actions.setSwapSlot}
+          onRequestItemPick={handleRequestSwapItemPick}
+          onLabelChange={actions.setSwapLabel}
+          onSpellChange={actions.setSwapSpell}
+        />
       </div>
-      {activeSlot && !(activeSlot === "offhand" && offhandLocked) && (
+      {pickerTarget && !offhandLockBlocksPicker && (
         <SlotPickerPopover
-          slot={activeSlot}
+          slot={pickerTarget.slot}
           items={items}
           catalogueLoading={loading}
           catalogueFailed={failed}
           catalogueFailedReason={failedReason}
           onRetryCatalogue={retry}
           value={activeSlotItem?.itemId ?? null}
-          label={SLOT_LABELS[activeSlot] ?? activeSlot}
+          label={SLOT_LABELS[pickerTarget.slot] ?? pickerTarget.slot}
           restoreFocusTo={triggerElement}
           onSelect={handleSelect}
           onClose={handleClosePicker}
