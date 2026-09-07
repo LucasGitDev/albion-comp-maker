@@ -7,12 +7,15 @@ export function Header() {
         Albion Comp Maker
       </Link>
       <nav className="flex items-center gap-6 text-sm text-foreground/80">
-        <Link href="/" className="hidden transition-colors hover:text-foreground sm:inline-block">
+        <Link
+          href="/"
+          className="hidden transition-colors hover:text-foreground focus-visible:transition-none sm:inline-block"
+        >
           Minhas comps
         </Link>
         <Link
           href="/build/new"
-          className="rounded-full bg-[var(--color-accent)] px-4 py-2 font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)]"
+          className="rounded-full bg-[var(--color-accent)] px-4 py-2 font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
         >
           Nova build
         </Link>
