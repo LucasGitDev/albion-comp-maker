@@ -13,6 +13,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Tests run in a Node/jsdom process, not Next.js's `react-server`
+      // condition, so `server-only`'s default export throws unconditionally
+      // (see node_modules/server-only/index.js). Every test that imports
+      // build-schema.ts exercises server-side code by construction, so the
+      // marker's "react-server" no-op build is the correct resolution here.
+      "server-only": path.resolve(__dirname, "./node_modules/server-only/empty.js"),
     },
   },
 });
