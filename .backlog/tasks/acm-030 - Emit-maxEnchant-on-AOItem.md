@@ -4,7 +4,7 @@ title: Emit maxEnchant on AOItem
 status: In Review
 assignee: []
 created_date: '2026-09-07 17:13'
-updated_date: '2026-09-07 17:20'
+updated_date: '2026-09-07 17:22'
 labels: []
 dependencies:
   - ACM-024
@@ -54,4 +54,17 @@ Regenerated src/__tests__/fixtures/ao-corpus.json (still 2036 items, 699 referen
 Collateral fix (outside the listed touches but required to keep make check green): the local item() test factories in src/__tests__/item-index.test.ts, item-picker.test.tsx and item-picker-polish.test.tsx built AOItem objects and needed a maxEnchant: 0 default added now that the field is required on the type — same pattern as any prior AOItem field addition (e.g. twohanded).
 
 make check exits 0 (lint, tsc --noEmit, next build, vitest — 15 files / 103 tests passed).
+
+Review (PR #19, branch task/30-max-enchant): LGTM, no blocking findings.
+
+Verification performed:
+1. computeMaxEnchant() correctness: confirmed all three shapes handled (absent -> 0, array -> length, single-child collapsed object -> 1). Mutation test performed manually: changed the object-branch fallback from `1` to `0` and reran scripts/sync-ao-data.test.ts -> the "normalizes a single-child enchantment object" test failed as expected, confirming the test genuinely guards this branch (not a vacuous assertion). Restored the file after.
+2. Distribution sanity check against regenerated src/data/ao-data.json (independent of task notes): counted maxEnchant across all 2036 items -> {0: 636, 3: 5, 4: 1395}, exact match to notes. Spot-checked the 5 items at maxEnchant=3 (all T4-T8 IRONGAUNTLETS_HELL, an artifact-tier weapon) against the raw upstream .cache/items-raw.json: enchantments.enchantment is a genuine 3-entry array (levels 1,2,3, contiguous, real craftingrequirements/upgraderequirements per level) - not a parsing artifact. Checked the 636 zeros are not a whole-category parse miss: every equippable slot (head/armor/shoes/cape/offhand/bag/mainhand) has both zero and nonzero maxEnchant items; only `mount` is 100% zero, correct per decision-011 (mounts aren't enchantable) and general Albion domain knowledge (T1-T3 gear is also correctly all zero).
+3. Breaking type change: collateral edits to scripts/build-test-fixture.ts and the three item-picker/item-index test factories are minimal, additive (`maxEnchant: 0` default / passthrough), and don't weaken any existing assertion. Ran `grep -rn maxEnchant` equivalent check via the diff itself - no other AOItem construction site was missed; tsc --noEmit passes clean, confirming no silent type error elsewhere.
+4. Fixture regeneration: confirmed src/__tests__/fixtures/ao-corpus.json still has exactly 2036 items and 699 referenced spells (matches notes). maxEnchant survived regeneration (1400 items > 0 in the fixture, consistent with the ao-data.json distribution). Note (non-blocking, pre-existing, not introduced by this PR): `twohanded` was never part of PrunedItem in build-test-fixture.ts on main either - it isn't and never was pruned into the fixture, so "twohanded survived regeneration" doesn't apply here; this is a pre-existing gap unrelated to this diff, not a regression it caused.
+5. vitest.config.ts + import.meta.url guard: confirmed the guard matches the actual invocation (`tsx scripts/sync-ao-data.ts` via the `sync:ao` script), which sets process.argv[1] to the script path, so production behavior is unchanged; the guard only prevents `main()` from firing on `import` (used by the new tests).
+6. Scope: no changes outside scripts/, src/data/ao-data.d.ts, src/__tests__/**, vitest.config.ts, and the task file. No package.json/lockfile/editor/icons/store/db/auth touches.
+7. Independently reran `tsc --noEmit` (clean) and the full vitest suite (110/110 passing) on the worktree to corroborate the implementer's make-check claim.
+
+Verdict: LGTM.
 <!-- SECTION:NOTES:END -->
