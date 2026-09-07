@@ -39,6 +39,7 @@ const equippedItemSchema = z.strictObject({
   enchant: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   spells: spellsSchema,
   twohanded: z.boolean(),
+  maxEnchant: z.int().min(0).max(4),
 }) satisfies z.ZodType<EquippedItem>;
 
 const equippedItemOrNullSchema = equippedItemSchema.nullable();

@@ -66,7 +66,62 @@ describe("build-schema (ACM-049 / decision-013)", () => {
               enchant: 4,
               spells: { q: null, w: null, e: null, passive: null },
               twohanded: true,
+              maxEnchant: 4,
               extra: "nope",
+            },
+            offhand: null,
+            head: null,
+            armor: null,
+            shoes: null,
+            cape: null,
+            bag: null,
+            mount: null,
+            food: null,
+            potion: null,
+          },
+        }),
+      );
+      expect(() => validateBuildContentForWrite(raw)).toThrow();
+    });
+
+    it("ACM-031 review fix: accepts an equipped item carrying maxEnchant (schema stayed in sync with EquippedItem)", () => {
+      const raw = JSON.stringify(
+        validBuild({
+          slots: {
+            mainhand: {
+              itemId: "T4_HEAD_PLATE_SET1",
+              tier: 4,
+              enchant: 3,
+              spells: { q: null, w: null, e: null, passive: null },
+              twohanded: false,
+              maxEnchant: 4,
+            },
+            offhand: null,
+            head: null,
+            armor: null,
+            shoes: null,
+            cape: null,
+            bag: null,
+            mount: null,
+            food: null,
+            potion: null,
+          },
+        }),
+      );
+      const result = validateBuildContentForWrite(raw);
+      expect(JSON.parse(result).slots.mainhand).toMatchObject({ enchant: 3, maxEnchant: 4 });
+    });
+
+    it("rejects an equipped item missing maxEnchant (schema requires it, matching EquippedItem)", () => {
+      const raw = JSON.stringify(
+        validBuild({
+          slots: {
+            mainhand: {
+              itemId: "T4_HEAD_PLATE_SET1",
+              tier: 4,
+              enchant: 0,
+              spells: { q: null, w: null, e: null, passive: null },
+              twohanded: false,
             },
             offhand: null,
             head: null,

@@ -10,7 +10,7 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
       localizedNames: { "en-US": "Soldier Helmet" },
       spells: [],
       twohanded: false,
-      maxEnchant: 0,
+      maxEnchant: 4,
     },
   ];
   return { useItemCatalogue: () => ({ items, loading: false }) };
@@ -93,13 +93,57 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
   it("locked offhand (mainhand two-handed) never opens the picker", () => {
     useBuildStore.getState().actions.setItem(
       "mainhand",
-      { uniquename: "T8_2H_HAMMER", twohanded: true },
+      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
       8,
       0,
     );
     render(<NewBuildPage />);
     expect(screen.getByText("Ocupada por arma de duas mãos")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("/build/new — tier/enchant selectors are actually reachable (ACM-031 review fix)", () => {
+  it("renders the enchant selector for an equipped item and changing it updates the store", async () => {
+    useBuildStore.getState().actions.setItem(
+      "head",
+      { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false, maxEnchant: 4 },
+      4,
+      0
+    );
+
+    render(<NewBuildPage />);
+
+    const enchantSelect = await screen.findByRole("combobox", { name: "Encantamento de Cabeça" });
+    fireEvent.change(enchantSelect, { target: { value: "3" } });
+
+    expect(useBuildStore.getState().build.slots.head?.enchant).toBe(3);
+    expect(screen.getByTestId("enchant-badge")).toHaveTextContent(".3");
+  });
+
+  it("renders the tier selector for an equipped item and changing it updates the store", async () => {
+    useBuildStore.getState().actions.setItem(
+      "head",
+      { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false, maxEnchant: 4 },
+      4,
+      0
+    );
+
+    render(<NewBuildPage />);
+
+    // The mocked catalogue only carries T4_HEAD_PLATE_SET1, so the tier
+    // selector has a single option, but its mere presence proves
+    // `tierOptionsBySlot` is wired through from the live route (the bug
+    // this test guards against is the prop never reaching `SlotGrid` at
+    // all, per the review finding).
+    const tierSelect = await screen.findByRole("combobox", { name: "Tier de Cabeça" });
+    expect(tierSelect).toBeInTheDocument();
+  });
+
+  it("does not render either selector for a slot with no options (empty slot)", () => {
+    render(<NewBuildPage />);
+    expect(screen.queryByRole("combobox", { name: /Encantamento de/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /Tier de/ })).not.toBeInTheDocument();
   });
 });
 
@@ -111,7 +155,7 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     useBuildStore.getState().actions.setRole("Tank");
     useBuildStore.getState().actions.setItem(
       "mainhand",
-      { uniquename: "T8_2H_HAMMER", twohanded: true },
+      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
       8,
       0
     );
@@ -141,7 +185,7 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     useBuildStore.getState().actions.setName("Bruiser de Frontline");
     useBuildStore.getState().actions.setItem(
       "mainhand",
-      { uniquename: "T8_2H_HAMMER", twohanded: true },
+      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
       8,
       0
     );
