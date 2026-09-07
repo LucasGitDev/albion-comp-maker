@@ -111,7 +111,7 @@ export function ExportBar({ captureNodeRef, buildName }: ExportBarProps): React.
         type="button"
         onClick={handleDownload}
         disabled={isBusy}
-        className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-150 ease-out hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:none)]:hover:bg-blue-600"
+        className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors duration-150 ease-out hover:bg-[var(--color-icon-slot)] disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:none)]:hover:bg-transparent"
       >
         {status.kind === "busy" && status.action === "download" ? "Exportando…" : "Baixar PNG"}
       </button>
@@ -120,11 +120,19 @@ export function ExportBar({ captureNodeRef, buildName }: ExportBarProps): React.
         onClick={handleCopy}
         disabled={isBusy}
         title={clipboardSupported ? undefined : "Não suportado neste navegador — vai baixar o arquivo"}
-        className="inline-flex items-center gap-2 rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-900 transition-colors duration-150 ease-out hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:none)]:hover:bg-white"
+        className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors duration-150 ease-out hover:bg-[var(--color-icon-slot)] disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:none)]:hover:bg-transparent"
       >
         {status.kind === "busy" && status.action === "copy" ? "Copiando…" : "Copiar para área de transferência"}
       </button>
-      <span role="status" aria-live="polite" className="text-sm">
+      <span
+        role="status"
+        aria-live="polite"
+        className={
+          status.kind === "error"
+            ? "text-sm text-[var(--color-icon-error-fg)]"
+            : "text-sm text-foreground/70"
+        }
+      >
         {status.kind === "success" && status.action === "download" && "PNG baixado."}
         {status.kind === "success" && status.action === "copy" && "Copiado."}
         {status.kind === "error" && status.message}
