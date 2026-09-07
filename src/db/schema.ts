@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnySQLiteColumn,
   index,
   integer,
   primaryKey,
@@ -77,26 +78,39 @@ export const verificationTokens = sqliteTable(
 /**
  * App tables (decision-006).
  */
-export const builds = sqliteTable("builds", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  // Free text, no DB enum — mirrors decision-002's pattern.
-  role: text("role"),
-  // JSON blob validated by a shared Zod schema at the application layer.
-  // The DB layer does not interpret this column's contents.
-  content: text("content").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .notNull()
-    .default(sql`(unixepoch() * 1000)`),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .notNull()
-    .default(sql`(unixepoch() * 1000)`),
-});
+export const builds = sqliteTable(
+  "builds",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // Set once at creation (name + random suffix) and never regenerated
+    // afterwards (ACM-018 AC#1) — links/shares stay stable across edits.
+    slug: text("slug").notNull(),
+    // Free text, no DB enum — mirrors decision-002's pattern.
+    role: text("role"),
+    // JSON blob validated by a shared Zod schema at the application layer.
+    // The DB layer does not interpret this column's contents.
+    content: text("content").notNull(),
+    isPublic: integer("is_public", { mode: "boolean" }).notNull().default(false),
+    // Self-reference: set when this row was created via "fork" from another
+    // user's public build (ACM-018 AC#4). Null for builds not forked.
+    forkedFrom: text("forked_from").references((): AnySQLiteColumn => builds.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [uniqueIndex("builds_slug_idx").on(table.slug)],
+);
 
 export const comps = sqliteTable("comps", {
   id: text("id")
