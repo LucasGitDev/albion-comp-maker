@@ -15,6 +15,13 @@ export type ItemPickerProps = {
   onSelect: (item: AOItem) => void;
   /** Fired when the picker should close without a selection. */
   onClose: () => void;
+  /**
+   * Uniquename of the item currently equipped in this slot, or null/undefined
+   * when empty. The matching row renders aria-selected="true" (doc-002
+   * section 5.7/7). Optional and defaults to null so existing ACM-008 call
+   * sites keep working unchanged.
+   */
+  value?: string | null;
   /** Active UI locale used for display and primary ranking. Defaults to "en-US". */
   locale?: string;
   label?: string;
@@ -49,6 +56,7 @@ export function ItemPicker({
   items,
   onSelect,
   onClose,
+  value = null,
   locale = "en-US",
   label,
   className,
@@ -163,6 +171,8 @@ export function ItemPicker({
         items={results}
         activeIndex={clampedActiveIndex}
         locale={locale}
+        query={debouncedQuery}
+        value={value}
         optionId={optionId}
         onHover={setActiveIndex}
         onSelect={commitSelection}
