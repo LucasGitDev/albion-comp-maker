@@ -1,0 +1,40 @@
+{
+  "version": "2024-01-15",
+  "items": [
+    {
+      "uniquename": "T4_MAIN_HAMMER",
+      "slot": "mainhand",
+      "localizedNames": { "EN-US": "Journeyman's Hammer", "PT-BR": "Martelo do Aprendiz" },
+      "spells": [
+        { "uniquename": "HAMMER_SHOVE", "slot": "1", "localizedNames": { "EN-US": "Empurrar" } },
+        { "uniquename": "HAMMERWHIRLWIND2", "slot": "3", "localizedNames": { "EN-US": "Redemoinhos" } },
+        { "uniquename": "PASSIVE_STUNCHANCE", "slot": "passive", "localizedNames": { "EN-US": "Chance de Atordoar" } }
+      ]
+    },
+    {
+      "uniquename": "T8_2H_HAMMER_UNDEAD",
+      "slot": "mainhand",
+      "localizedNames": { "EN-US": "Graveguard Hammer", "PT-BR": "Martelo dos Mortos-Vivos" },
+      "spells": [
+        { "uniquename": "ARTIFACT_UNDEAD_SPELL", "slot": "1", "localizedNames": { "EN-US": "Punição dos Mortos-Vivos" } },
+        { "uniquename": "HAMMERWHIRLWIND2", "slot": "3", "localizedNames": { "EN-US": "Redemoinhos" } },
+        { "uniquename": "PASSIVE_STUNCHANCE", "slot": "passive", "localizedNames": { "EN-US": "Chance de Atordoar" } }
+      ]
+    },
+    {
+      "uniquename": "T4_HEAD_LEATHER",
+      "slot": "head",
+      "localizedNames": { "EN-US": "Journeyman's Leather Cap", "PT-BR": "Boné de Couro do Aprendiz" },
+      "spells": [
+        { "uniquename": "FORCEFIELD", "slot": "1", "localizedNames": { "EN-US": "Campo de Força" } }
+      ]
+    }
+  ],
+  "spells": {
+    "HAMMER_SHOVE": { "uniquename": "HAMMER_SHOVE", "localizedNames": { "EN-US": "Empurrar" } },
+    "HAMMERWHIRLWIND2": { "uniquename": "HAMMERWHIRLWIND2", "localizedNames": { "EN-US": "Redemoinhos" } },
+    "PASSIVE_STUNCHANCE": { "uniquename": "PASSIVE_STUNCHANCE", "localizedNames": { "EN-US": "Chance de Atordoar" } },
+    "ARTIFACT_UNDEAD_SPELL": { "uniquename": "ARTIFACT_UNDEAD_SPELL", "localizedNames": { "EN-US": "Punição dos Mortos-Vivos" } },
+    "FORCEFIELD": { "uniquename": "FORCEFIELD", "localizedNames": { "EN-US": "Campo de Força" } }
+  }
+}
