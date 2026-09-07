@@ -1,10 +1,10 @@
 ---
 id: ACM-044
 title: Icon fallback for items whose CDN render returns a 1x1 blank PNG
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 18:33'
-updated_date: '2026-09-07 18:56'
+updated_date: '2026-09-07 19:03'
 labels: []
 dependencies: []
 priority: low
