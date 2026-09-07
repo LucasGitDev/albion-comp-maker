@@ -1,10 +1,10 @@
 ---
 id: ACM-012
 title: Swaps section — add/remove/reorder (RF-3)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 16:38'
+updated_date: '2026-09-07 19:49'
 labels: []
 milestone: m-2
 dependencies:
