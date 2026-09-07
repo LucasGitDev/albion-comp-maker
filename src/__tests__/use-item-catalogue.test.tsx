@@ -30,13 +30,14 @@ describe("useItemCatalogue (ACM-034/043)", () => {
   });
 
   it("surfaces a distinct FAILED state (never a silent empty list) on a non-2xx response", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
 
     const { result } = renderHook(() => useItemCatalogue());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.failed).toBe(true);
     expect(result.current.items).toEqual([]);
+    expect(result.current.failedReason).toBe("generic");
   });
 
   it("surfaces a distinct FAILED state when the fetch itself rejects", async () => {
@@ -47,6 +48,49 @@ describe("useItemCatalogue (ACM-034/043)", () => {
 
     expect(result.current.failed).toBe(true);
     expect(result.current.items).toEqual([]);
+    expect(result.current.failedReason).toBe("generic");
+  });
+
+  it("classifies a 503 CATALOGUE_UNAVAILABLE response as a missing-artifact failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        clone() {
+          return this;
+        },
+        json: async () => ({ error: "not found", code: "CATALOGUE_UNAVAILABLE" }),
+      })
+    );
+
+    const { result } = renderHook(() => useItemCatalogue());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.failed).toBe(true);
+    expect(result.current.failedReason).toBe("missing-artifact");
+  });
+
+  it("classifies any other 503 body shape as a generic failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        clone() {
+          return this;
+        },
+        json: async () => {
+          throw new Error("not json");
+        },
+      })
+    );
+
+    const { result } = renderHook(() => useItemCatalogue());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.failed).toBe(true);
+    expect(result.current.failedReason).toBe("generic");
   });
 
   it("recovers from a failed catalogue via retry() without requiring a reload", async () => {
