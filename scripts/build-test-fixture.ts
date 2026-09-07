@@ -32,7 +32,6 @@ type PrunedItem = {
 };
 
 type PrunedCorpus = {
-  version: string;
   items: PrunedItem[];
   spells: Record<string, string>;
 };
@@ -64,7 +63,11 @@ function main(): void {
     spells[name] = entry.kind;
   }
 
-  const corpus: PrunedCorpus = { version: data.version, items, spells };
+  // No `version` field: the upstream sync stamps it with the wall-clock date
+  // (see sync-ao-data.ts), which is not a property of the data itself and
+  // would make the nightly drift check (`git diff --exit-code` on this file)
+  // fail every single day regardless of whether Albion data actually changed.
+  const corpus: PrunedCorpus = { items, spells };
 
   const outPath = path.resolve(
     import.meta.dirname,
