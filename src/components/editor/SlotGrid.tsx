@@ -4,6 +4,7 @@ import type { Slot } from "@/data/ao-data";
 import type { BuildState, SpellGroup } from "@/types/build";
 import { SLOT_COLUMNS } from "@/types/build";
 import { SlotCard } from "./SlotCard";
+import type { TierOption } from "./tier-enchant";
 
 export type SlotGridProps = {
   build: BuildState;
@@ -15,8 +16,11 @@ export type SlotGridProps = {
    * `AOItem.twohanded`); this component has no catalog access.
    */
   offhandLocked?: boolean;
+  /** Tier options per slot, derived from the catalogue by the caller (ACM-009). */
+  tierOptionsBySlot?: Partial<Record<Slot, readonly TierOption[]>>;
   onRequestItemPick: (slot: Slot) => void;
   onClearSlot: (slot: Slot) => void;
+  onTierChange?: (slot: Slot, option: TierOption) => void;
 };
 
 export function SlotGrid({
@@ -24,8 +28,10 @@ export function SlotGrid({
   itemNames,
   spellGroupsBySlot,
   offhandLocked = false,
+  tierOptionsBySlot,
   onRequestItemPick,
   onClearSlot,
+  onTierChange,
 }: SlotGridProps): React.JSX.Element {
   return (
     <div className="flex flex-wrap gap-8">
@@ -43,8 +49,10 @@ export function SlotGrid({
                 itemName={itemNames?.[slot]}
                 spellGroups={spellGroupsBySlot?.[slot]}
                 locked={slot === "offhand" && offhandLocked}
+                tierOptions={tierOptionsBySlot?.[slot]}
                 onRequestItemPick={onRequestItemPick}
                 onClear={onClearSlot}
+                onTierChange={onTierChange}
               />
             ))}
           </div>
