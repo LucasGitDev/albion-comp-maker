@@ -93,8 +93,11 @@ export const builds = sqliteTable(
     slug: text("slug").notNull(),
     // Free text, no DB enum — mirrors decision-002's pattern.
     role: text("role"),
-    // JSON blob validated by a shared Zod schema at the application layer.
-    // The DB layer does not interpret this column's contents.
+    // JSON blob. Writes go through `buildStateSchema` in
+    // `src/lib/build-schema.ts` (size cap + strict shape, decision-013)
+    // before landing here. Reads must stay tolerant of rows written before
+    // that schema existed — see `parseBuildContent` in the same module.
+    // The DB layer itself does not interpret this column's contents.
     content: text("content").notNull(),
     isPublic: integer("is_public", { mode: "boolean" }).notNull().default(false),
     // Self-reference: set when this row was created via "fork" from another
