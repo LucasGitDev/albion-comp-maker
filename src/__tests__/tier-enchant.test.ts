@@ -9,6 +9,7 @@ function item(uniquename: string): AOItem {
     localizedNames: {},
     spells: [],
     twohanded: false,
+    maxEnchant: 0,
   };
 }
 
