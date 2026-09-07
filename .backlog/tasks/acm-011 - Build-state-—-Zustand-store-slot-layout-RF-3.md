@@ -1,10 +1,10 @@
 ---
 id: ACM-011
 title: Build state — Zustand store + slot layout (RF-3)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 16:38'
+updated_date: '2026-09-07 16:50'
 labels: []
 milestone: m-2
 dependencies:
