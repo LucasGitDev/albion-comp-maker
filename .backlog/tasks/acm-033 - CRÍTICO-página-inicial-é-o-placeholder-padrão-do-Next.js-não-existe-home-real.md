@@ -3,10 +3,10 @@ id: ACM-033
 title: >-
   CRÍTICO: página inicial (/) é o placeholder padrão do Next.js, não existe home
   real
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 17:48'
+updated_date: '2026-09-07 18:08'
 labels: []
 dependencies: []
 priority: high

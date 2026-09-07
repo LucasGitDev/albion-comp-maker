@@ -1,10 +1,10 @@
 ---
 id: ACM-032
 title: Migrate middleware.ts to proxy convention (Next.js 16 deprecation)
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 17:27'
-updated_date: '2026-09-07 17:43'
+updated_date: '2026-09-07 18:08'
 labels: []
 dependencies: []
 priority: high

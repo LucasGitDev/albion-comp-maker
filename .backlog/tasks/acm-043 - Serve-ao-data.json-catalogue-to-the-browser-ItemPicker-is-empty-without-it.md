@@ -1,9 +1,10 @@
 ---
 id: ACM-043
 title: Serve ao-data.json catalogue to the browser (ItemPicker is empty without it)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 17:54'
+updated_date: '2026-09-07 17:58'
 labels: []
 dependencies: []
 priority: high
