@@ -4,8 +4,9 @@ title: Alinhar ExportBar ao design system (cores off-system em tema escuro)
 status: Done
 assignee: []
 created_date: '2026-09-07 18:50'
-updated_date: '2026-09-07 20:27'
+updated_date: '2026-09-07 20:42'
 labels: []
+milestone: m-3
 dependencies: []
 ordinal: 47000
 ---

@@ -4,8 +4,9 @@ title: Migrar cores estruturais hardcoded do item-picker para tokens do design s
 status: To Do
 assignee: []
 created_date: '2026-09-07 18:51'
-updated_date: '2026-09-07 18:51'
+updated_date: '2026-09-07 20:42'
 labels: []
+milestone: m-3
 dependencies:
   - ACM-014
 ordinal: 48000
