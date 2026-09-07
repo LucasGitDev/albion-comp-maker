@@ -4,7 +4,7 @@ title: Enchant selector using AOItem.maxEnchant (ACM-009 AC#2 follow-up)
 status: In Review
 assignee: []
 created_date: '2026-09-07 17:23'
-updated_date: '2026-09-07 19:38'
+updated_date: '2026-09-07 19:45'
 labels: []
 milestone: m-2
 dependencies:
@@ -120,4 +120,75 @@ REVIEW FIX (attempt 1): both HIGH findings addressed.
 All existing EquippedItem test fixtures across the suite updated to carry maxEnchant
 (no behavior change intended there, just keeping literals in sync with the widened type).
 make check green (266 tests, up from 260).
+
+RE-REVIEW (fix round, PR #34) — BLOCKED: 1 CRITICAL, 1 note (non-finding), 5 confirmations.
+
+CRITICAL — legacy build payloads are rejected by parseBuildContent after this PR.
+`equippedItemSchema` in src/lib/build-schema.ts makes `maxEnchant` a required
+field on a `.strictObject()`, and this same schema backs BOTH the write path
+(`validateBuildContentForWrite`) AND the tolerant read path (`parseBuildContent`).
+Verified directly: constructed a legacy-shape EquippedItem (no `maxEnchant` key,
+matching every build row persisted before this PR) and ran it through
+parseBuildContent — result: `{ ok: false, reason: "invalid-shape" }`.
+Consequence: every pre-existing build with at least one equipped item now reads
+as corrupted (owner page "corrupted/legacy" state, public SSR page 404, per
+decision-013's own stated fallback behavior for `ok:false`). This is a
+data-loss-grade regression shipped by a UI-scoped task.
+Also confirmed src/actions/builds.ts `duplicateBuild`/`forkBuild` both route
+through `parseBuildContent` (ACM-049 refuses to copy content that fails
+validation) — so every legacy build additionally becomes permanently
+un-forkable and un-duplicatable, not just unreadable.
+Fix: make `maxEnchant` optional in the schema (or default to a sentinel) on
+the READ side and backfill/derive it during parse (e.g. default 4, or 0 and
+force re-pick), keeping it required only on the WRITE side, per decision-013's
+tolerant-read/strict-write split. A single shared `.strict()` schema for both
+paths is the root cause — read and write need to diverge here.
+File: src/lib/build-schema.ts:39-44 (equippedItemSchema), reused at
+parseBuildContent (read) and validateBuildContentForWrite (write).
+
+NON-FINDING — schema bound maxEnchant to 0..4 (build-schema.ts:44).
+This is a legitimate game-domain invariant (Albion enchant levels are .0-.4),
+not a reintroduction of the previous hardcoded-4 bug. Checked
+scripts/sync-ao-data.ts `computeMaxEnchant`: it counts raw
+`enchantments.enchantment` entries with no artificial cap, and existing
+fixtures/tests never exceed 4. The prior HIGH was about the STORE ignoring
+the item's real per-item ceiling in favor of a constant; the schema bound is
+a different, legitimate constraint. No action needed.
+
+CONFIRMED — store clamp fix is real and correctly scoped.
+Reverted src/store/build-store.ts `setEnchant` to the old hardcoded
+`Math.min(4, ...)` and reran src/__tests__/build-store.test.ts: the
+"cannot exceed the equipped item's real maxEnchant" test fails (expected 0,
+got 3) against the old implementation, and passes against the fix. Confirms
+the clamp genuinely uses the per-slot persisted `maxEnchant`, not a catalogue
+lookup or a constant.
+
+CONFIRMED — page-level reachability test (build-new-page.test.tsx) is real.
+Removed the `enchantOptionsBySlot`/`onEnchantChange` props from
+src/app/(editor)/build/new/page.tsx's SlotGrid wiring and reran the suite:
+the reachability test fails (`findByRole("combobox", { name: /Encantamento/ })`
+times out). Confirms this test would have caught the original "feature
+unreachable" HIGH and isn't just mirroring the implementation.
+
+CONFIRMED — setItem/setEnchant transition has no stale-enchant gap in
+practice. setItem always replaces the full EquippedItem object (not a merge)
+and page.tsx only ever calls it with a hardcoded `enchant: 0` on item pick
+(page.tsx:52) — there is no code path where a stale, now-out-of-range enchant
+value survives an item swap. setTier does not touch maxEnchant, but only
+changes tier/itemId within the same item family, where maxEnchant is a
+per-uniquename-family (not per-tier) property, so this is not exercised as a
+bug here.
+
+CONFIRMED — scope respected: no changes outside expected files. Verified
+src/actions/**, src/db/**, src/app/comp/**, ExportBar.tsx, package.json,
+package-lock.json are untouched (git diff 6384b04...HEAD -- these paths is
+empty). Rebase risk against origin/main (ACM-019 comp CRUD merged) is low —
+no file overlap with the diverged commits.
+
+Full suite: 266/266 tests pass on the branch as-is.
+
+VERDICT: BLOCKED — 1 CRITICAL (legacy payload data-loss regression) must be
+fixed before merge. Everything else in this fix round holds up.
+
+REVIEW FIX (attempt 2): CRITICAL addressed. Split equippedItemSchema into a strict write-side schema (maxEnchant required, unchanged) and a separate equippedItemReadSchema used only by parseBuildContent, where maxEnchant is optional and backfilled to 4 (the domain max) when absent. Backfilling to 4 rather than 0 is deliberate: a legacy row's enchant is already schema-bound to 0..4, so 4 can never invalidate/clamp an existing legacy enchant value, whereas 0 would. buildStateReadSchema mirrors buildStateSchema structurally but threads the read-side equipped-item/slot/swap schemas; validateBuildContentForWrite is untouched. Added tests: parseBuildContent accepts a pre-ACM-031 shape with no maxEnchant key and preserves a non-zero legacy enchant + backfills maxEnchant=4; re-running that result through validateBuildContentForWrite succeeds; duplicateBuild and forkBuild both succeed end-to-end on a legacy DB row shaped this way, preserving the legacy enchant. Store clamp and page-wiring tests from attempt 1 untouched and still passing. Rebased onto origin/main (ACM-019 merged) -- no conflicts. make check green, 286/286 tests.
 <!-- SECTION:NOTES:END -->
