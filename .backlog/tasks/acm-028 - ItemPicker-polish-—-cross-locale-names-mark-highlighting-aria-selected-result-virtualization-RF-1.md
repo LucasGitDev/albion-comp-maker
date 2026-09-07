@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-07 17:03'
-updated_date: '2026-09-07 17:10'
+updated_date: '2026-09-07 17:13'
 labels: []
 milestone: m-2
 dependencies:
@@ -79,4 +79,60 @@ a behavior change) — same fix applied consistently in the new tests. No other 
 ACM-008 test was touched.
 
 make check: 85/85 tests green, lint/tsc/build clean.
+
+REVIEW (PR #17, task/28-itempicker-polish) — verdict: LGTM
+
+Findings:
+
+1. [LOW] item-picker.test.tsx "debounces the query before filtering results": the getByText
+   -> textContent-based matcher change is legitimate and non-weakening. Ran it in isolation
+   (vitest run item-picker.test.tsx, 7/7 green, no ambiguous-match error), confirmed the
+   assertion still requires the full "Sacred Hammer" string to be present as one element's
+   textContent, and the prior `expect(screen.queryByText("Broadsword")).not.toBeInTheDocument()`
+   assertion is untouched. Diffed the whole test file: exactly one assertion changed, no other
+   ACM-008 test in this file (or elsewhere) was weakened, skipped, or deleted (grep for `it(`
+   count matches, only 1 line delta besides the new comment).
+
+2. [INFO, no finding] highlight.ts never constructs a RegExp from the query — findMatchRanges
+   uses normalizeSameLength() + String.prototype.indexOf() only. Verified with a live test
+   (query "(staff)" against "Fire(Staff)"): no throw, correct <mark>. This structurally
+   eliminates the regex-injection/backtracking class of bug rather than just testing a few
+   cases. Good.
+
+3. [MEDIUM] Virtualization + keyboard nav interaction is not covered by any test in this PR.
+   item-picker-polish.test.tsx's virtualization describe block only asserts the windowed
+   subset and aria-setsize/aria-posinset on initial render (60 items, no ArrowDown at all).
+   Priority-focus scenario (ArrowDown past the initial window, aria-activedescendant target
+   existing in the rendered DOM) is untested. I wrote and ran a throwaway test doing 35x
+   ArrowDown against 60 items and confirmed the aria-activedescendant id does resolve via
+   document.getElementById after the effects flush — so no live bug found — but this is a real
+   coverage gap for a feature this task explicitly introduces (auto-scroll effect in
+   item-result-list.tsx). Recommend a follow-up task/test, not blocking.
+
+4. [OK] aria-selected vs keyboard highlight: verified both via reading the component
+   (aria-selected={isEquipped}, highlight conveyed only via aria-activedescendant + bg-[#232833]
+   className, never touching aria-selected) and via item-picker-polish.test.tsx's
+   "keeps the keyboard-highlighted row distinct from aria-selected unless it is also equipped"
+   test, which exercises both non-coexisting and coexisting cases with real assertions (not
+   implementation-mirroring).
+
+5. [OK] AOItem.twohanded — untouched by this diff; spell-resolver.test.ts twohanded tests are
+   outside this PR's file scope and unaffected.
+
+6. [OK] Colors — all new classNames use hex-literal arbitrary values (#f5d98a, #6b7280,
+   #c8a24a); grepped for alpha-slash utilities (bg-*/NN, text-*/NN) in
+   src/components/item-picker/** — none found.
+
+7. [OK] Scope — diff touches only src/components/item-picker/{ItemPicker.tsx,
+   item-result-list.tsx, highlight.ts} and src/__tests__/{item-picker.test.tsx,
+   item-picker-polish.test.tsx}, plus the task's own .backlog doc. No editor/store files
+   touched, consistent with the "does not touch the store or editor" scope note. value prop is
+   additive/optional (default null), non-breaking for ACM-008 call sites.
+
+make check reproduced independently: lint clean (only 2 pre-existing @next/next/no-img-element
+warnings, unrelated), tsc --noEmit clean, item-picker.test.tsx and item-picker-polish.test.tsx
+both green.
+
+No CRITICAL/HIGH findings. Not a product-épic gate item (internal component polish), skipped
+marc-lou-review.
 <!-- SECTION:NOTES:END -->
