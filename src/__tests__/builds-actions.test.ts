@@ -32,6 +32,31 @@ function sessionFor(userId: string) {
   return { user: { id: userId }, expires: "" };
 }
 
+/** Minimal payload that satisfies `buildStateSchema`'s strict write path. */
+function validBuildContent(overrides: Record<string, unknown> = {}): string {
+  const slots = {
+    mainhand: null,
+    offhand: null,
+    head: null,
+    armor: null,
+    shoes: null,
+    cape: null,
+    bag: null,
+    mount: null,
+    food: null,
+    potion: null,
+  };
+  return JSON.stringify({
+    schemaVersion: 1,
+    name: "Fire Staff",
+    role: "dps",
+    accent: "#3f8f4a",
+    slots,
+    swaps: [],
+    ...overrides,
+  });
+}
+
 describe("build Server Actions (ACM-018)", () => {
   let tmpDir: string;
   let dbPath: string;
@@ -68,7 +93,7 @@ describe("build Server Actions (ACM-018)", () => {
       mockRequireSession.mockRejectedValueOnce(new Error("Unauthorized"));
       const { saveBuild } = await import("@/actions/builds");
 
-      await expect(saveBuild({ name: "Fire Staff", content: "{}" })).rejects.toThrow("Unauthorized");
+      await expect(saveBuild({ name: "Fire Staff", content: validBuildContent() })).rejects.toThrow("Unauthorized");
     });
 
     it("updateBuild, deleteBuild, toggleBuildPublic, duplicateBuild, forkBuild, listMyBuilds all reject unauthenticated", async () => {
@@ -89,7 +114,7 @@ describe("build Server Actions (ACM-018)", () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild } = await import("@/actions/builds");
 
-      const build = await saveBuild({ name: "Fire Staff Carry", content: "{}" });
+      const build = await saveBuild({ name: "Fire Staff Carry", content: validBuildContent() });
 
       expect(build.id).toBeTruthy();
       expect(build.id.length).toBeGreaterThan(0);
@@ -102,7 +127,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("user B cannot read user A's build via listMyBuilds", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, listMyBuilds } = await import("@/actions/builds");
-      await saveBuild({ name: "Holy Healer", content: "{}" });
+      await saveBuild({ name: "Holy Healer", content: validBuildContent() });
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
       const bBuilds = await listMyBuilds();
@@ -113,7 +138,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("user B cannot update user A's build", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, updateBuild } = await import("@/actions/builds");
-      const build = await saveBuild({ name: "Holy Healer", content: "{}" });
+      const build = await saveBuild({ name: "Holy Healer", content: validBuildContent() });
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
       await expect(updateBuild({ id: build.id, name: "Hijacked" })).rejects.toThrow("Build not found");
@@ -122,7 +147,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("user B cannot delete user A's build", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, deleteBuild, listMyBuilds } = await import("@/actions/builds");
-      const build = await saveBuild({ name: "Holy Healer", content: "{}" });
+      const build = await saveBuild({ name: "Holy Healer", content: validBuildContent() });
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
       await expect(deleteBuild(build.id)).rejects.toThrow("Build not found");
@@ -135,7 +160,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("user B cannot toggle public on user A's build", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, toggleBuildPublic } = await import("@/actions/builds");
-      const build = await saveBuild({ name: "Holy Healer", content: "{}" });
+      const build = await saveBuild({ name: "Holy Healer", content: validBuildContent() });
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
       await expect(toggleBuildPublic(build.id)).rejects.toThrow("Build not found");
@@ -144,7 +169,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("user B cannot duplicate user A's private build", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, duplicateBuild } = await import("@/actions/builds");
-      const build = await saveBuild({ name: "Holy Healer", content: "{}" });
+      const build = await saveBuild({ name: "Holy Healer", content: validBuildContent() });
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
       await expect(duplicateBuild(build.id)).rejects.toThrow("Build not found");
@@ -155,7 +180,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("validates session.user.id === owner_id and applies the update for the real owner", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, updateBuild } = await import("@/actions/builds");
-      const build = await saveBuild({ name: "Original", content: "{}" });
+      const build = await saveBuild({ name: "Original", content: validBuildContent() });
 
       const updated = await updateBuild({ id: build.id, name: "Renamed" });
 
@@ -168,7 +193,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("copies content into a new row with a new id and slug", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, duplicateBuild } = await import("@/actions/builds");
-      const original = await saveBuild({ name: "Original", content: '{"a":1}' });
+      const original = await saveBuild({ name: "Original", content: validBuildContent() });
 
       const copy = await duplicateBuild(original.id);
 
@@ -183,7 +208,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("copies a public build into the forking user's library and sets forkedFrom", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, toggleBuildPublic, forkBuild } = await import("@/actions/builds");
-      const original = await saveBuild({ name: "Public Build", content: "{}" });
+      const original = await saveBuild({ name: "Public Build", content: validBuildContent() });
       await toggleBuildPublic(original.id);
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
@@ -197,7 +222,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("refuses to fork a private build the caller does not own", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, forkBuild } = await import("@/actions/builds");
-      const original = await saveBuild({ name: "Private Build", content: "{}" });
+      const original = await saveBuild({ name: "Private Build", content: validBuildContent() });
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
       await expect(forkBuild(original.id)).rejects.toThrow("Build not found");
@@ -208,7 +233,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("flips is_public on each call", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, toggleBuildPublic } = await import("@/actions/builds");
-      const build = await saveBuild({ name: "Toggle Me", content: "{}" });
+      const build = await saveBuild({ name: "Toggle Me", content: validBuildContent() });
       expect(build.isPublic).toBe(false);
 
       const toggledOn = await toggleBuildPublic(build.id);
@@ -223,7 +248,7 @@ describe("build Server Actions (ACM-018)", () => {
     it("hard-deletes the row for the owner", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild, deleteBuild, listMyBuilds } = await import("@/actions/builds");
-      const build = await saveBuild({ name: "Delete Me", content: "{}" });
+      const build = await saveBuild({ name: "Delete Me", content: validBuildContent() });
 
       await deleteBuild(build.id);
 
@@ -238,22 +263,22 @@ describe("build Server Actions (ACM-018)", () => {
       const { saveBuild } = await import("@/actions/builds");
 
       for (let i = 0; i < 30; i += 1) {
-        await saveBuild({ name: `Build ${i}`, content: "{}" });
+        await saveBuild({ name: `Build ${i}`, content: validBuildContent() });
       }
 
-      await expect(saveBuild({ name: "Build 31", content: "{}" })).rejects.toThrow(/Too many requests/);
+      await expect(saveBuild({ name: "Build 31", content: validBuildContent() })).rejects.toThrow(/Too many requests/);
     });
 
     it("tracks limits per-user independently", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const { saveBuild } = await import("@/actions/builds");
       for (let i = 0; i < 30; i += 1) {
-        await saveBuild({ name: `Build ${i}`, content: "{}" });
+        await saveBuild({ name: `Build ${i}`, content: validBuildContent() });
       }
-      await expect(saveBuild({ name: "Build 31", content: "{}" })).rejects.toThrow(/Too many requests/);
+      await expect(saveBuild({ name: "Build 31", content: validBuildContent() })).rejects.toThrow(/Too many requests/);
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
-      await expect(saveBuild({ name: "User B Build", content: "{}" })).resolves.toBeDefined();
+      await expect(saveBuild({ name: "User B Build", content: validBuildContent() })).resolves.toBeDefined();
     });
   });
 });
