@@ -2,6 +2,13 @@ import "server-only";
 
 import { z } from "zod";
 
+import {
+  ACCENT_HEX_PATTERN,
+  BUILD_NAME_MAX_LENGTH,
+  BUILD_ROLE_MAX_LENGTH,
+  MAX_SWAPS,
+  SWAP_LABEL_MAX_LENGTH,
+} from "@/lib/validation-constants";
 import { SLOT_ORDER } from "@/types/build";
 import type { BuildState, EquippedItem, SpellGroup, Swap } from "@/types/build";
 
@@ -99,7 +106,7 @@ const slotsReadSchema = z.strictObject(slotsReadShape);
 
 const accentSchema = z
   .string()
-  .regex(/^#[0-9a-fA-F]{6}$/, "accent must be a 6-digit hex color literal");
+  .regex(ACCENT_HEX_PATTERN, "accent must be a 6-digit hex color literal");
 
 /**
  * `label` allows an empty string (ACM-012 review round 3): a swap can be
@@ -111,23 +118,23 @@ const accentSchema = z
  */
 const swapSchema = z.strictObject({
   id: z.string().min(1).max(64),
-  label: z.string().max(60),
+  label: z.string().max(SWAP_LABEL_MAX_LENGTH),
   slots: z.partialRecord(z.enum(SLOT_ORDER), equippedItemOrNullSchema),
 }) satisfies z.ZodType<Swap>;
 
 const swapReadSchema = z.strictObject({
   id: z.string().min(1).max(64),
-  label: z.string().max(60),
+  label: z.string().max(SWAP_LABEL_MAX_LENGTH),
   slots: z.partialRecord(z.enum(SLOT_ORDER), equippedItemOrNullReadSchema),
 });
 
 export const buildStateSchema = z.strictObject({
   schemaVersion: z.literal(1),
-  name: z.string().min(1).max(100),
-  role: z.string().max(50),
+  name: z.string().min(1).max(BUILD_NAME_MAX_LENGTH),
+  role: z.string().max(BUILD_ROLE_MAX_LENGTH),
   accent: accentSchema,
   slots: slotsSchema,
-  swaps: z.array(swapSchema).max(20),
+  swaps: z.array(swapSchema).max(MAX_SWAPS),
 }) satisfies z.ZodType<BuildState>;
 
 /**
@@ -138,11 +145,11 @@ export const buildStateSchema = z.strictObject({
  */
 const buildStateReadSchema = z.strictObject({
   schemaVersion: z.literal(1),
-  name: z.string().min(1).max(100),
-  role: z.string().max(50),
+  name: z.string().min(1).max(BUILD_NAME_MAX_LENGTH),
+  role: z.string().max(BUILD_ROLE_MAX_LENGTH),
   accent: accentSchema,
   slots: slotsReadSchema,
-  swaps: z.array(swapReadSchema).max(20),
+  swaps: z.array(swapReadSchema).max(MAX_SWAPS),
 });
 
 // Compile-time anti-drift check (decision-013): if `BuildState` gains or
