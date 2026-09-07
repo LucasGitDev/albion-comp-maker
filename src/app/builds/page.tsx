@@ -25,7 +25,7 @@ export default async function BuildsPage(): Promise<React.JSX.Element> {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8">
+    <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8 outline-none">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-foreground">
           Minhas builds

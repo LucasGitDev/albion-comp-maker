@@ -148,15 +148,15 @@ export function EditorActionBar({
       data-testid="editor-action-bar"
       className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-4 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:sticky md:top-[var(--header-h)] md:bottom-auto md:border-b md:border-t-0 md:pb-3"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
-        <span data-testid="slot-count" className="shrink-0 text-foreground/70">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+        <span data-testid="slot-count" className="hidden shrink-0 text-foreground/70 sm:inline">
           {filledCount}/{totalSlots} slots
         </span>
         <span
           role="status"
           aria-live="polite"
           id="editor-action-bar-status"
-          className={statusIsError ? "truncate text-[var(--color-icon-error-fg)]" : "truncate text-foreground/70"}
+          className={statusIsError ? "min-w-0 text-[var(--color-icon-error-fg)]" : "min-w-0 text-foreground/70"}
         >
           {statusMessage}
         </span>

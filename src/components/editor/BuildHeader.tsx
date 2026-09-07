@@ -24,8 +24,14 @@ export function BuildHeader({ build, onNameChange, onRoleChange }: BuildHeaderPr
         <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
           Nome do build
         </span>
+        {/*
+          No `autoFocus` here (ACM-037 review finding): with the header,
+          breadcrumb, and action bar all preceding `<main>` on this route,
+          stealing focus into this input on load skipped the global skip
+          link entirely — forward-Tab never reached it, and Shift+Tab from
+          here jumped straight to "Exportar PNG".
+        */}
         <input
-          autoFocus
           value={build.name}
           onChange={(event) => onNameChange(event.target.value)}
           placeholder="Bruiser de frontline"

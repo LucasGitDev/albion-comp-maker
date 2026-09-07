@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AOItem } from "@/data/ao-data.d";
 
 vi.mock("@/components/editor/use-item-catalogue", () => {
@@ -16,11 +16,34 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
   return { useItemCatalogue: () => ({ items, loading: false }) };
 });
 
+const { mockSaveBuild } = vi.hoisted(() => ({
+  mockSaveBuild: vi.fn(),
+}));
+
+vi.mock("@/actions/builds", () => ({
+  saveBuild: mockSaveBuild,
+}));
+
 import NewBuildPage from "@/app/(editor)/build/new/page";
 import { useBuildStore } from "@/store/build-store";
 
+function mockSession(authenticated: boolean) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => (authenticated ? { user: { name: "Lucas" } } : {}),
+    })
+  );
+}
+
 beforeEach(() => {
   useBuildStore.getState().actions.reset();
+  mockSaveBuild.mockReset();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("/build/new — ItemPicker wiring (ACM-034)", () => {
@@ -77,5 +100,57 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
     render(<NewBuildPage />);
     expect(screen.getByText("Ocupada por arma de duas mãos")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("/build/new — Salvar persists via the real saveBuild Server Action (ACM-037 review fix)", () => {
+  it("calls saveBuild with the current build's name, role and serialized content", async () => {
+    mockSession(true);
+    mockSaveBuild.mockResolvedValue({ id: "b1" });
+    useBuildStore.getState().actions.setName("Bruiser de Frontline");
+    useBuildStore.getState().actions.setRole("Tank");
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T8_2H_HAMMER", twohanded: true },
+      8,
+      0
+    );
+
+    render(<NewBuildPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
+
+    const [payload] = mockSaveBuild.mock.calls[0] as [{ name: string; role: string | null; content: string }];
+    expect(payload.name).toBe("Bruiser de Frontline");
+    expect(payload.role).toBe("Tank");
+    expect(JSON.parse(payload.content)).toMatchObject({
+      name: "Bruiser de Frontline",
+      slots: { mainhand: { itemId: "T8_2H_HAMMER" } },
+    });
+
+    // This assertion fails against a no-op `handleSave`: the previous
+    // implementation resolved without ever calling `saveBuild`, so
+    // "Build salva." rendered without anything actually persisted.
+    expect(await screen.findByText("Build salva.")).toBeInTheDocument();
+  });
+
+  it("surfaces the real saveBuild failure instead of always reporting success", async () => {
+    mockSession(true);
+    mockSaveBuild.mockRejectedValue(new Error("boom"));
+    useBuildStore.getState().actions.setName("Bruiser de Frontline");
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T8_2H_HAMMER", twohanded: true },
+      8,
+      0
+    );
+
+    render(<NewBuildPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Não deu para salvar.")).toBeInTheDocument();
+    expect(screen.queryByText("Build salva.")).not.toBeInTheDocument();
   });
 });
