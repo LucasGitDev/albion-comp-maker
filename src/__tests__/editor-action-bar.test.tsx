@@ -118,6 +118,14 @@ describe("EditorActionBar (ACM-037 AC#2, AC#5, AC#6)", () => {
     expect(screen.getByTestId("slot-count")).toHaveTextContent("4/9");
   });
 
+  it("hides the decorative slot counter on narrow screens so the status text isn't squeezed (390px review finding)", () => {
+    mockSession(true);
+    renderBar({ buildName: "", filledCount: 0, totalSlots: 9 });
+    const status = screen.getByText("Dê um nome e escolha ao menos 1 item");
+    expect(status.className).not.toMatch(/truncate/);
+    expect(screen.getByTestId("slot-count").className).toMatch(/hidden/);
+  });
+
   describe("structural invariant: never a positioned ancestor of #capture-root", () => {
     it("is rendered as a sibling of the preview wrapper, not a wrapper around it", () => {
       const { container } = renderBar();

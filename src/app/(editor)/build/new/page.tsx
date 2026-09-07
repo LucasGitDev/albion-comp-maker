@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { Slot } from "@/data/ao-data";
 import type { AOItem } from "@/data/ao-data.d";
+import { saveBuild } from "@/actions/builds";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { BuildHeader } from "@/components/editor/BuildHeader";
 import { EditorActionBar } from "@/components/editor/EditorActionBar";
@@ -70,14 +71,19 @@ export default function NewBuildPage(): React.JSX.Element {
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
 
   const handleSave = useCallback(async () => {
-    // Persistence (ACM-018/019 — Server Actions + `/builds`) isn't wired yet;
-    // this task owns the save state machine and the auth gate (D3), not the
-    // storage mechanism.
-    await Promise.resolve();
-  }, []);
+    // ACM-018 landed `saveBuild` (Server Action, requireSession() + ownership
+    // scoping — src/actions/builds.ts). This route always creates: there is
+    // no persisted id in `BuildState` yet, so every "Salvar" here is a new
+    // row. Editing an existing build is a future route's concern.
+    await saveBuild({
+      name: build.name,
+      role: build.role.trim() === "" ? null : build.role,
+      content: JSON.stringify(build),
+    });
+  }, [build]);
 
   return (
-    <main id="main-content" className="mx-auto flex max-w-6xl flex-col gap-6 p-8 pb-24 md:pb-8">
+    <main id="main-content" tabIndex={-1} className="mx-auto flex max-w-6xl flex-col gap-6 p-8 pb-24 md:pb-8 outline-none">
       <Breadcrumb current={build.name.trim() || "Nova build"} />
       <EditorActionBar
         buildName={build.name}
