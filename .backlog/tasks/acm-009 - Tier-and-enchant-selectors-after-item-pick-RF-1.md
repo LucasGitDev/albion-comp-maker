@@ -4,7 +4,7 @@ title: Tier and enchant selectors after item pick (RF-1)
 status: In Review
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 17:14'
+updated_date: '2026-09-07 17:19'
 labels: []
 milestone: m-2
 dependencies:
@@ -23,7 +23,7 @@ After choosing an item, show tier select (T4-T8 variants of same base) and encha
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Tier variants derived from ao-data items sharing same base ID
-- [x] #2 Enchant select only shows 0..item.maxEnchant options
+- [ ] #2 Enchant select only shows 0..item.maxEnchant options
 - [x] #3 Icon updates on tier/enchant change
 <!-- AC:END -->
 
@@ -81,4 +81,41 @@ The task's stated deviation ("editor page doesn't fetch real catalogue, selector
 decision-011: AC#2 (enchant selector) is unimplementable against real data — real uniquenames never carry an @N enchant suffix; enchant is a nested enchantments.enchantment array on the base upstream item, and AOItem has no maxEnchant field yet. ACM-030 created to add AOItem.maxEnchant from the pipeline; ACM-009 now depends on it.
 
 Recommendation for PR #16: descope to tier-only now. AC#1 (tier variants) and AC#3 (icon updates) do not depend on maxEnchant and are reviewable/mergeable independently. Rewrite tier-enchant.ts's getEnchantOptions() to consume item.maxEnchant once ACM-030 lands, replacing the uniquename @N parsing and its fabricated-fixture test (T8_HEAD_PLATE_SET1@1) with a real fixture item (e.g. T4_HEAD_PLATE_SET1, maxEnchant 4). Do not hold PR #16 open waiting for ACM-030 — split AC#2 into a follow-up PR against this same task once the dependency merges.
+
+Descope fix-up per decision-011 review finding (PR #16 was BLOCKED, CRITICAL).
+
+Removed the entire uniquename @N enchant-derivation path: getEnchantOptions()
+and its type EnchantOption in src/components/editor/tier-enchant.ts, the
+EnchantSelect component in TierEnchantSelectors.tsx, and all enchant wiring
+through SlotCard/SlotGrid props, src/app/(editor)/build/new/page.tsx, and
+the setEnchant store action in src/store/build-store.ts. This data shape
+(an @N suffix on uniquename) does not exist anywhere in the real 2036-item
+corpus or live upstream items.json; the removed test only passed against a
+fabricated id (T8_HEAD_PLATE_SET1@1).
+
+Kept everything verified good: tier parsing/getTierVariants/TierSelect
+(parseUniquename simplified to drop the enchant half, tier-only now), the
+store-level two-handed offhand guard in build-store.ts (untouched,
+mutation-tested in review as a real guard), `twohanded` on EquippedItem in
+src/types/build.ts, and the lock-emoji-to-SVG replacement in SlotCard.
+
+EquippedItem.enchant / setItem's enchant param are left in place (always 0
+for real data today) so ACM-030 can plug maxEnchant-driven enchant options
+back in without another type migration; the `.N` badge in SlotCard is
+removed for now (item.enchant is always 0, nothing genuine to show) with a
+comment pointing at ACM-030.
+
+AC#2 (enchant select) unchecked and deferred to a follow-up PR against this
+same task once ACM-030 lands AOItem.maxEnchant. AC#1 (tier variants) and
+AC#3 (icon updates on tier change) remain checked and are exercised by
+src/__tests__/tier-enchant.test.ts and src/__tests__/tier-select.test.tsx
+against real-shaped (no @N) fixtures.
+
+Merged origin/main (ACM-013/016/017/027/028/029/030 and others landed since
+PR #16 opened); resolved a task-file conflict in this task's own markdown
+and fixed src/__tests__/build-card.test.tsx, which predates `twohanded` on
+EquippedItem and no longer typechecked post-merge.
+
+make check: green (lint 0 errors/2 pre-existing <img> warnings, tsc, next
+build, vitest 120/120).
 <!-- SECTION:NOTES:END -->
