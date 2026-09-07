@@ -4,12 +4,14 @@ import type { Slot } from "@/data/ao-data";
 import type { BuildState, SpellGroup } from "@/types/build";
 import { SLOT_COLUMNS } from "@/types/build";
 import { SlotCard } from "./SlotCard";
+import type { SpellCandidate } from "./spell-groups";
 import type { TierOption } from "./tier-enchant";
 
 export type SlotGridProps = {
   build: BuildState;
   itemNames?: Partial<Record<Slot, string>>;
-  spellGroupsBySlot?: Partial<Record<Slot, readonly SpellGroup[]>>;
+  /** Candidate spells per slot, keyed by group (ACM-010). See SlotCard. */
+  spellCandidatesBySlot?: Partial<Record<Slot, Partial<Record<SpellGroup, readonly SpellCandidate[]>>>>;
   /**
    * True when mainhand holds a two-handed item, so the offhand card renders
    * locked. Callers derive this from the item catalog (mainhand's
@@ -21,17 +23,19 @@ export type SlotGridProps = {
   onRequestItemPick: (slot: Slot) => void;
   onClearSlot: (slot: Slot) => void;
   onTierChange?: (slot: Slot, option: TierOption) => void;
+  onSpellChange?: (slot: Slot, group: SpellGroup, spellId: string | null) => void;
 };
 
 export function SlotGrid({
   build,
   itemNames,
-  spellGroupsBySlot,
+  spellCandidatesBySlot,
   offhandLocked = false,
   tierOptionsBySlot,
   onRequestItemPick,
   onClearSlot,
   onTierChange,
+  onSpellChange,
 }: SlotGridProps): React.JSX.Element {
   return (
     <div className="flex flex-wrap gap-8">
@@ -47,12 +51,13 @@ export function SlotGrid({
                 slot={slot}
                 item={build.slots[slot]}
                 itemName={itemNames?.[slot]}
-                spellGroups={spellGroupsBySlot?.[slot]}
+                spellCandidatesByGroup={spellCandidatesBySlot?.[slot]}
                 locked={slot === "offhand" && offhandLocked}
                 tierOptions={tierOptionsBySlot?.[slot]}
                 onRequestItemPick={onRequestItemPick}
                 onClear={onClearSlot}
                 onTierChange={onTierChange}
+                onSpellChange={onSpellChange}
               />
             ))}
           </div>

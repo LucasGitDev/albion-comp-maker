@@ -3,10 +3,10 @@ id: ACM-034
 title: >-
   CRÍTICO: clicar em 'Adicionar' nos slots de item não faz nada — não abre
   seletor de item
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 17:42'
+updated_date: '2026-09-07 17:52'
 labels: []
 dependencies: []
 priority: high
@@ -29,3 +29,9 @@ Em /build/new, clicar no texto 'Adicionar' de qualquer slot (mão principal, cab
 - [ ] #6 ACM-027 fica subsumida por esta task (mesma causa raiz: handleRequestItemPick era no-op)
 - [ ] #7 Teste automatizado cobre: abrir picker por slot vazio, selecionar item, store atualizado, picker fechado
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Root cause: handleRequestItemPick in build/new/page.tsx was a deliberate no-op. Fixed by adding activeSlot state + new SlotPickerPopover modal shell wrapping the existing ACM-008 ItemPicker, plus a lazily-loaded useItemCatalogue hook (module-cached, non-literal import specifier so build doesn't break when src/data/ao-data.json is absent — gitignored/pipeline artifact, known cross-task gap per ACM-027 notes). SlotCard's filled state gained a dedicated clickable icon/name button (kept separate from the clear button) to reopen the picker with value=current itemId. offhandLocked is now threaded from the page into SlotGrid so the locked offhand never renders an interactive control. ACM-027 subsumed (identical root cause). Tests: src/__tests__/build-new-page.test.tsx, src/__tests__/slot-card-picker.test.tsx. make check green (lint/tsc/build/vitest 139 passing). PR #25.
+<!-- SECTION:NOTES:END -->
