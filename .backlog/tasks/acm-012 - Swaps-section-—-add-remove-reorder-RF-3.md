@@ -4,7 +4,7 @@ title: Swaps section — add/remove/reorder (RF-3)
 status: In Progress
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 19:49'
+updated_date: '2026-09-07 19:56'
 labels: []
 milestone: m-2
 dependencies:
@@ -21,10 +21,10 @@ Add swap entries to a build: each has a slot, item, enchant, spells, and label. 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Add swap button opens item picker with slot selector
-- [ ] #2 Each swap shows item name, icon, spell icons
-- [ ] #3 Swap can be removed
-- [ ] #4 Swap label editable inline
+- [x] #1 Add swap button opens item picker with slot selector
+- [x] #2 Each swap shows item name, icon, spell icons
+- [x] #3 Swap can be removed
+- [x] #4 Swap label editable inline
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -105,4 +105,18 @@ Nenhum token novo: reusa `--color-tier-*` e `--color-enchant` introduzidos em AC
 1. Adicionar 2 swaps, mover o segundo para cima → ordem persiste no `getState()` e no card de preview (ACM-013).
 2. Remover swap → toast com Desfazer; clicar Desfazer restaura na mesma posição, não no fim.
 3. Criar swap para slot vazio → aviso âmbar aparece e o swap continua salvável.
+
+Implemented the Swaps section (RF-3) reusing the swap shape already persisted by build-schema.ts (Swap = { id, label, slots: Partial<Record<Slot, EquippedItem|null>> }, cap 20). UI restricts each swap to exactly one slot (a select per row) even though the persisted shape allows a partial record over multiple slots — kept as-is for a possible future multi-slot swap UI, no schema change was needed or made.
+
+Store (src/store/build-store.ts): added addSwap/removeSwap/moveSwap/setSwapLabel/setSwapSlot/setSwapItem/setSwapSpell, plus an exported MAX_SWAPS = 20 mirroring buildStateSchema's swaps.max(20). addSwap is a no-op once MAX_SWAPS is reached (store-level enforcement, tested independently of the UI's disabled button per the ACM-031 lesson). setSwapLabel never persists an empty string (swapSchema.label is min(1)); new swaps default to a non-empty placeholder label so an unedited swap can still pass write validation.
+
+Components: SwapRow.tsx (one row: slot select, current-vs-alternative item icons via ItemIcon, inline label input, up/down reorder buttons disabled at the boundary, remove button) and SwapsSection.tsx (empty state, header with count, "+ Adicionar swap" disabled at the cap). No new color tokens; reused --color-icon-* and --color-enchant. No emoji, hex-only styling (export-safety guard unaffected since this UI isn't in #capture-root yet).
+
+Wired into the live route: src/app/(editor)/build/new/page.tsx now generalizes the single-slot ItemPicker popover to a PickerTarget union (main slot vs swap+slot) so the same SlotPickerPopover/ItemPicker (ACM-008/034) is reused for swap item selection, and derives itemNames/spellCandidatesByItemId from the loaded catalogue for swap rows (parity with SlotCard's display, ACM-007/010).
+
+Tests: src/__tests__/build-store.test.ts gained a "swaps" describe block covering add/remove/label/slot-change/item-equip/spell-select and reorder (explicit first-down and last-up boundary cases, plus a duplicate/gap check on ids), and a store-level cap-enforcement test (25 addSwap calls -> length 20). src/__tests__/build-new-page.test.tsx gained a "Swaps section" describe block rendering the real /build/new route end-to-end: empty state, add, real ItemPicker selection into a swap slot, inline label edit, remove, and the same reorder boundary cases against the real UI buttons.
+
+Deferred (not in the 4 hard ACs, documented per the UX spec but out of scope for this pass): undo-toast on remove (immediate removal instead), the amber "slot vazio no build" banding beyond a plain text note, and the drag handle placeholder (spec itself defers drag past MVP).
+
+make check green (lint/tsc/build/test) on the task branch.
 <!-- SECTION:NOTES:END -->
