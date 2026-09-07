@@ -15,7 +15,7 @@ import corpus from "./fixtures/ao-corpus.json";
 
 type CorpusSpell = { uniquename: string; slotGroup: string; kind: string };
 type CorpusItem = { uniquename: string; slot: string; spells: CorpusSpell[] };
-type Corpus = { version: string; items: CorpusItem[]; spells: Record<string, string> };
+type Corpus = { items: CorpusItem[]; spells: Record<string, string> };
 
 const data = corpus as Corpus;
 
@@ -100,6 +100,23 @@ describe("AC-2: T4_MAIN_HAMMER spell slots", () => {
 // against the corpus measured on 2026-09-07, so a real regression (a slot
 // category collapsing to near-zero) is still caught.
 describe("AC-3: per-slot spell coverage invariant", () => {
+  // These numbers are pinned snapshots of the corpus as of 2026-09-07, not
+  // derived invariants — every value here MUST be updated by hand whenever
+  // `src/__tests__/fixtures/ao-corpus.json` is regenerated (`pnpm sync:ao &&
+  // pnpm build:fixture`), because upstream Albion patches add/remove items
+  // and spells over time.
+  //
+  // If the nightly drift-check workflow (.github/workflows/nightly-ao.yml)
+  // goes red because these tests fail after a regeneration:
+  //   1. Diff the regenerated fixture against the previous commit and look at
+  //      *what* changed (new/removed items, spells moving slots, etc).
+  //   2. If the diff matches a real, expected upstream patch note — bump the
+  //      pinned numbers below (and in the "corpus totals" test) to match,
+  //      and commit the new fixture alongside.
+  //   3. If the diff is unexplained by any known upstream change, or a whole
+  //      slot's `withSpells` count collapses towards 0 — treat it as a real
+  //      regression in the resolver/emitter pipeline, do NOT just bump the
+  //      numbers, and investigate before touching this file.
   const SLOT_FLOORS: Record<string, { total: number; withSpells: number }> = {
     offhand: { total: 111, withSpells: 0 },
     cape: { total: 196, withSpells: 100 },
@@ -144,7 +161,7 @@ describe("AC-4: every resolved spell id exists in the registry", () => {
     for (const item of data.items) {
       for (const spell of item.spells) {
         pairsChecked++;
-        if (!(spell.uniquename in data.spells)) {
+        if (!Object.hasOwn(data.spells, spell.uniquename)) {
           missing.push(`${item.uniquename} -> ${spell.uniquename}`);
         }
       }
