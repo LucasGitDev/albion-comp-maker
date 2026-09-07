@@ -1,10 +1,10 @@
 ---
 id: ACM-007
 title: ItemIcon and SpellIcon React components
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 16:19'
+updated_date: '2026-09-07 16:22'
 labels: []
 milestone: m-1
 dependencies:
