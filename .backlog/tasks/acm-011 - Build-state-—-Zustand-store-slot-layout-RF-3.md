@@ -1,10 +1,10 @@
 ---
 id: ACM-011
 title: Build state — Zustand store + slot layout (RF-3)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 16:55'
+updated_date: '2026-09-07 16:58'
 labels: []
 milestone: m-2
 dependencies:
@@ -162,4 +162,12 @@ Verificação manual (dos 3 passos da spec):
 3. JSON.parse(JSON.stringify(selectBuild(store.getState()))) === build (toEqual) e assert recursivo de ausência de function/undefined. Coberto por teste automatizado (AC #4).
 
 make check verde (lint, tsc, build, vitest — 58 testes passando).
+
+## Review PR #12 — LGTM (reviewer)
+
+Verified: AC#1 BuildState matches PRD 5.5 field-by-field; AC#2/#3 setItem/setSpell covered by tests (2H->offhand-clear, spell-reset-on-reequip); AC#4 JSON round-trip + recursive no-functions/undefined assertion pass. 10 slots via SLOT_ORDER (not 9). Offhand lock via explicit offhandLocked prop, no _2H_ heuristic. All new globals.css tokens are hex literals — no oklch(), export-safe for html-to-image. SlotCard/SlotGrid/BuildHeader are prop-driven; only (editor)/build/new/page.tsx subscribes to the store. No scope collisions.
+
+Open follow-ups (non-blocking, carry into the ItemPicker wiring task):
+- MEDIUM: store setItem clears offhand when mainhand becomes two-handed, but does NOT guard against filling offhand while mainhand is already two-handed. Lock is UI-only today. Must be enforced in the store once the real ItemPicker calls actions.setItem.
+- LOW: locked SlotCard renders a literal lock emoji, which renders inconsistently under html-to-image. Replace with an SVG before PNG export (ACM-015).
 <!-- SECTION:NOTES:END -->
