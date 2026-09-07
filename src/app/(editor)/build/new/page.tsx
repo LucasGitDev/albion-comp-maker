@@ -18,7 +18,7 @@ import { selectActions, selectBuild, useBuildStore } from "@/store/build-store";
 export default function NewBuildPage(): React.JSX.Element {
   const build = useBuildStore(selectBuild);
   const actions = useBuildStore(selectActions);
-  const { items, loading, failed, retry } = useItemCatalogue();
+  const { items, loading, failed, failedReason, retry } = useItemCatalogue();
   const [activeSlot, setActiveSlot] = useState<Slot | null>(null);
   /**
    * Captured synchronously in the click handler, before the background is
@@ -79,6 +79,7 @@ export default function NewBuildPage(): React.JSX.Element {
           items={items}
           catalogueLoading={loading}
           catalogueFailed={failed}
+          catalogueFailedReason={failedReason}
           onRetryCatalogue={retry}
           value={activeSlotItem?.itemId ?? null}
           label={SLOT_LABELS[activeSlot] ?? activeSlot}

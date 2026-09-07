@@ -2,11 +2,35 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AOItem } from "@/data/ao-data.d";
+import type { ItemsErrorResponse } from "@/app/api/items/route";
+
+/**
+ * `"missing-artifact"` is the ONLY case where suggesting `npm run sync:ao`
+ * is correct — it means the server itself reported the machine-readable
+ * `503 {code: "CATALOGUE_UNAVAILABLE"}` from `src/app/api/items/route.ts`,
+ * which that route only returns for the developer-facing "pipeline never
+ * ran" condition. Every other failure (network rejection, a non-503 status,
+ * a 503 whose body isn't that shape, a JSON parse error) is `"generic"` and
+ * must show ordinary user-facing copy — telling a guild leader to run a
+ * terminal command for a transient network blip or deploy hiccup is
+ * actively wrong (ACM-034 follow-up review).
+ */
+type CatalogueFailureReason = "missing-artifact" | "generic";
 
 type CatalogueState =
   | { status: "loading" }
   | { status: "loaded"; items: AOItem[] }
-  | { status: "failed" };
+  | { status: "failed"; reason: CatalogueFailureReason };
+
+async function classifyFailure(response: Response): Promise<CatalogueFailureReason> {
+  if (response.status !== 503) return "generic";
+  try {
+    const body = (await response.clone().json()) as Partial<ItemsErrorResponse>;
+    return body.code === "CATALOGUE_UNAVAILABLE" ? "missing-artifact" : "generic";
+  } catch {
+    return "generic";
+  }
+}
 
 let cached: CatalogueState | null = null;
 let inflight: Promise<CatalogueState> | null = null;
@@ -36,14 +60,15 @@ function loadCatalogue(): Promise<CatalogueState> {
   inflight = fetch("/api/items")
     .then(async (response) => {
       if (!response.ok) {
-        return { status: "failed" } as const;
+        const reason = await classifyFailure(response);
+        return { status: "failed", reason } as const;
       }
       const items = (await response.json()) as AOItem[];
       cached = { status: "loaded", items };
       return cached;
     })
     .catch(() => {
-      return { status: "failed" } as const;
+      return { status: "failed", reason: "generic" } as const;
     })
     .finally(() => {
       inflight = null;
@@ -61,6 +86,16 @@ export type UseItemCatalogueResult = {
    * from a successful load that simply has no matches for the user's query.
    */
   failed: boolean;
+  /**
+   * Only meaningful when `failed` is true. `"missing-artifact"` means the
+   * server returned `503 {code: "CATALOGUE_UNAVAILABLE"}` — the local
+   * pipeline artifact genuinely never ran — and is the only case where
+   * suggesting `npm run sync:ao` is correct. `"generic"` covers everything
+   * else (network error, unexpected status, malformed response) and must
+   * show ordinary "something went wrong, try again" copy instead (ACM-034
+   * follow-up review).
+   */
+  failedReason: CatalogueFailureReason | null;
   /**
    * Re-runs the fetch on demand. Needed because failure is not cached
    * (see `loadCatalogue`) but the consuming component (the editor page)
@@ -102,6 +137,7 @@ export function useItemCatalogue(): UseItemCatalogueResult {
     items: state.status === "loaded" ? state.items : [],
     loading: state.status === "loading",
     failed: state.status === "failed",
+    failedReason: state.status === "failed" ? state.reason : null,
     retry,
   };
 }
