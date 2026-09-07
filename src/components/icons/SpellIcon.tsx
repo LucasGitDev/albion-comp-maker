@@ -51,7 +51,8 @@ export function SpellIcon({
   const slotLabelGlyph = slotLabel && (
     <span
       aria-hidden="true"
-      className="absolute bottom-0 right-0 rounded-sm bg-black/70 px-0.5 font-mono text-[10px] tabular-nums text-white"
+      className="absolute bottom-0 right-0 rounded-sm px-0.5 font-mono text-[10px] tabular-nums text-white"
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
     >
       {slotLabel === "Passive" ? "P" : slotLabel}
     </span>
