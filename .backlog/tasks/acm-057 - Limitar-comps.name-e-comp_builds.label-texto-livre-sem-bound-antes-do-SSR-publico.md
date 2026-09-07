@@ -3,10 +3,10 @@ id: ACM-057
 title: >-
   Limitar comps.name e comp_builds.label (texto livre sem bound antes do SSR
   publico)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 19:35'
-updated_date: '2026-09-07 19:49'
+updated_date: '2026-09-07 19:55'
 labels: []
 dependencies: []
 priority: high
