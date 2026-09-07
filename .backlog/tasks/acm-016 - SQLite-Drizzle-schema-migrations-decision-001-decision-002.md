@@ -1,10 +1,10 @@
 ---
 id: ACM-016
 title: 'SQLite + Drizzle schema + migrations (decision-001, decision-002)'
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 17:02'
+updated_date: '2026-09-07 17:05'
 labels: []
 milestone: m-5
 dependencies:
@@ -69,4 +69,24 @@ Tests added (src/__tests__/db-*.test.ts): migration creates all 7 tables (AC#1),
 pnpm-workspace.yaml: added better-sqlite3 to onlyBuiltDependencies (native binding compile) and esbuild to ignoredBuiltDependencies (drizzle-kit's transitive dep, no native build needed) to keep `pnpm install` non-interactive in CI/make check.
 
 make check: green (lint warnings pre-existing/unrelated to this task, no errors; tsc, build, vitest all pass, 63 tests across 10 files).
+
+## Review — ACM-016 (PR #14)
+
+Verified against decision-001, decision-002, and task ACs. `make check` re-run locally: lint (2 pre-existing warnings, unrelated), tsc, next build, vitest (63/63) all green.
+
+1. Auth.js compatibility (PRIORITY): hand-written user/account/session/verificationToken tables match the documented `@auth/drizzle-adapter` sqlite factory shape exactly (table names, column names/types, composite PKs on account(provider,providerAccountId) and verificationToken(identifier,token)). No mismatch found against the adapter's known contract. OK.
+
+2. Migration correctness: drizzle/0000_overconfident_the_fury.sql matches schema.ts 1:1 (columns, FKs, ON DELETE CASCADE, both comp_builds indexes, user_email_unique). Applies cleanly from an empty DB per db-migrate.test.ts. OK.
+
+3. comp_builds ordering — MEDIUM finding (not blocking ACM-016, flag for ACM-019): the unique index `comp_builds_comp_id_position_idx` on (comp_id, position) is a plain CREATE UNIQUE INDEX, not a deferrable constraint — SQLite only supports DEFERRABLE for PK/UNIQUE declared inline in CREATE TABLE, never for a separate CREATE INDEX. Swapping two positions (A:1↔B:2) via two sequential UPDATEs in one transaction will fail on the first UPDATE (immediate uniqueness violation). ACM-019 must either (a) use a single UPDATE with a CASE expression / batch statement that never produces a duplicate mid-transaction, or (b) stage through a temporary out-of-range position. This is inherent to decision-001's design, not an implementer defect — recording it now so ACM-019 doesn't get surprised.
+
+4. Scope (pnpm-workspace.yaml, .gitignore): legitimate. `onlyBuiltDependencies: [better-sqlite3]` allows the required native build; `ignoredBuiltDependencies: [esbuild]` skips drizzle-kit's transitive dep which has no native build step — does not disable anything security-relevant. `/data/` gitignore entry only covers the local SQLite file directory, does not touch source paths.
+
+5. instrumentation.ts skip: confirmed `runMigrations()` is exported from src/db/migrate.ts and independently tested (db-migrate.test.ts) against a throwaway file. Nothing in this diff calls it automatically — correctly deferred to ACM-017/startup-wiring task per the documented file-scope boundary. No dangling reference to an auto-migrate hook that doesn't exist.
+
+6. better-sqlite3 native module: `next build` (Turbopack) completes successfully; better-sqlite3 is only imported by src/db/client.ts and test files, not by any app/route code yet, so nothing forces it into a client bundle. CI workflow (check.yml) runs `make check` on ubuntu-latest with the same pnpm-workspace.yaml build-script config — should compile the native binding fine.
+
+No CRITICAL/HIGH findings. One MEDIUM (comp_builds reordering caveat, item 3) recorded for ACM-019 planning.
+
+Verdict: LGTM
 <!-- SECTION:NOTES:END -->
