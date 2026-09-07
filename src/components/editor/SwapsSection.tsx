@@ -1,10 +1,23 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { Slot } from "@/data/ao-data";
 import type { EquippedItem, Swap, SpellGroup } from "@/types/build";
-import { MAX_SWAPS } from "@/store/build-store";
 import { SwapRow } from "./SwapRow";
 import type { SpellCandidate } from "./spell-groups";
+
+/**
+ * UI-level soft cap (ACM-012 review round 2), distinct from the store's
+ * `MAX_SWAPS` (20) hard cap mirroring `swapSchema`'s persisted bound
+ * (`src/store/build-store.ts`, ACM-049). The two are deliberately separate:
+ * `MAX_SWAPS` is a data-integrity bound the write schema enforces
+ * regardless of UI; `SWAP_SOFT_CAP` is the UX-spec's product decision
+ * ("o card fica ilegível no Discord" — the swaps section alone is ~2700px
+ * tall at 20 rows). Blocking creation here at 8, not 20, is the fix; a
+ * previous round used `MAX_SWAPS` for both and lost the legibility
+ * rationale.
+ */
+export const SWAP_SOFT_CAP = 8;
 
 export type SwapsSectionProps = {
   swaps: Swap[];
@@ -39,7 +52,46 @@ export function SwapsSection({
   onLabelChange,
   onSpellChange,
 }: SwapsSectionProps): React.JSX.Element {
-  const atCap = swaps.length >= MAX_SWAPS;
+  const atSoftCap = swaps.length >= SWAP_SOFT_CAP;
+  const softCapHintId = "swaps-soft-cap-hint";
+
+  const addButtonRef = useRef<HTMLButtonElement | null>(null);
+  const removeButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  const pendingFocusIndex = useRef<number | null>(null);
+  const [liveMessage, setLiveMessage] = useState("");
+
+  // Runs after every render where a removal was requested: `swaps` here is
+  // always the post-removal list, since the store update and this
+  // component's re-render are driven by the same parent subscription
+  // (ACM-012 review round 2, HIGH — focus was previously lost to <body>).
+  useEffect(() => {
+    if (pendingFocusIndex.current === null) return;
+    const requestedIndex = pendingFocusIndex.current;
+    pendingFocusIndex.current = null;
+
+    if (swaps.length === 0) {
+      addButtonRef.current?.focus();
+      return;
+    }
+    // Clamping to the last valid index covers both cases the spec calls
+    // out: removing a middle/first row moves focus to the row that slid
+    // into its place; removing the last row clamps back to the new last
+    // row (the previous one).
+    const targetIndex = Math.min(requestedIndex, swaps.length - 1);
+    const targetId = swaps[targetIndex]?.id;
+    if (targetId) removeButtonRefs.current.get(targetId)?.focus();
+  }, [swaps]);
+
+  const handleRemove = (id: string, index: number) => {
+    pendingFocusIndex.current = index;
+    onRemoveSwap(id);
+  };
+
+  const handleMove = (id: string, direction: "up" | "down", index: number) => {
+    onMoveSwap(id, direction);
+    const newPosition = direction === "up" ? index : index + 2;
+    setLiveMessage(`Swap movido para posição ${newPosition} de ${swaps.length}`);
+  };
 
   return (
     <section className="flex flex-col gap-3" aria-labelledby="swaps-heading">
@@ -48,14 +100,28 @@ export function SwapsSection({
           Swaps · {swaps.length}
         </h2>
         <button
+          ref={addButtonRef}
           type="button"
           onClick={onAddSwap}
-          disabled={atCap}
-          title={atCap ? `Máximo de ${MAX_SWAPS} swaps` : undefined}
-          className="rounded-md border border-icon-slot-empty px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors duration-150 ease-out hover:border-[var(--color-enchant)] disabled:cursor-not-allowed disabled:opacity-40"
+          disabled={atSoftCap}
+          aria-describedby={atSoftCap ? softCapHintId : undefined}
+          className="rounded-md border border-icon-slot-empty px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors duration-150 ease-out hover:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           + Adicionar swap
         </button>
+      </div>
+
+      {atSoftCap && (
+        <p id={softCapHintId} className="text-[12px] text-icon-muted">
+          Máximo de {SWAP_SOFT_CAP} swaps — o card fica ilegível no Discord.
+        </p>
+      )}
+
+      {/* Reorder announcements (ACM-012 spec §3); the action bar's own live
+          region is a separate concern (save status) and shouldn't double
+          up as this one. */}
+      <div aria-live="polite" className="sr-only">
+        {liveMessage}
       </div>
 
       {swaps.length === 0 ? (
@@ -84,9 +150,13 @@ export function SwapsSection({
                 onRequestItemPick={() => onRequestItemPick(swap.id, slot)}
                 onLabelChange={(label) => onLabelChange(swap.id, label)}
                 onSpellChange={(group, spellId) => onSpellChange(swap.id, slot, group, spellId)}
-                onMoveUp={() => onMoveSwap(swap.id, "up")}
-                onMoveDown={() => onMoveSwap(swap.id, "down")}
-                onRemove={() => onRemoveSwap(swap.id)}
+                onMoveUp={() => handleMove(swap.id, "up", index)}
+                onMoveDown={() => handleMove(swap.id, "down", index)}
+                onRemove={() => handleRemove(swap.id, index)}
+                removeButtonRef={(element) => {
+                  if (element) removeButtonRefs.current.set(swap.id, element);
+                  else removeButtonRefs.current.delete(swap.id);
+                }}
               />
             );
           })}
