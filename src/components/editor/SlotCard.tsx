@@ -1,0 +1,162 @@
+"use client";
+
+import type { Slot } from "@/data/ao-data";
+import { ItemIcon } from "@/components/icons/ItemIcon";
+import { SpellIcon, type SpellSlotLabel } from "@/components/icons/SpellIcon";
+import type { EquippedItem, SpellGroup } from "@/types/build";
+
+const SLOT_LABELS: Record<Slot, string> = {
+  mainhand: "Mão principal",
+  offhand: "Mão secundária",
+  head: "Cabeça",
+  armor: "Peito",
+  shoes: "Botas",
+  cape: "Capa",
+  bag: "Bolsa",
+  mount: "Montaria",
+  food: "Comida",
+  potion: "Poção",
+};
+
+const TIER_COLOR_VAR: Record<number, string> = {
+  4: "var(--color-tier-4)",
+  5: "var(--color-tier-5)",
+  6: "var(--color-tier-6)",
+  7: "var(--color-tier-7)",
+  8: "var(--color-tier-8)",
+};
+
+const SPELL_GROUP_ORDER: readonly { group: SpellGroup; label: SpellSlotLabel }[] = [
+  { group: "q", label: "Q" },
+  { group: "w", label: "W" },
+  { group: "e", label: "E" },
+  { group: "passive", label: "Passive" },
+];
+
+export type SlotCardProps = {
+  slot: Slot;
+  item: EquippedItem | null;
+  itemName?: string;
+  /**
+   * Spell groups the equipped item actually exposes (from `AOItem.spells`).
+   * Only these render as chips — a slot without a given group never shows a
+   * row for it. Defaults to all four groups when omitted.
+   */
+  spellGroups?: readonly SpellGroup[];
+  /** true when this is the offhand slot and mainhand holds a two-handed item. */
+  locked?: boolean;
+  onRequestItemPick: (slot: Slot) => void;
+  onClear?: (slot: Slot) => void;
+};
+
+const ALL_SPELL_GROUPS: readonly SpellGroup[] = ["q", "w", "e", "passive"];
+
+export function SlotCard({
+  slot,
+  item,
+  itemName,
+  spellGroups = ALL_SPELL_GROUPS,
+  locked = false,
+  onRequestItemPick,
+  onClear,
+}: SlotCardProps): React.JSX.Element {
+  const label = SLOT_LABELS[slot] ?? slot;
+  const tierColor = item && item.tier > 0 ? (TIER_COLOR_VAR[item.tier] ?? "var(--color-tier-low)") : undefined;
+
+  if (locked) {
+    return (
+      <div
+        className="flex w-[168px] cursor-not-allowed flex-col gap-2 rounded-xl border border-icon-slot-empty bg-icon-slot p-3 opacity-60"
+        data-slot={slot}
+        data-slot-state="locked"
+      >
+        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+          {label}
+        </span>
+        <div className="flex size-24 items-center justify-center rounded-md bg-icon-placeholder text-2xl">
+          🔒
+        </div>
+        <p className="text-[12px] text-icon-muted">Ocupada por arma de duas mãos</p>
+      </div>
+    );
+  }
+
+  if (!item) {
+    return (
+      <button
+        type="button"
+        onClick={() => onRequestItemPick(slot)}
+        className="flex w-[168px] flex-col gap-2 rounded-xl border border-dashed border-icon-slot-empty bg-icon-slot p-3 text-left transition-colors duration-150 ease-out hover:border-solid hover:border-[var(--color-enchant)]"
+        data-slot={slot}
+        data-slot-state="empty"
+      >
+        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+          {label}
+        </span>
+        <div className="flex size-24 items-center justify-center rounded-md bg-icon-placeholder opacity-40">
+          <ItemIcon itemId="" alt="" size="xl" decorative />
+        </div>
+        <span className="text-[12px] text-icon-muted transition-colors duration-150 ease-out hover:text-[var(--color-enchant)]">
+          Adicionar
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="group relative flex w-[168px] flex-col gap-2 rounded-xl border border-icon-slot-empty bg-icon-slot p-3"
+      data-slot={slot}
+      data-slot-state="filled"
+    >
+      {onClear && (
+        <button
+          type="button"
+          onClick={() => onClear(slot)}
+          aria-label={`Limpar ${label}`}
+          className="absolute right-2 top-2 hidden size-5 items-center justify-center rounded-full bg-black/60 text-xs text-white transition-opacity duration-150 ease-out group-hover:flex"
+        >
+          ×
+        </button>
+      )}
+      <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+        {label}
+      </span>
+      <div className="relative flex size-24 items-center justify-center">
+        <ItemIcon itemId={item.itemId} alt={itemName ?? item.itemId} size="xl" />
+        {item.tier > 0 && (
+          <span
+            className="absolute bottom-0 left-0 rounded px-1 text-[10px] font-bold text-[#0b0d11]"
+            style={{ backgroundColor: tierColor, lineHeight: "16px" }}
+          >
+            T{item.tier}
+          </span>
+        )}
+        {item.enchant > 0 && (
+          <span
+            className="absolute bottom-0 right-0 rounded px-1 text-[10px] font-bold text-white"
+            style={{ backgroundColor: "var(--color-enchant)", lineHeight: "16px" }}
+          >
+            .{item.enchant}
+          </span>
+        )}
+      </div>
+      <p className="line-clamp-2 text-[13px] font-medium" title={itemName ?? item.itemId}>
+        {itemName ?? item.itemId}
+      </p>
+      {spellGroups.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {SPELL_GROUP_ORDER.filter(({ group }) => spellGroups.includes(group)).map(({ group, label: spellLabel }) => (
+            <SpellIcon
+              key={group}
+              sprite={item.spells[group]}
+              alt={`${spellLabel} de ${itemName ?? item.itemId}`}
+              size="sm"
+              slotLabel={spellLabel}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
