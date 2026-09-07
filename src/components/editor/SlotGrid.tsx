@@ -43,13 +43,24 @@ export function SlotGrid({
   onSpellChange,
 }: SlotGridProps): React.JSX.Element {
   return (
-    <div className="flex flex-wrap gap-8">
+    <div className="flex flex-col gap-5 md:flex-row md:flex-wrap md:gap-8">
       {SLOT_COLUMNS.map((column) => (
-        <div key={column.title} className="flex flex-col gap-3">
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+        <div key={column.id} className="flex flex-col gap-3">
+          {/*
+           * `id` + `tabIndex={-1}` + `scroll-mt-[var(--group-nav-h)]` are the
+           * anchor target for the mobile group-nav strip (ACM-041, doc-005
+           * §5.4/§8). Harmless at md+: the strip never renders there, so the
+           * scroll-margin is inert and the heading stays unreachable by Tab
+           * (only a chip click/Enter calls `.focus()` on it directly).
+           */}
+          <h3
+            id={`slot-group-${column.id}`}
+            tabIndex={-1}
+            className="scroll-mt-[var(--group-nav-h)] text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted outline-none"
+          >
             {column.title}
           </h3>
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3 md:flex md:flex-col">
             {column.slots.map((slot) => (
               <SlotCard
                 key={slot}
