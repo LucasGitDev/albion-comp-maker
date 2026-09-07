@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 import type { AOItem, Slot } from "@/data/ao-data";
+import { MAX_SWAPS } from "@/lib/validation-constants";
 import {
   EMPTY_SPELLS,
   type BuildState,
@@ -11,14 +12,16 @@ import {
 } from "@/types/build";
 
 /**
- * Hard cap on the number of swaps a build can hold, mirrored from
- * `buildStateSchema`'s `swaps: z.array(swapSchema).max(20)`
- * (`src/lib/build-schema.ts`, ACM-049). Enforced here — not only by
- * disabling the "Adicionar swap" button in the UI — so a bypassed/future UI
- * path can never persist a build the write schema would reject (ACM-012,
- * mirrors the ACM-031 review finding about UI-only guards).
+ * Hard cap on the number of swaps a build can hold, sourced from
+ * `MAX_SWAPS` in `src/lib/validation-constants.ts` — the same constant
+ * `buildStateSchema`'s `swaps: z.array(swapSchema).max(MAX_SWAPS)`
+ * (`src/lib/build-schema.ts`, ACM-049) is built from, so the two can never
+ * drift apart (ACM-059). Enforced here — not only by disabling the
+ * "Adicionar swap" button in the UI — so a bypassed/future UI path can
+ * never persist a build the write schema would reject (ACM-012, mirrors
+ * the ACM-031 review finding about UI-only guards).
  */
-export const MAX_SWAPS = 20;
+export { MAX_SWAPS };
 
 export type BuildActions = {
   setName(name: string): void;
