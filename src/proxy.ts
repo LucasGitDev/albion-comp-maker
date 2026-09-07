@@ -18,7 +18,7 @@ export const config = {
   matcher: ["/builds/:path*", "/comp/new"],
   // Database-strategy sessions require a real DB lookup (via
   // `@auth/drizzle-adapter` + better-sqlite3, a native Node addon), which
-  // cannot run on the default Edge runtime. Opt this middleware into the
-  // Node.js runtime instead of switching to JWT sessions.
-  runtime: "nodejs",
+  // cannot run on the Edge runtime. No runtime opt-in is needed here: the
+  // `proxy` file convention (Next.js 16+) always runs on the Node.js
+  // runtime — setting `runtime` in this config is now a build error.
 };
