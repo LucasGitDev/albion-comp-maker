@@ -1,10 +1,10 @@
 ---
 id: ACM-031
 title: Enchant selector using AOItem.maxEnchant (ACM-009 AC#2 follow-up)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 17:23'
-updated_date: '2026-09-07 17:24'
+updated_date: '2026-09-07 19:26'
 labels: []
 milestone: m-2
 dependencies:

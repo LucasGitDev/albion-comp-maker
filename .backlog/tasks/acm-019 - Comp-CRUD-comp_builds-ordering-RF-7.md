@@ -1,10 +1,10 @@
 ---
 id: ACM-019
 title: Comp CRUD + comp_builds ordering (RF-7)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 17:48'
+updated_date: '2026-09-07 19:26'
 labels: []
 milestone: m-6
 dependencies:
