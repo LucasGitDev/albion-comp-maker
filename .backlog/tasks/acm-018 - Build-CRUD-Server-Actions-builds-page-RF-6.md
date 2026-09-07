@@ -4,7 +4,7 @@ title: Build CRUD Server Actions + /builds page (RF-6)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 17:05'
+updated_date: '2026-09-07 17:15'
 labels: []
 milestone: m-5
 dependencies:
@@ -33,4 +33,6 @@ Save, list, edit, delete, duplicate, toggle public/private, fork builds. /[local
 
 <!-- SECTION:NOTES:BEGIN -->
 SECURITY (from ACM-016 audit, MEDIUM): builds/comps ownership is not enforced by the schema. Every CRUD Server Action must scope queries by the session user_id — never trust an id from the client alone (IDOR). Add a test proving a user cannot read/update/delete another user's build.
+
+SECURITY (ACM-017 audit, MEDIUM): middleware matcher is ['/builds/:path*','/comp/new'] and is explicitly UX-only defense-in-depth, NOT the authorization boundary. Every Server Action must call requireSession() itself — matchers drift silently as routes are added. Add a regression test asserting Server Actions reject unauthenticated calls regardless of middleware.
 <!-- SECTION:NOTES:END -->
