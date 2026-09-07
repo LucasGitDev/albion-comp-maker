@@ -8,6 +8,15 @@
   --color-accent: #e8823c;
   --color-accent-hover: #f2954f;
   --color-accent-foreground: #14171d;
+
+  /*
+   * Layout tokens (ACM-037): the sticky editor action bar pins to
+   * `top: var(--header-h)` so it sits flush under the global header instead
+   * of a magic `top-14` that silently drifts if header padding changes.
+   * `--header-h-sm` is the collapsed 390px header height (§1.4 doc-004).
+   */
+  --header-h: 56px;
+  --header-h-sm: 48px;
 }
 
 @theme inline {
@@ -26,6 +35,8 @@
   --color-icon-muted: #9ca3af;
   --color-icon-slot-empty: #3f4552;
   --color-icon-error: #7f1d1d;
+  /* Error copy text (not a background) — legible red on --color-surface, distinct from --color-icon-error which is a fill (ACM-037 action bar error state). */
+  --color-icon-error-fg: #f87171;
 
   --color-tier-low: #6b7280;
   --color-tier-4: #557e98;
@@ -51,4 +62,15 @@ textarea:focus-visible,
   outline: 2px solid #ffffff;
   outline-offset: 3px;
   border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
