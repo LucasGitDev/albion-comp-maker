@@ -16,6 +16,14 @@
   --color-icon-muted: #6b7280;
   --color-icon-slot-empty: #3f4552;
   --color-icon-error: #7f1d1d;
+
+  --color-tier-low: #6b7280;
+  --color-tier-4: #557e98;
+  --color-tier-5: #934038;
+  --color-tier-6: #d8894c;
+  --color-tier-7: #e8c95f;
+  --color-tier-8: #d9d9e3;
+  --color-enchant: #3f8f4a;
 }
 
 @media (prefers-color-scheme: dark) {
