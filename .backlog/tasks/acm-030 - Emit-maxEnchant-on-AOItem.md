@@ -4,7 +4,7 @@ title: Emit maxEnchant on AOItem
 status: In Progress
 assignee: []
 created_date: '2026-09-07 17:13'
-updated_date: '2026-09-07 17:15'
+updated_date: '2026-09-07 17:19'
 labels: []
 dependencies:
   - ACM-024
@@ -20,11 +20,11 @@ decision-011 specified carrying the upstream enchantments.enchantment count into
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 AOItem type in src/data/ao-data.d.ts has a maxEnchant: number field
-- [ ] #2 sync-ao-data.ts computes maxEnchant as the count of enchantments.enchantment entries on the raw item record (0 when the enchantments key is absent)
-- [ ] #3 T4_HEAD_PLATE_SET1 emits maxEnchant 4 and a mount item emits maxEnchant 0, asserted by a unit test
-- [ ] #4 src/__tests__/fixtures/ao-corpus.json regenerated so at least one fixture item has maxEnchant > 0
-- [ ] #5 make check exits 0
+- [x] #1 AOItem type in src/data/ao-data.d.ts has a maxEnchant: number field
+- [x] #2 sync-ao-data.ts computes maxEnchant as the count of enchantments.enchantment entries on the raw item record (0 when the enchantments key is absent)
+- [x] #3 T4_HEAD_PLATE_SET1 emits maxEnchant 4 and a mount item emits maxEnchant 0, asserted by a unit test
+- [x] #4 src/__tests__/fixtures/ao-corpus.json regenerated so at least one fixture item has maxEnchant > 0
+- [x] #5 make check exits 0
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -42,4 +42,16 @@ decision-011 specified carrying the upstream enchantments.enchantment count into
 
 <!-- SECTION:NOTES:BEGIN -->
 touches (for orchestrator parallelism check): scripts/sync-ao-data.ts, src/data/ao-data.d.ts, src/__tests__/fixtures/ao-corpus.json, scripts/**/*.test.ts. Must serialize with any other task touching scripts/sync-ao-data.ts or the fixture corpus (per CLAUDE.md: data pipeline output schemas are a shared-file serialization boundary).
+
+Implemented computeMaxEnchant() in scripts/sync-ao-data.ts, reading enchantments.enchantment off the raw item record and normalizing the single-child-object vs array XML->JSON collapse (both shapes covered by unit tests in scripts/sync-ao-data.test.ts). Added maxEnchant: number to AOItem (src/data/ao-data.d.ts).
+
+Guarded main() behind an import.meta.url check so sync-ao-data.ts can be imported by tests without triggering the network-fetching pipeline; added scripts/**/*.test.ts to vitest.config.ts include glob (no prior scripts/ tests existed).
+
+Ran the real pipeline against live upstream data. Observed maxEnchant distribution across the 2036 emitted items: 0 -> 636 items, 3 -> 5 items, 4 -> 1395 items. Matches decision-011's cited distribution shape (0/3/4, never a fixed constant). Verified T4_HEAD_PLATE_SET1 -> maxEnchant 4 and a mount (T2_MOUNT_MULE) -> maxEnchant 0 directly against the regenerated ao-data.json, per AC#3.
+
+Regenerated src/__tests__/fixtures/ao-corpus.json (still 2036 items, 699 referenced spells) via scripts/build-test-fixture.ts, extended to carry maxEnchant through the pruned item shape so ACM-009's enchant selector can consume real values.
+
+Collateral fix (outside the listed touches but required to keep make check green): the local item() test factories in src/__tests__/item-index.test.ts, item-picker.test.tsx and item-picker-polish.test.tsx built AOItem objects and needed a maxEnchant: 0 default added now that the field is required on the type — same pattern as any prior AOItem field addition (e.g. twohanded).
+
+make check exits 0 (lint, tsc --noEmit, next build, vitest — 15 files / 103 tests passed).
 <!-- SECTION:NOTES:END -->
