@@ -5,6 +5,7 @@ import { and, eq, max, sql } from "drizzle-orm";
 import { requireSession } from "@/auth/session";
 import { getDb } from "@/db/client";
 import { builds, compBuilds, comps } from "@/db/schema";
+import { compBuildLabelSchema, compNameSchema } from "@/lib/comp-schema";
 import { checkWriteRateLimit } from "@/lib/rate-limit";
 import { generateSlug } from "@/lib/slug";
 import { CompBuildReorderInvalidError, CompBuildRefNotFoundError, CompNotFoundError } from "./comp-errors";
@@ -27,10 +28,33 @@ import { CompBuildReorderInvalidError, CompBuildRefNotFoundError, CompNotFoundEr
  * in the data model is `builds.content`, which is already validated on
  * every write path in `builds.ts`. Comps only ever reference a build by
  * id, they never copy or re-serialize its content.
+ *
+ * Size-bound note (ACM-057): `comps.name` and `comp_builds.label` are still
+ * free-form text with no shape to validate, but they had no length bound
+ * either — an unbounded storage-abuse vector today, and unbounded
+ * untrusted text served to third parties once a comp can render publicly
+ * (ACM-021). Every write path that sets either column (`createComp`,
+ * `updateComp`, `addBuildToComp`, `updateCompBuild`) parses the value
+ * through `compNameSchema`/`compBuildLabelSchema` (`@/lib/comp-schema`)
+ * before it reaches the query — the single shared source for both limits.
  */
 
 export type CompRow = typeof comps.$inferSelect;
 export type CompBuildRow = typeof compBuilds.$inferSelect;
+
+/**
+ * Bounds+trims an optional/nullable `comp_builds.label` through
+ * `compBuildLabelSchema` (ACM-057). `undefined` means "field not supplied"
+ * and is passed through untouched so callers can distinguish "leave
+ * unchanged" from "clear it" (`null`); `null` is passed through as-is since
+ * there is nothing to bound.
+ */
+function normalizeCompBuildLabel(label: string | null | undefined): string | null | undefined {
+  if (label === undefined || label === null) {
+    return label;
+  }
+  return compBuildLabelSchema.parse(label);
+}
 
 /** Loads a comp scoped to the current user's ownership, or throws. */
 async function loadOwnedComp(userId: string, compId: string): Promise<CompRow> {
@@ -92,14 +116,16 @@ export async function createComp(input: CreateCompInput): Promise<CompRow> {
   const session = await requireSession();
   checkWriteRateLimit(session.user.id);
 
+  const name = compNameSchema.parse(input.name);
+
   const db = getDb();
   const [row] = await db
     .insert(comps)
     .values({
       userId: session.user.id,
-      name: input.name,
+      name,
       contentType: input.contentType ?? null,
-      slug: generateSlug(input.name),
+      slug: generateSlug(name),
     })
     .returning();
 
@@ -124,11 +150,13 @@ export async function updateComp(input: UpdateCompInput): Promise<CompRow> {
 
   await loadOwnedComp(session.user.id, input.id);
 
+  const name = input.name !== undefined ? compNameSchema.parse(input.name) : undefined;
+
   const db = getDb();
   const [row] = await db
     .update(comps)
     .set({
-      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(name !== undefined ? { name } : {}),
       ...(input.contentType !== undefined ? { contentType: input.contentType } : {}),
       updatedAt: new Date(),
     })
@@ -207,7 +235,7 @@ export async function addBuildToComp(input: AddBuildToCompInput): Promise<CompBu
       buildId: build.id,
       position: nextPosition,
       count: input.count ?? 1,
-      label: input.label ?? null,
+      label: normalizeCompBuildLabel(input.label) ?? null,
     })
     .returning();
 
@@ -250,11 +278,13 @@ export async function updateCompBuild(input: UpdateCompBuildInput): Promise<Comp
 
   await loadOwnedCompBuild(session.user.id, input.compId, input.compBuildId);
 
+  const label = normalizeCompBuildLabel(input.label);
+
   const db = getDb();
   const [row] = await db
     .update(compBuilds)
     .set({
-      ...(input.label !== undefined ? { label: input.label } : {}),
+      ...(label !== undefined ? { label } : {}),
       ...(input.count !== undefined ? { count: input.count } : {}),
     })
     .where(and(eq(compBuilds.id, input.compBuildId), eq(compBuilds.compId, input.compId)))
