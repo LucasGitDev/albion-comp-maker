@@ -86,6 +86,35 @@ describe("public comp page (ACM-021)", () => {
     expect(backIndex).toBeGreaterThan(frontIndex);
   });
 
+  it("never emits duplicate capture-root ids for a comp with 2+ builds (ACM-021 review)", async () => {
+    mockGetPublicCompBySlug.mockResolvedValue(makeComp());
+    const { default: PublicCompPage } = await import("@/app/comp/[slug]/page");
+
+    const element = await PublicCompPage({ params: Promise.resolve({ slug: "zvz-comp-1" }) });
+    const { container } = render(element);
+
+    const captureNodes = Array.from(container.querySelectorAll('[id^="capture-root"]'));
+    const ids = captureNodes.map((node) => node.id);
+
+    // Every card must expose a capture node, and none may share an id —
+    // duplicate `id="capture-root"` is invalid HTML and makes
+    // `getElementById`/`querySelector("#capture-root")` resolve to only the
+    // first match, silently pointing export/capture logic at the wrong card.
+    expect(ids.length).toBe(2);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    // Each card's own capture node must be reachable by its own id and
+    // must contain that card's own content (not the other card's).
+    const buildANode = container.querySelector("#capture-root-cb-0");
+    const buildBNode = container.querySelector("#capture-root-cb-1");
+    expect(buildANode).not.toBeNull();
+    expect(buildBNode).not.toBeNull();
+    expect(buildANode?.textContent).toContain("Build A");
+    expect(buildANode?.textContent).not.toContain("Build B");
+    expect(buildBNode?.textContent).toContain("Build B");
+    expect(buildBNode?.textContent).not.toContain("Build A");
+  });
+
   it("returns notFound() when the comp is unreachable (private build, missing, etc.)", async () => {
     mockGetPublicCompBySlug.mockResolvedValue(null);
     const { default: PublicCompPage } = await import("@/app/comp/[slug]/page");

@@ -48,7 +48,12 @@ export default async function PublicCompPage({ params }: PageProps): Promise<Rea
                 {entry.label && (
                   <span className="text-sm font-medium text-foreground/80">{entry.label}</span>
                 )}
-                <BuildCard state={entry.build.content} layout="grid" {...lookups} />
+                <BuildCard
+                  state={entry.build.content}
+                  layout="grid"
+                  captureId={`capture-root-${entry.compBuildId}`}
+                  {...lookups}
+                />
                 {entry.count > 1 && (
                   <span className="text-xs text-foreground/60">x{entry.count}</span>
                 )}
