@@ -4,7 +4,7 @@ title: BuildHeader sem maxLength no nome/role degrada para erro generico ao salv
 status: To Do
 assignee: []
 created_date: '2026-09-07 19:26'
-updated_date: '2026-09-07 20:01'
+updated_date: '2026-09-07 20:47'
 labels: []
 dependencies:
   - ACM-036
@@ -25,3 +25,9 @@ Achado MEDIUM da review da ACM-049 (PR #33). O schema da ACM-049 limita name a 1
 - [ ] #3 Limites client e server derivam da mesma fonte, sem numeros magicos duplicados
 - [ ] #4 make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+NARROWED pela ACM-036 (merged). A ACM-036 fechou o caso de EXCEDER TAMANHO para nome e papel: maxLength client-side derivado de validation-constants.ts (ACM-059) impede digitar alem do limite, e o contador mostra o maximo real. AC#1 e AC#3 desta task estao satisfeitos para esses dois campos.\n\nO QUE RESTA — e o reviewer achou a linha exata: src/components/editor/EditorActionBar.tsx:99 CAPTURA error.message do saveBuild, mas a linha 131 SEMPRE renderiza a string generica hardcoded ('Nao deu para salvar.'), ignorando a mensagem capturada. Isso e codigo morto: a causa real do erro ja esta em maos e e jogada fora. Entao qualquer falha de save que NAO seja tamanho de nome/papel (payload invalido, rate limit, sessao expirada, conflito) continua degradando para a mensagem generica. Corrigir e pequeno: renderizar a mensagem capturada quando ela existir, com fallback generico. Cuidado: nao vazar detalhe interno de schema/DB para o usuario — mapear erros conhecidos para copy util.
+<!-- SECTION:NOTES:END -->

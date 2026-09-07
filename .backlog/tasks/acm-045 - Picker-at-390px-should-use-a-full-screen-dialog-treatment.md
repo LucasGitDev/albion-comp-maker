@@ -4,7 +4,9 @@ title: Picker at 390px should use a full-screen dialog treatment
 status: To Do
 assignee: []
 created_date: '2026-09-07 18:33'
+updated_date: '2026-09-07 20:42'
 labels: []
+milestone: m-2
 dependencies: []
 priority: low
 ordinal: 45000

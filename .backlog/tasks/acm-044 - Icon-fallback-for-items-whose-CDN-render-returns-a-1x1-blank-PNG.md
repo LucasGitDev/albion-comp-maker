@@ -4,8 +4,9 @@ title: Icon fallback for items whose CDN render returns a 1x1 blank PNG
 status: Done
 assignee: []
 created_date: '2026-09-07 18:33'
-updated_date: '2026-09-07 19:03'
+updated_date: '2026-09-07 20:42'
 labels: []
+milestone: m-1
 dependencies: []
 priority: low
 ordinal: 44000
