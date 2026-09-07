@@ -3,10 +3,10 @@ id: ACM-036
 title: >-
   IMPORTANTE: contador de caracteres do nome da build (0/10) não reflete o texto
   digitado
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 17:42'
+updated_date: '2026-09-07 20:38'
 labels: []
 dependencies: []
 priority: low
