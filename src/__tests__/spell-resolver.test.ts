@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   buildItemIndex,
+  enumerateItemCategories,
   resolveSpells,
+  safeKeyedRecord,
   type RawItem,
   type SpellKind,
 } from "../lib/spell-resolver";
@@ -53,6 +55,63 @@ describe("buildItemIndex", () => {
   it("supports a flat top-level array (legacy/simple fixtures)", () => {
     const index = buildItemIndex([{ "@uniquename": "SIMPLE" }]);
     expect(index.size).toBe(1);
+  });
+
+  it("normalizes a category collapsed to a bare object (xml2json single-element quirk) instead of dropping it", () => {
+    const raw = {
+      items: {
+        // xml2json collapses a single-child array to a bare object — this
+        // category must still be indexed, not silently skipped.
+        mount: { "@uniquename": "T3_MOUNT_HORSE" },
+        weapon: [{ "@uniquename": "T4_MAIN_SWORD" }],
+      },
+    };
+    const index = buildItemIndex(raw);
+    expect(index.size).toBe(2);
+    expect(index.has("T3_MOUNT_HORSE")).toBe(true);
+  });
+});
+
+describe("enumerateItemCategories", () => {
+  it("still excludes NON_CATEGORY_KEYS when a category is a bare object", () => {
+    const raw = {
+      items: {
+        "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        shopcategories: { shopcategory: { "@uniquename": "NOT_AN_ITEM" } },
+        mount: { "@uniquename": "T3_MOUNT_HORSE" },
+      },
+    };
+    const categories = enumerateItemCategories(raw);
+    const categoryNames = categories.map(([name]) => name);
+    expect(categoryNames).toContain("mount");
+    expect(categoryNames).not.toContain("shopcategories");
+    expect(categoryNames).not.toContain("@xmlns:xsi");
+  });
+
+  it("returns a single 'items' category for a flat top-level array", () => {
+    const categories = enumerateItemCategories([{ "@uniquename": "SIMPLE" }]);
+    expect(categories).toEqual([["items", [{ "@uniquename": "SIMPLE" }]]]);
+  });
+});
+
+describe("safeKeyedRecord", () => {
+  it("stores a '__proto__'-named key as an own property instead of rewriting the prototype", () => {
+    const record = safeKeyedRecord<{ kind: string }>([
+      ["__proto__", { kind: "passive" }],
+      ["NORMAL_SPELL", { kind: "active" }],
+    ]);
+
+    expect(Object.getPrototypeOf(record)).toBe(null);
+    expect(Object.prototype.hasOwnProperty.call(record, "__proto__")).toBe(true);
+    expect(record["__proto__"]).toEqual({ kind: "passive" });
+    expect(record["NORMAL_SPELL"]).toEqual({ kind: "active" });
+    // A dangerous pollution would make this an object rather than "passive".
+    expect(({} as { kind?: unknown }).kind).toBeUndefined();
+
+    // Serializes with both entries present, just like a plain object would.
+    const parsedKeys = Object.keys(JSON.parse(JSON.stringify(record)));
+    expect(parsedKeys).toContain("NORMAL_SPELL");
+    expect(parsedKeys).toContain("__proto__");
   });
 });
 
