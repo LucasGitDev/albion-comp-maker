@@ -170,3 +170,59 @@ legado invalido se propaga para a biblioteca de quem forkou.
   deve ser revisitada (opcao natural: `zod/mini` no cliente, ou extrair so os
   limites numericos/regex para um modulo isomorfico sem zod).
 - O comentario enganoso em `src/db/schema.ts` passa a ser verdadeiro (AC#4).
+
+## Adendo (ACM-069): verificacao do enforcement de `server-only`
+
+A ACM-059 (review do PR #42) reportou que importar `buildStateSchema` num
+Client Component real e rodar `next build` **passava sem erro**, o que
+invalidaria a premissa do item 2 acima ("vazamento vira erro de build").
+Investigacao (ACM-069) reproduziu o caso e determinou a causa raiz:
+
+**Causa raiz: nao e um problema de configuracao do Next/Turbopack nem do
+pacote `server-only`.** O comando `next build` executado diretamente no shell
+interativo do ambiente de agente passa por um hook (`rtk`) que reescreve e
+"compacta" a saida do comando — nesse ambiente, `next build` chegou a
+retornar uma contagem de erros/warnings **identica e desconectada do estado
+real do codigo** (mesmo com o pacote `server-only` ausente de
+`node_modules`, ou com `next` inexistente no PATH, o wrapper ainda reportava
+"Errors: 5"). Ou seja, o reviewer observou o comportamento de uma ferramenta
+de shell do ambiente do agente, nao do Next.js.
+
+Quando o build e invocado do jeito que `make check` / CI de fato invocam —
+`pnpm build` (que o `package.json` mapeia para `next build`, executado como
+processo filho do pnpm, fora do hook do shell interativo) — o guard
+**dispara corretamente**: Turbopack recusa o build com
+`Error: 'server-only' cannot be imported from a Client Component module`,
+apontando exatamente `src/lib/build-schema.ts` e a cadeia de import ate o
+Client Component. Verificado tambem com o pacote `server-only` fisicamente
+removido de `node_modules`: o Next.js trata os nomes `server-only` /
+`client-only` como caso especial embutido no bundler (independente do
+conteudo do pacote no disco), entao o guard sobrevive mesmo a essa condicao.
+
+**Exposicao medida:** inspecionado `.next/static` de um build limpo (sem
+nenhum import client-side dos schemas) — nenhuma ocorrencia de `ZodError`
+ou de qualquer identificador de `zod` nos chunks estaticos (896 KiB no
+total). `zod` nao esta no bundle cliente hoje.
+
+**Enforcement real, duas camadas (AC#2/#3):**
+
+1. **Camada primaria (ja existente, confirmada funcional):** o proprio
+   `server-only` via `pnpm build` no `make check` / CI. Continua sendo a
+   fonte de verdade — nada foi enfraquecido em `build-schema.ts` /
+   `comp-schema.ts`.
+2. **Camada secundaria, nova, rapida e independente de bundler:**
+   `src/__tests__/server-only-boundary.test.ts`. Um teste vitest que
+   constroi estaticamente o grafo de imports de `src/` (resolvendo `@/` e
+   relativos), identifica todo arquivo `"use client"` e todo arquivo
+   `import "server-only"`, e falha se qualquer Client Component alcancar
+   (direta ou transitivamente) um modulo server-only — respeitando a
+   fronteira de `"use server"` (Server Actions nao expandem sua propria
+   arvore de imports para o cliente). Roda em `pnpm test`, ja coberto por
+   `make check`, sem precisar de build completo. Reproduz e falha
+   corretamente o caso relatado pelo reviewer (import de
+   `buildStateSchema` em `src/app/(editor)/build/new/page.tsx`).
+
+**Conclusao:** a premissa original da decisao nao era falsa — o mecanismo
+sempre funcionou no `make check`/CI real. O que faltava era um sinal visivel
+e independente de peculiaridades de shell/ambiente, que agora existe como
+teste dedicado.
