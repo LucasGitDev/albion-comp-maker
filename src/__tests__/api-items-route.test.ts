@@ -39,7 +39,8 @@ describe("GET /api/items (ACM-034/043)", () => {
     const { GET } = await import("@/app/api/items/route");
     const response = await GET(new Request("http://localhost/api/items") as never);
     expect(response.status).toBe(200);
-    expect(response.headers.get("Cache-Control")).toContain("immutable");
+    expect(response.headers.get("Cache-Control")).toContain("must-revalidate");
+    expect(response.headers.get("ETag")).toBeTruthy();
 
     const body = await response.json();
     expect(body).toEqual([
@@ -103,5 +104,59 @@ describe("GET /api/items (ACM-034/043)", () => {
 
     const body = await response.json();
     expect(body.code).toBe("CATALOGUE_UNAVAILABLE");
+  });
+
+  it("returns 304 with no body when the client's If-None-Match matches the current ETag", async () => {
+    readFile.mockResolvedValue(
+      JSON.stringify({
+        version: "2026-01-01",
+        items: [{ uniquename: "T4_HEAD_PLATE_SET1", slot: "head" }],
+        spells: {},
+      })
+    );
+
+    const { GET } = await import("@/app/api/items/route");
+    const first = await GET(new Request("http://localhost/api/items") as never);
+    const etag = first.headers.get("ETag");
+    expect(etag).toBeTruthy();
+
+    const second = await GET(
+      new Request("http://localhost/api/items", { headers: { "If-None-Match": etag as string } }) as never
+    );
+    expect(second.status).toBe(304);
+    expect(second.headers.get("ETag")).toBe(etag);
+    const text = await second.text();
+    expect(text).toBe("");
+
+    // Only the first request should have hit the filesystem — proves the
+    // in-memory cache (not just the ETag) is doing the work on revalidation.
+    expect(readFile).toHaveBeenCalledTimes(1);
+  });
+
+  it("de-duplicates concurrent cold-start requests into a single readFile", async () => {
+    let resolveRead: (value: string) => void = () => {};
+    readFile.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRead = resolve;
+      })
+    );
+
+    const { GET } = await import("@/app/api/items/route");
+    const request = () => new Request("http://localhost/api/items") as never;
+    const pending = [GET(request()), GET(request()), GET(request())];
+
+    resolveRead(
+      JSON.stringify({
+        version: "2026-01-01",
+        items: [{ uniquename: "T4_HEAD_PLATE_SET1", slot: "head" }],
+        spells: {},
+      })
+    );
+
+    const responses = await Promise.all(pending);
+    for (const response of responses) {
+      expect(response.status).toBe(200);
+    }
+    expect(readFile).toHaveBeenCalledTimes(1);
   });
 });
