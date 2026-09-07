@@ -12,6 +12,15 @@ export type SlotPickerPopoverProps = {
   /** True when the catalogue failed to load — distinct from "no matches". */
   catalogueFailed?: boolean;
   /**
+   * Only meaningful when `catalogueFailed` is true. `"missing-artifact"` is
+   * the only case where the `npm run sync:ao` hint is correct (it means the
+   * server itself reported the pipeline artifact as absent); any other
+   * value (or omission) renders ordinary "something went wrong" copy so a
+   * non-technical guild leader is never told to run a terminal command for
+   * a network blip or deploy hiccup (ACM-034 follow-up review).
+   */
+  catalogueFailedReason?: "missing-artifact" | "generic" | null;
+  /**
    * Re-runs the catalogue fetch (ACM-034 follow-up review). Optional so
    * existing call sites/tests that don't exercise the failed state keep
    * working unchanged; the retry affordance is only rendered when provided.
@@ -52,6 +61,7 @@ export function SlotPickerPopover({
   items,
   catalogueLoading = false,
   catalogueFailed = false,
+  catalogueFailedReason = null,
   onRetryCatalogue,
   value,
   label,
@@ -98,9 +108,36 @@ export function SlotPickerPopover({
       onClose();
       return;
     }
+  }
+
+  /**
+   * Focus trap, run on the CAPTURE phase (ACM-034 focus-trap regression
+   * fix). Must run before `ItemPicker`'s own `input[role="combobox"]`
+   * keydown handler ever sees the event: that handler treats `Tab` as
+   * "commit the highlighted result and let the browser's native Tab
+   * proceed" (doc-002 section 7's "fill slots without touching the mouse"
+   * design). Inside this modal that native Tab is exactly what escapes the
+   * dialog — the popover unmounts (commit closes it) and the browser then
+   * moves focus to whatever is next in raw DOM order (the dev-tools portal,
+   * then background slot buttons), regardless of `inert` on the background,
+   * because by the time Tab's default runs the background is no longer
+   * inert (the picker already closed).
+   *
+   * `stopPropagation` here (not just `preventDefault`) is required and is
+   * the actual fix: it stops the event before it reaches the input's own
+   * bubble-phase handler at all, so ItemPicker's commit-on-Tab never fires
+   * while this modal is open. `preventDefault` alone would not stop that
+   * handler from running. Non-boundary Tabs (i.e. plain focus-move which,
+   * in this single-input picker, never actually applies since the input is
+   * both first and last focusable) fall through to the boundary branch
+   * below, keeping focus on the same control instead of leaking out.
+   */
+  function handleKeyDownCapture(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.key !== "Tab") return;
     const panel = panelRef.current;
     if (!panel) return;
+
+    event.stopPropagation();
 
     const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
       (el) => !el.hasAttribute("data-focus-trap-ignore")
@@ -140,6 +177,7 @@ export function SlotPickerPopover({
         className="flex w-[320px] flex-col gap-2 outline-none"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={handleKeyDown}
+        onKeyDownCapture={handleKeyDownCapture}
       >
         {catalogueFailed ? (
           <div
@@ -147,8 +185,14 @@ export function SlotPickerPopover({
             className="flex flex-col items-start gap-2 rounded-md border border-[#5a2a2a] bg-[#1d1414] p-3 text-[13px] text-[#f2b8b8]"
           >
             <span>
-              Catálogo de itens indisponível. Rode <code>npm run sync:ao</code> para gerá-lo e tente
-              novamente.
+              {catalogueFailedReason === "missing-artifact" ? (
+                <>
+                  Catálogo de itens indisponível. Rode <code>npm run sync:ao</code> para gerá-lo e
+                  tente novamente.
+                </>
+              ) : (
+                "Não foi possível carregar os itens. Verifique sua conexão e tente novamente."
+              )}
             </span>
             {onRetryCatalogue && (
               <button
