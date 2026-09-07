@@ -8,6 +8,7 @@ function item(overrides: Partial<AOItem> & { uniquename: string; slot: AOItem["s
     localizedNames: {},
     spells: [],
     twohanded: false,
+    maxEnchant: 0,
     ...overrides,
   };
 }
