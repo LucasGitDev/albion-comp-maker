@@ -2,22 +2,33 @@
 /**
  * AO data pipeline:
  *   Step 1 — download raw dumps to .cache/ (7-day TTL, --force)
- *   Step 2 — index localization (EN-US + PT-BR)
- *   Step 3 — resolve spells per item, filter, emit src/data/ao-data.json
+ *   Step 2 — index item names (formatted/items.json) and spell names (localization.json)
+ *   Step 3 — classify spells active/passive/toggle from spells.json
+ *   Step 4 — resolve spells per item (repo-root items.json), filter, emit src/data/ao-data.json
  *
  * Sources: ao-data/ao-bin-dumps on GitHub (community-converted game XML).
+ *
+ * See decision-004 for why gameplay data (items-raw.json) and display names
+ * (items.json) come from two different upstream files.
  */
 
 import { createWriteStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import { pipeline } from "stream/promises";
 import { join } from "path";
-import { buildItemIndex, resolveSpells } from "../src/lib/spell-resolver";
+import {
+  buildItemIndex,
+  enumerateItemCategories,
+  resolveSpells,
+  safeKeyedRecord,
+  type SpellKind,
+} from "../src/lib/spell-resolver";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const BASE = "https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master";
 const SOURCES = [
   { name: "items.json",        url: `${BASE}/formatted/items.json` },
+  { name: "items-raw.json",    url: `${BASE}/items.json` },
   { name: "spells.json",       url: `${BASE}/spells.json` },
   { name: "localization.json", url: `${BASE}/localization.json` },
 ] as const;
@@ -27,6 +38,13 @@ const OUTPUT_DIR = join(process.cwd(), "src", "data");
 const OUTPUT     = join(OUTPUT_DIR, "ao-data.json");
 const TTL_MS     = 7 * 24 * 60 * 60 * 1000;
 const FORCE      = process.argv.includes("--force");
+
+// Guard rails: the original bug shipped precisely because emitting 0 items
+// exited 0. See decision-004.
+const MIN_ITEMS = 1500;
+
+// Only equippable categories are emitted as comp items.
+const EQUIPPABLE_CATEGORIES = new Set(["weapon", "equipmentitem", "mount", "transformationweapon"]);
 
 // ─── Step 1: Download ────────────────────────────────────────────────────────
 
@@ -38,7 +56,7 @@ function isFresh(path: string): boolean {
 async function download(url: string, dest: string): Promise<void> {
   const res = await fetch(url);
   if (!res.ok || !res.body) throw new Error(`fetch ${url} → ${res.status} ${res.statusText}`);
-  // Stream to avoid buffering 94 MB localization in RAM
+  // Stream to avoid buffering large (up to ~94 MB) files in RAM
   await pipeline(res.body as unknown as NodeJS.ReadableStream, createWriteStream(dest));
 }
 
@@ -53,7 +71,7 @@ async function downloadAll(): Promise<void> {
   }
 }
 
-// ─── Step 2: Localization index ───────────────────────────────────────────────
+// ─── Step 2: Localization index (spell names, from TMX localization.json) ────
 
 type SegValue = string | { "#text": string } | undefined;
 
@@ -68,12 +86,14 @@ const TARGET_LOCALES = ["EN-US", "PT-BR"] as const;
 type TmxVariant = { "@xml:lang"?: string; seg?: SegValue };
 type TmxEntry = { "@tuid"?: string; tuv?: TmxVariant | TmxVariant[] };
 
-function buildLocaleIndex(raw: unknown): Map<string, Record<string, string>> {
-  // Map: itemId → { locale → name }
+/**
+ * Builds an index keyed by bare uniquename, stripping the TMX tuid prefix
+ * (`@ITEMS_` / `@SPELLS_`) so callers can look up by uniquename directly.
+ * Without this the lookup always misses (decision-004 bug #4).
+ */
+function buildTmxNameIndex(raw: unknown, prefix: string): Map<string, Record<string, string>> {
   const index = new Map<string, Record<string, string>>();
 
-  // ao-bin-dumps localization.json is a TMX v1.4 document converted to JSON:
-  //   { "tmx": { "body": { "tu": [ { "@tuid": "...", "tuv": [ { "@xml:lang": "EN-US", "seg": "..." }, ... ] } ] } } }
   const r = raw as Record<string, unknown>;
   const tmx = r["tmx"] as Record<string, unknown> | undefined;
   const body = tmx?.["body"] as Record<string, unknown> | undefined;
@@ -81,8 +101,9 @@ function buildLocaleIndex(raw: unknown): Map<string, Record<string, string>> {
   const entries: TmxEntry[] = Array.isArray(tuRaw) ? (tuRaw as TmxEntry[]) : [];
 
   for (const entry of entries) {
-    const id = entry["@tuid"];
-    if (!id) continue;
+    const tuid = entry["@tuid"];
+    if (!tuid || !tuid.startsWith(prefix)) continue;
+    const id = tuid.slice(prefix.length);
 
     const tuvRaw = entry.tuv;
     const variants: TmxVariant[] = Array.isArray(tuvRaw) ? tuvRaw : tuvRaw ? [tuvRaw] : [];
@@ -101,74 +122,141 @@ function buildLocaleIndex(raw: unknown): Map<string, Record<string, string>> {
   return index;
 }
 
-// ─── Step 3: Spell index from spells.json ────────────────────────────────────
+// ─── Step 3: Item name index (formatted/items.json — names only, no gameplay) ─
 
-const SPELL_KINDS = ["activespell", "passivespell", "togglespell"] as const;
+type FormattedItem = {
+  UniqueName?: string;
+  LocalizedNames?: Record<string, string> | null;
+};
 
-function buildSpellLocaleIndex(raw: unknown, locIndex: Map<string, Record<string, string>>) {
+function buildItemNameIndex(raw: unknown): Map<string, Record<string, string>> {
+  const index = new Map<string, Record<string, string>>();
+  const arr = Array.isArray(raw) ? (raw as FormattedItem[]) : [];
+  for (const it of arr) {
+    const id = it.UniqueName;
+    if (!id || !it.LocalizedNames) continue;
+    const names: Record<string, string> = {};
+    for (const locale of TARGET_LOCALES) {
+      const v = it.LocalizedNames[locale];
+      if (v) names[locale] = v;
+    }
+    if (Object.keys(names).length > 0) index.set(id, names);
+  }
+  return index;
+}
+
+// ─── Step 4: Spell classification from spells.json ───────────────────────────
+
+const SPELL_KIND_KEYS: Record<string, SpellKind> = {
+  activespell: "active",
+  passivespell: "passive",
+  togglespell: "toggle",
+};
+
+function buildSpellKindIndex(raw: unknown): Map<string, SpellKind> {
+  const map = new Map<string, SpellKind>();
   const r = raw as Record<string, unknown>;
   const spellsRoot = r["spells"] as Record<string, unknown> | undefined;
+  if (!spellsRoot) return map;
 
-  const arr: Array<Record<string, unknown>> = [];
-  if (spellsRoot) {
-    for (const kind of SPELL_KINDS) {
-      const kindArr = spellsRoot[kind];
-      if (Array.isArray(kindArr)) arr.push(...(kindArr as Array<Record<string, unknown>>));
+  for (const [key, kind] of Object.entries(SPELL_KIND_KEYS)) {
+    const arr = spellsRoot[key];
+    if (!Array.isArray(arr)) continue;
+    for (const s of arr as Array<Record<string, unknown>>) {
+      const name = s["@uniquename"] as string | undefined;
+      if (name) map.set(name, kind);
     }
-  } else if (Array.isArray(raw)) {
-    arr.push(...(raw as Array<Record<string, unknown>>));
   }
 
-  const map = new Map<string, { uniquename: string; localizedNames: Record<string, string> }>();
-  for (const s of arr) {
-    const name = s["@uniquename"] as string | undefined;
-    if (!name) continue;
-    const locs = locIndex.get(name) ?? {};
-    map.set(name, { uniquename: name, localizedNames: locs });
-  }
   return map;
 }
 
-// ─── Step 4: Emit ao-data.json ───────────────────────────────────────────────
+// ─── Step 5: Emit ao-data.json ───────────────────────────────────────────────
 
 async function emit(): Promise<void> {
   console.log("[emit] loading cached files…");
-  const rawItems       = JSON.parse(readFileSync(join(CACHE_DIR, "items.json"), "utf8")) as unknown;
-  const rawSpells      = JSON.parse(readFileSync(join(CACHE_DIR, "spells.json"), "utf8")) as unknown;
-  const rawLocaliz     = JSON.parse(readFileSync(join(CACHE_DIR, "localization.json"), "utf8")) as unknown;
+  const rawItemsRaw   = JSON.parse(readFileSync(join(CACHE_DIR, "items-raw.json"), "utf8")) as unknown;
+  const rawItemNames  = JSON.parse(readFileSync(join(CACHE_DIR, "items.json"), "utf8")) as unknown;
+  const rawSpells     = JSON.parse(readFileSync(join(CACHE_DIR, "spells.json"), "utf8")) as unknown;
+  const rawLocaliz    = JSON.parse(readFileSync(join(CACHE_DIR, "localization.json"), "utf8")) as unknown;
 
-  console.log("[emit] indexing localization…");
-  const locIndex = buildLocaleIndex(rawLocaliz);
+  console.log("[emit] indexing item names…");
+  const itemNameIndex = buildItemNameIndex(rawItemNames);
 
-  console.log("[emit] indexing spells…");
-  const spellMap = buildSpellLocaleIndex(rawSpells, locIndex);
+  console.log("[emit] indexing spell names…");
+  const spellNameIndex = buildTmxNameIndex(rawLocaliz, "@SPELLS_");
 
-  console.log("[emit] resolving item spells…");
-  const itemIndex = buildItemIndex(rawItems);
+  console.log("[emit] classifying spells…");
+  const spellKinds = buildSpellKindIndex(rawSpells);
+  if (spellKinds.size === 0 || ![...spellKinds.values()].some((k) => k === "passive")) {
+    throw new Error(
+      `[fatal] spells.json produced no passive spells (${spellKinds.size} total) — ` +
+        "upstream schema likely renamed activespell/passivespell/togglespell keys",
+    );
+  }
+
+  console.log("[emit] indexing items…");
+  const itemIndex = buildItemIndex(rawItemsRaw);
+
+  const categoryOf = new Map<string, string>();
+  for (const [category, categoryItems] of enumerateItemCategories(rawItemsRaw)) {
+    for (const it of categoryItems) {
+      const name = it["@uniquename"];
+      if (name) categoryOf.set(name, category);
+    }
+  }
 
   const items: unknown[] = [];
   let skipped = 0;
 
   for (const [id, item] of itemIndex) {
-    const slot = (item as Record<string, unknown>)["@slottype"] as string | undefined;
+    const category = categoryOf.get(id);
+    if (!category || !EQUIPPABLE_CATEGORIES.has(category)) { skipped++; continue; }
+
+    const slot = item["@slottype"];
     if (!slot) { skipped++; continue; }
 
-    const locs = locIndex.get(id);
-    if (!locs || !locs["EN-US"]) { skipped++; continue; }
+    const names = itemNameIndex.get(id);
+    if (!names || !names["EN-US"]) { skipped++; continue; }
 
-    const resolved = resolveSpells(id, itemIndex);
+    const resolved = resolveSpells(id, itemIndex, spellKinds);
     const spells = resolved.map((s) => ({
       uniquename: s.uniquename,
-      slot: s.slot,
-      localizedNames: spellMap.get(s.uniquename)?.localizedNames ?? {},
+      slotGroup: s.slot,
+      kind: s.kind,
+      // fallback to uniquename for utility spells absent from localization
+      // (e.g. PASSIVE_BACKPACK_*) — see decision-004
+      localizedNames: spellNameIndex.get(s.uniquename) ?? { "EN-US": s.uniquename },
     }));
 
-    items.push({ uniquename: id, slot, localizedNames: locs, spells });
+    items.push({ uniquename: id, slot, localizedNames: names, spells });
   }
 
-  // Spells registry (all known spells)
-  const spells: Record<string, unknown> = {};
-  for (const [k, v] of spellMap) spells[k] = v;
+  if (items.length < MIN_ITEMS) {
+    throw new Error(
+      `[fatal] only ${items.length} items emitted (minimum ${MIN_ITEMS}) — pipeline is likely broken, see decision-004`,
+    );
+  }
+
+  const hasPassiveSpell = items.some((it) =>
+    (it as { spells: Array<{ kind: SpellKind }> }).spells.some((s) => s.kind === "passive"),
+  );
+  if (!hasPassiveSpell) {
+    throw new Error("[fatal] no passive spells emitted across any item — spell classification is broken");
+  }
+
+  // Spells registry (all known spells, keyed by upstream-controlled uniquename —
+  // see safeKeyedRecord for why this must not be a plain object literal).
+  const spells = safeKeyedRecord(
+    [...spellKinds].map(([uniquename, kind]) => [
+      uniquename,
+      {
+        uniquename,
+        kind,
+        localizedNames: spellNameIndex.get(uniquename) ?? { "EN-US": uniquename },
+      },
+    ]),
+  );
 
   const output = {
     version: new Date().toISOString().slice(0, 10),
