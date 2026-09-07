@@ -4,7 +4,7 @@ title: Tier and enchant selectors after item pick (RF-1)
 status: In Review
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 17:19'
+updated_date: '2026-09-07 17:22'
 labels: []
 milestone: m-2
 dependencies:
@@ -118,4 +118,26 @@ EquippedItem and no longer typechecked post-merge.
 
 make check: green (lint 0 errors/2 pre-existing <img> warnings, tsc, next
 build, vitest 120/120).
+
+## Re-review of PR #16 (focused pass, post-descope)
+
+Verdict: LGTM
+
+Verified:
+1. CRITICAL from prior review is resolved. No `@N` uniquename enchant parsing remains anywhere (grepped src/components/editor/tier-enchant.ts and repo-wide for `@[0-9]`/enchant patterns) — getEnchantOptions/EnchantOption/EnchantSelect/setEnchant were fully removed, not left dead. tier-enchant.test.ts only exercises tier derivation now; no fabricated `T8_HEAD_PLATE_SET1@1`-style fixture survives.
+2. Nothing verified-good was lost:
+   - Store-level two-handed offhand guard in src/store/build-store.ts is present and MUTATION-TESTED again: removed the `if (slot === "offhand" && state.build.slots.mainhand?.twohanded) return {}` guard, `npx vitest run src/__tests__/build-store.test.ts` failed 1/12 (offhand no longer stayed null), restored the guard, suite back to 12/12 green, working tree clean.
+   - `twohanded: boolean` on EquippedItem (src/types/build.ts) still populated verbatim from `AOItem.twohanded` in setItem, no `_2H_` heuristic.
+   - Tier parsing / TierSelect intact and covered by tier-enchant.test.ts + tier-select.test.tsx.
+   - Lock icon in SlotCard.tsx is an inline `<svg>`; grepped src/components/editor/** for emoji glyphs — none found.
+3. Residual enchant display: no enchant badge renders anywhere; SlotCard's locked/filled states degrade cleanly with `item.enchant` unused for display. No broken/fabricated value surfaces.
+4. Merge collateral in src/__tests__/build-card.test.tsx is a minimal 2-line addition (`twohanded: true` / `twohanded: false` on the two existing fixtures) required by the new field — no assertions touched, weakened, or removed. The oklch()/export-safety guard tests (lines ~66-76, "never uses a Tailwind palette color utility" / "never emits a literal oklch()") are untouched.
+5. Scope: `git diff main...HEAD --name-only` confirmed no touches to scripts/**, src/data/**, src/__tests__/fixtures/ao-corpus.json, or src/components/icons/**.
+6. AC#2 is unchecked in the task file; deferral is documented via decision-011 and the Dependencies line now includes ACM-030.
+
+Full suite: `npx vitest run` → 120 passed / 0 failed, 0 failed suites.
+
+Minor (non-blocking) note for future cleanup: the task's "Implementation Notes" section (the block above this one) still describes the pre-descope design (getEnchantOptions, EnchantSelect, setEnchant) which no longer exists in the code — stale relative to the later descope note. Not a code defect, but whoever picks up the ACM-030 follow-up should read the descope commit message / decision-011, not the original notes, for the current shape of tier-enchant.ts.
+
+No code written by this review. Not merging — leaving PR #16 for Orchestrator to merge.
 <!-- SECTION:NOTES:END -->
