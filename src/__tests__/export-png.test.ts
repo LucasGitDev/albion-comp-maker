@@ -13,6 +13,7 @@ vi.mock("html-to-image", () => ({
 const {
   EXPORT_PIXEL_RATIO,
   ExportImageLoadError,
+  ExportImageTimeoutError,
   ExportUnsupportedError,
   buildExportFilename,
   downloadDataUrl,
@@ -21,6 +22,15 @@ const {
   exportNodeToPng,
   isClipboardImageSupported,
 } = await import("@/lib/export-png");
+
+function makeStalledImg(): HTMLImageElement {
+  const img = document.createElement("img");
+  Object.defineProperty(img, "complete", { value: false, configurable: true });
+  Object.defineProperty(img, "naturalWidth", { value: 0, configurable: true });
+  // Deliberately never fires "load" or "error" — simulates a stalled/dropped
+  // upstream connection through /api/icon.
+  return img;
+}
 
 function makeImg(opts: { complete: boolean; naturalWidth: number; failOnListen?: boolean }): HTMLImageElement {
   const img = document.createElement("img");
@@ -87,6 +97,13 @@ describe("export-png", () => {
       const node = makeCaptureNode([makeImg({ complete: false, naturalWidth: 64 })]);
 
       await expect(exportNodeToPng(node)).resolves.toBe("data:image/png;base64,BBBB");
+    });
+
+    it("rejects with ExportImageTimeoutError instead of hanging when an <img> never fires load or error", async () => {
+      const node = makeCaptureNode([makeStalledImg()]);
+
+      await expect(exportNodeToPng(node, 20)).rejects.toBeInstanceOf(ExportImageTimeoutError);
+      expect(toPngMock).not.toHaveBeenCalled();
     });
   });
 

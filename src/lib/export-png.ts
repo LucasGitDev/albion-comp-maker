@@ -14,6 +14,20 @@ export class ExportImageLoadError extends Error {
   }
 }
 
+/**
+ * Icons load through `/api/icon`, which proxies to render.albiononline.com.
+ * A stalled/dropped upstream connection fires neither `load` nor `error`,
+ * so waiting on those events alone can hang forever (see ACM-015 review).
+ * This timeout bounds that wait so the export always settles instead of
+ * leaving the UI stuck in `busy` with no recovery path.
+ */
+export class ExportImageTimeoutError extends Error {
+  constructor(message = "Timed out waiting for icons to load. Check your connection and try again.") {
+    super(message);
+    this.name = "ExportImageTimeoutError";
+  }
+}
+
 export class ExportUnsupportedError extends Error {
   constructor(message: string) {
     super(message);
@@ -32,19 +46,54 @@ export class ExportUnsupportedError extends Error {
  * throw explicitly if any image failed rather than exporting a half-empty
  * card.
  */
-async function waitForImages(node: HTMLElement): Promise<void> {
+/**
+ * Default per-image wait timeout: 8000ms. Chosen to comfortably cover a slow
+ * but *live* `/api/icon` round trip (icons are small, same-origin, typically
+ * sub-second) while still bounding a stalled/dropped upstream connection to
+ * a single-digit-seconds wait instead of forever.
+ */
+export const DEFAULT_IMAGE_LOAD_TIMEOUT_MS = 8000;
+
+function waitForImage(img: HTMLImageElement, timeoutMs: number): Promise<boolean> {
+  if (img.complete) {
+    return Promise.resolve(img.naturalWidth > 0);
+  }
+  return new Promise<boolean>((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      img.removeEventListener("load", onLoad);
+      img.removeEventListener("error", onError);
+      clearTimeout(timer);
+    };
+    const onLoad = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(true);
+    };
+    const onError = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(false);
+    };
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new ExportImageTimeoutError());
+    }, timeoutMs);
+    img.addEventListener("load", onLoad, { once: true });
+    img.addEventListener("error", onError, { once: true });
+  });
+}
+
+async function waitForImages(
+  node: HTMLElement,
+  timeoutMs: number = DEFAULT_IMAGE_LOAD_TIMEOUT_MS
+): Promise<void> {
   const images = Array.from(node.querySelectorAll("img"));
-  const results = await Promise.all(
-    images.map((img) => {
-      if (img.complete) {
-        return Promise.resolve(img.naturalWidth > 0);
-      }
-      return new Promise<boolean>((resolve) => {
-        img.addEventListener("load", () => resolve(true), { once: true });
-        img.addEventListener("error", () => resolve(false), { once: true });
-      });
-    })
-  );
+  const results = await Promise.all(images.map((img) => waitForImage(img, timeoutMs)));
 
   if (results.some((ok) => !ok)) {
     throw new ExportImageLoadError();
@@ -59,16 +108,22 @@ async function waitForImages(node: HTMLElement): Promise<void> {
  * depends on the browser having the font rasterized at capture time
  * (ACM-015 AC#4).
  */
-export async function exportNodeToPng(node: HTMLElement): Promise<string> {
-  await waitForImages(node);
+export async function exportNodeToPng(
+  node: HTMLElement,
+  imageTimeoutMs: number = DEFAULT_IMAGE_LOAD_TIMEOUT_MS
+): Promise<string> {
+  await waitForImages(node, imageTimeoutMs);
   return toPng(node, { pixelRatio: EXPORT_PIXEL_RATIO, cacheBust: true });
 }
 
 /**
  * Renders `node` to a PNG Blob at `EXPORT_PIXEL_RATIO` for clipboard writes.
  */
-export async function exportNodeToBlob(node: HTMLElement): Promise<Blob> {
-  await waitForImages(node);
+export async function exportNodeToBlob(
+  node: HTMLElement,
+  imageTimeoutMs: number = DEFAULT_IMAGE_LOAD_TIMEOUT_MS
+): Promise<Blob> {
+  await waitForImages(node, imageTimeoutMs);
   const blob = await toBlob(node, { pixelRatio: EXPORT_PIXEL_RATIO, cacheBust: true });
   if (blob === null) {
     throw new Error("html-to-image failed to produce a PNG blob.");
@@ -107,13 +162,16 @@ export function isClipboardImageSupported(): boolean {
  * fall back to `exportNodeToPng` + `downloadDataUrl` rather than silently
  * doing nothing.
  */
-export async function exportNodeToClipboard(node: HTMLElement): Promise<void> {
+export async function exportNodeToClipboard(
+  node: HTMLElement,
+  imageTimeoutMs: number = DEFAULT_IMAGE_LOAD_TIMEOUT_MS
+): Promise<void> {
   if (!isClipboardImageSupported()) {
     throw new ExportUnsupportedError(
       "Clipboard image copy is not supported in this browser. Use Download instead."
     );
   }
-  const blob = await exportNodeToBlob(node);
+  const blob = await exportNodeToBlob(node, imageTimeoutMs);
   await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 }
 

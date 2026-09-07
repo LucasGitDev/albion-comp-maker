@@ -93,4 +93,41 @@ describe("ExportBar", () => {
 
     expect(await screen.findByText("boom")).toBeInTheDocument();
   });
+
+  describe("structural invariant: never a descendant of #capture-root", () => {
+    /**
+     * ExportBar uses Tailwind palette utilities (bg-blue-600, etc.) that
+     * compile to oklch(), which html-to-image cannot rasterize
+     * (decision-007). Today this is safe only because nothing wires
+     * ExportBar into #capture-root — this test turns that convention into
+     * an enforced structural check, so a future wiring change that nests it
+     * there fails loudly instead of silently poisoning every export.
+     */
+    function assertNeverInsideCaptureRoot(container: HTMLElement) {
+      const captureRoot = container.querySelector("#capture-root");
+      expect(captureRoot).toBeTruthy();
+      expect(captureRoot!.querySelector("button")).toBeNull();
+      const exportButton = container.querySelector("button");
+      expect(exportButton).not.toBeNull();
+      expect(captureRoot!.contains(exportButton)).toBe(false);
+    }
+
+    it("passes when ExportBar is rendered as a sibling of #capture-root (correct wiring)", () => {
+      const { container } = renderBar();
+      assertNeverInsideCaptureRoot(container);
+    });
+
+    it("fails the invariant check when ExportBar is nested inside #capture-root (regression fixture)", () => {
+      const ref = createRef<HTMLDivElement>();
+      const { container } = render(
+        <div ref={ref}>
+          <div id="capture-root">
+            <ExportBar captureNodeRef={ref} buildName="Bruiser de Frontline" />
+          </div>
+        </div>
+      );
+
+      expect(() => assertNeverInsideCaptureRoot(container)).toThrow();
+    });
+  });
 });
