@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col">
+    <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">
       <section className="flex flex-col items-center gap-4 border-b border-[var(--color-border)] px-6 py-16 text-center">
         <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
           Monte comps de Albion Online prontas para o Discord
@@ -32,6 +32,6 @@ export default function Home() {
           </p>
         </div>
       </section>
-    </div>
+    </main>
   );
 }
