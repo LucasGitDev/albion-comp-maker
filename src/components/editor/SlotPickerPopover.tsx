@@ -112,32 +112,23 @@ export function SlotPickerPopover({
 
   /**
    * Focus trap, run on the CAPTURE phase (ACM-034 focus-trap regression
-   * fix). Must run before `ItemPicker`'s own `input[role="combobox"]`
-   * keydown handler ever sees the event: that handler treats `Tab` as
-   * "commit the highlighted result and let the browser's native Tab
-   * proceed" (doc-002 section 7's "fill slots without touching the mouse"
-   * design). Inside this modal that native Tab is exactly what escapes the
-   * dialog — the popover unmounts (commit closes it) and the browser then
-   * moves focus to whatever is next in raw DOM order (the dev-tools portal,
-   * then background slot buttons), regardless of `inert` on the background,
-   * because by the time Tab's default runs the background is no longer
-   * inert (the picker already closed).
+   * fix). Loops focus back to the first/last focusable element inside the
+   * panel whenever Tab/Shift+Tab would otherwise move it outside the
+   * dialog — in this single-input picker that's every Tab press, since the
+   * search input is both the first and last focusable element.
    *
-   * `stopPropagation` here (not just `preventDefault`) is required and is
-   * the actual fix: it stops the event before it reaches the input's own
-   * bubble-phase handler at all, so ItemPicker's commit-on-Tab never fires
-   * while this modal is open. `preventDefault` alone would not stop that
-   * handler from running. Non-boundary Tabs (i.e. plain focus-move which,
-   * in this single-input picker, never actually applies since the input is
-   * both first and last focusable) fall through to the boundary branch
-   * below, keeping focus on the same control instead of leaking out.
+   * ItemPicker itself (ACM-046) calls `preventDefault()` when Tab commits
+   * the highlighted result, so a committing Tab no longer reaches the
+   * browser's native focus-move behavior. This capture-phase handler
+   * additionally `preventDefault()`s the boundary case so a non-committing
+   * Tab (no highlighted result) can't escape either. It intentionally does
+   * NOT `stopPropagation()`: that would also block ItemPicker's own Tab
+   * handling, which is unnecessary now that the fix lives at the source.
    */
   function handleKeyDownCapture(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.key !== "Tab") return;
     const panel = panelRef.current;
     if (!panel) return;
-
-    event.stopPropagation();
 
     const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
       (el) => !el.hasAttribute("data-focus-trap-ignore")
