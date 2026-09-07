@@ -15,6 +15,18 @@ export type BuildCardProps = {
   itemNames?: BuildCardLookups["itemNames"];
   spellNames?: BuildCardLookups["spellNames"];
   spellGroupsByItem?: BuildCardLookups["spellGroupsByItem"];
+  /**
+   * DOM id of the capture root. Defaults to `"capture-root"` — the single
+   * export/editor route (ACM-018/019, `EditorActionBar`/`ExportBar`,
+   * decision-010) only ever mounts one `BuildCard` at a time, so the
+   * default keeps that contract unchanged. Any caller that renders more
+   * than one `BuildCard` on the same page (e.g. the public comp page,
+   * ACM-021) MUST pass a unique id per instance — otherwise the page emits
+   * duplicate `id="capture-root"` nodes, which is invalid HTML and makes
+   * `document.getElementById`/`querySelector("#capture-root")` silently
+   * resolve to the first one only.
+   */
+  captureId?: string;
 };
 
 /**
@@ -39,6 +51,7 @@ export function BuildCard({
   itemNames,
   spellNames,
   spellGroupsByItem,
+  captureId = "capture-root",
 }: BuildCardProps): React.JSX.Element {
   const resolvedTheme: BuildCardTheme = { ...DEFAULT_BUILD_CARD_THEME, ...theme };
   const lookups: BuildCardLookups = {
@@ -48,7 +61,7 @@ export function BuildCard({
   };
 
   return (
-    <div id="capture-root" data-build-card data-layout={layout} style={{ display: "inline-flex" }}>
+    <div id={captureId} data-build-card data-layout={layout} style={{ display: "inline-flex" }}>
       {layout === "grid" ? (
         <BuildCardGrid state={state} theme={resolvedTheme} lookups={lookups} />
       ) : (
