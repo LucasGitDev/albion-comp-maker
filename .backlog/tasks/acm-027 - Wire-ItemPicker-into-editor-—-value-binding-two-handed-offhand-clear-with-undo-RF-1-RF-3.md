@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-07 17:03'
-updated_date: '2026-09-07 17:03'
+updated_date: '2026-09-07 17:09'
 labels: []
 milestone: m-2
 dependencies:
@@ -39,3 +39,9 @@ File scope: `src/components/editor/**` (new wrapper + `SlotCard`/`SlotGrid` call
 - [ ] #4 Clicking an empty or filled SlotCard opens the ACM-008 ItemPicker anchored to that slot, and selecting a result calls useBuildStore's setItem with the chosen item/tier/enchant, closing the picker
 - [ ] #5 make check passes on the task branch (lint, tsc --noEmit, next build, vitest)
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+GAP (recurring, flagged by ACM-011, ACM-009 and ACM-013): nothing in the app actually LOADS ao-data.json into the editor yet. ItemPicker takes items as a prop, tier/enchant option lists take catalogue-derived props, and SlotCard needs item.spells to know which Q/W/E/Passive rows to render — all are currently fed only by synthetic fixtures in tests. ACM-027 must include the real catalogue load (server component read or fetch of the generated ao-data.json) and thread it to the editor, otherwise the editor is not demonstrable end-to-end. Make 'editor renders real items from ao-data.json in the browser' an explicit acceptance criterion.
+<!-- SECTION:NOTES:END -->
