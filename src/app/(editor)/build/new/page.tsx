@@ -185,7 +185,7 @@ export default function NewBuildPage(): React.JSX.Element {
   }, [build]);
 
   return (
-    <main id="main-content" tabIndex={-1} className="mx-auto flex max-w-6xl flex-col gap-6 p-8 pb-24 md:pb-8 outline-none">
+    <main id="main-content" tabIndex={-1} className="mx-auto flex min-w-0 max-w-6xl flex-col gap-6 p-8 pb-24 md:pb-8 outline-none">
       <Breadcrumb current={build.name.trim() || "Nova build"} />
       <EditorActionBar
         buildName={build.name}
@@ -199,7 +199,7 @@ export default function NewBuildPage(): React.JSX.Element {
         tabbed/clicked into or announced by AT — it reinforces (but doesn't
         replace) the popover's own focus trap (ACM-034 follow-up review).
       */}
-      <div inert={pickerOpen} className="flex flex-col gap-6">
+      <div inert={pickerOpen} className="flex min-w-0 flex-col gap-6">
         <BuildHeader build={build} onNameChange={actions.setName} onRoleChange={actions.setRole} />
         {/*
           Mobile-only (`md:hidden` inside the component). Lives inside the

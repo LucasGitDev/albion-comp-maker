@@ -59,9 +59,22 @@ describe("SlotGroupNav (ACM-041)", () => {
     expect(document.activeElement).toBe(document.getElementById("slot-group-swaps"));
   });
 
-  it("marks a complete group with a check mark using --color-enchant, never the accent (action) token", () => {
+  it("updates the visible active chip to Swaps immediately on click, not just focus (visual review CRITICAL/HIGH: the chip must never stay stuck on a previous group, especially a short last section the IntersectionObserver may never flag as intersecting)", () => {
+    renderNavWithTargets();
+    const armadura = screen.getByRole("link", { name: /armadura 0 de 3/i });
+    fireEvent.click(armadura);
+    expect(armadura).toHaveAttribute("aria-current", "location");
+
+    const swaps = screen.getByRole("link", { name: /swaps 0/i });
+    fireEvent.click(swaps);
+    expect(swaps).toHaveAttribute("aria-current", "location");
+    expect(armadura).not.toHaveAttribute("aria-current");
+  });
+
+  it("does not render a redundant check-mark glyph for a complete group (AA contrast fail, ACM-041 visual review) — the count text already conveys completion", () => {
     renderNavWithTargets({ groups: [{ id: "armas", title: "Armas", filled: 2, total: 2 }] });
     const chip = screen.getByRole("link", { name: /armas 2 de 2/i });
-    expect(chip).toHaveTextContent("✓");
+    expect(chip).not.toHaveTextContent("✓");
+    expect(chip).toHaveTextContent("Armas 2/2");
   });
 });

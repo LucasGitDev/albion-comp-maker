@@ -105,4 +105,36 @@ describe("/build/new — mobile group-nav strip (ACM-041)", () => {
     }
     expect(foundInert).toBe(true);
   });
+
+  /**
+   * VISUAL REVIEW CRITICAL: at a real 390px viewport, `document.documentElement
+   * .scrollWidth` measured 618px because the nav strip's `overflow-x-auto`
+   * never actually contained its own content — every `flex flex-col`
+   * ancestor between it and `<main>` (jsdom can't measure layout, so this
+   * asserts the structural fix instead: `min-w-0` on every flex ancestor in
+   * that chain, without which flexbox's default `min-width: auto` bubbles
+   * the strip's ~554px min-content size all the way up to `<main>`).
+   */
+  it("every flex ancestor between <main> and the group-nav strip sets min-w-0 (prevents the strip's content width from forcing horizontal overflow at 390px)", () => {
+    render(<NewBuildPage />);
+    const nav = screen.getByRole("navigation", { name: /grupos de slots/i });
+    expect(nav.className).toContain("min-w-0");
+
+    const main = document.getElementById("main-content") as HTMLElement;
+    expect(main.className).toContain("min-w-0");
+
+    let ancestor: HTMLElement | null = nav.parentElement;
+    let sawMain = false;
+    while (ancestor) {
+      if (ancestor === main) {
+        sawMain = true;
+        break;
+      }
+      if (ancestor.className.includes("flex") && ancestor.className.includes("flex-col")) {
+        expect(ancestor.className).toContain("min-w-0");
+      }
+      ancestor = ancestor.parentElement;
+    }
+    expect(sawMain).toBe(true);
+  });
 });
