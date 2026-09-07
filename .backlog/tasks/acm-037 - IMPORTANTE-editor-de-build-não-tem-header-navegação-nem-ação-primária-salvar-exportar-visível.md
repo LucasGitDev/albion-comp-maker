@@ -3,10 +3,10 @@ id: ACM-037
 title: >-
   IMPORTANTE: editor de build não tem header, navegação, nem ação primária
   (salvar/exportar) visível
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 18:50'
+updated_date: '2026-09-07 18:56'
 labels: []
 dependencies: []
 priority: high
