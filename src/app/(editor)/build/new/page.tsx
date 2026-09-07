@@ -28,6 +28,7 @@ export default function NewBuildPage(): React.JSX.Element {
         onRequestItemPick={handleRequestItemPick}
         onClearSlot={actions.clearSlot}
         onTierChange={(slot, option) => actions.setTier(slot, option.tier, option.itemId)}
+        onSpellChange={actions.setSpell}
       />
     </main>
   );
