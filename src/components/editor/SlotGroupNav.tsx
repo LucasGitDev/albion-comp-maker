@@ -48,19 +48,44 @@ export function SlotGroupNav({ groups, totalFilled, totalSlots, swapsCount }: Sl
     if (targets.length === 0) return;
 
     const navHeight = readGroupNavHeightPx();
+    const lastId = ids[ids.length - 1];
+
+    /**
+     * Handles the "short last section" case: a target near the end of the
+     * scroll area (e.g. Swaps) can be too short to ever occupy the
+     * IntersectionObserver's top ~30% band, so it would never become active
+     * on its own. When the user has scrolled to (or past) the bottom of the
+     * document, force the last target active regardless of what the
+     * observer reports.
+     */
+    const checkScrollEnd = () => {
+      const doc = document.documentElement;
+      const atBottom = window.innerHeight + window.scrollY >= doc.scrollHeight - 1;
+      if (atBottom && lastId) setActiveId(lastId);
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries.filter((entry) => entry.isIntersecting);
-        if (visible.length === 0) return;
+        if (visible.length === 0) {
+          checkScrollEnd();
+          return;
+        }
         const topmost = visible.reduce((a, b) =>
           a.boundingClientRect.top <= b.boundingClientRect.top ? a : b
         );
         setActiveId(topmost.target.id);
+        checkScrollEnd();
       },
       { rootMargin: `-${navHeight}px 0px -70% 0px`, threshold: 0 }
     );
     for (const target of targets) observer.observe(target);
-    return () => observer.disconnect();
+    window.addEventListener("scroll", checkScrollEnd, { passive: true });
+    checkScrollEnd();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", checkScrollEnd);
+    };
   }, [groups]);
 
   /**
@@ -73,6 +98,7 @@ export function SlotGroupNav({ groups, totalFilled, totalSlots, swapsCount }: Sl
    * to body" defect).
    */
   const handleAnchorClick = (targetId: string) => () => {
+    setActiveId(targetId);
     const target = document.getElementById(targetId);
     target?.focus({ preventScroll: true });
   };
@@ -80,14 +106,13 @@ export function SlotGroupNav({ groups, totalFilled, totalSlots, swapsCount }: Sl
   return (
     <nav
       aria-label="Grupos de slots"
-      className="sticky top-0 z-10 flex h-11 items-center gap-2 overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-surface)] px-1 md:hidden"
+      className="sticky top-0 z-10 flex h-11 min-w-0 items-center gap-2 overflow-x-auto border-b border-[var(--color-border)] bg-[var(--color-surface)] px-1 md:hidden"
     >
       <span className="shrink-0 whitespace-nowrap px-2 text-[12px] font-medium text-icon-muted">
         {totalFilled}/{totalSlots}
       </span>
       {groups.map((group) => {
         const anchorId = `slot-group-${group.id}`;
-        const complete = group.total > 0 && group.filled >= group.total;
         const isActive = activeId === anchorId;
         return (
           <a
@@ -102,7 +127,6 @@ export function SlotGroupNav({ groups, totalFilled, totalSlots, swapsCount }: Sl
                 : "border-[var(--color-border)] text-icon-muted"
             }`}
           >
-            {complete && <span style={{ color: "var(--color-enchant)" }}>✓ </span>}
             {group.title} {group.filled}/{group.total}
           </a>
         );
