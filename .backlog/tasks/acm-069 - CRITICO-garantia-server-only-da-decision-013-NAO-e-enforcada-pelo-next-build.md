@@ -1,10 +1,10 @@
 ---
 id: ACM-069
 title: 'CRITICO: garantia server-only da decision-013 NAO e enforcada pelo next build'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 20:35'
-updated_date: '2026-09-07 20:35'
+updated_date: '2026-09-07 20:38'
 labels: []
 dependencies: []
 priority: high
