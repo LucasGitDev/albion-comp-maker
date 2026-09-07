@@ -1,10 +1,10 @@
 ---
 id: ACM-016
 title: 'SQLite + Drizzle schema + migrations (decision-001, decision-002)'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 17:05'
+updated_date: '2026-09-07 17:06'
 labels: []
 milestone: m-5
 dependencies:
