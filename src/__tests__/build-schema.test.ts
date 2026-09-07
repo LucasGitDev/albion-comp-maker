@@ -147,6 +147,19 @@ describe("build-schema (ACM-049 / decision-013)", () => {
       const raw = JSON.stringify(validBuild({ swaps: Array.from({ length: 21 }, () => swap) }));
       expect(() => validateBuildContentForWrite(raw)).toThrow();
     });
+
+    it("accepts a swap with an empty label (ACM-012 review round 3: a swap must be saveable before the leader ever touches the label field)", () => {
+      const swap = { id: "swap-1", label: "", slots: {} };
+      const raw = JSON.stringify(validBuild({ swaps: [swap] }));
+      const result = validateBuildContentForWrite(raw);
+      expect(JSON.parse(result).swaps).toEqual([swap]);
+    });
+
+    it("still enforces the 60-char max on a swap label", () => {
+      const swap = { id: "swap-1", label: "x".repeat(61), slots: {} };
+      const raw = JSON.stringify(validBuild({ swaps: [swap] }));
+      expect(() => validateBuildContentForWrite(raw)).toThrow();
+    });
   });
 
   describe("parseBuildContent (tolerant read path)", () => {
@@ -162,6 +175,18 @@ describe("build-schema (ACM-049 / decision-013)", () => {
 
     it("returns ok:false reason:invalid-json for malformed JSON, without throwing", () => {
       expect(parseBuildContent("{not json")).toEqual({ ok: false, reason: "invalid-json" });
+    });
+
+    it("returns ok:true for a swap with an empty label", () => {
+      const swap = { id: "swap-1", label: "", slots: {} };
+      const result = parseBuildContent(JSON.stringify(validBuild({ swaps: [swap] })));
+      expect(result).toEqual({ ok: true, data: validBuild({ swaps: [swap] }) });
+    });
+
+    it("still parses a legacy payload whose swap label is non-empty (regression safety: relaxing min(1) to allow '' must not break existing persisted labels)", () => {
+      const swap = { id: "swap-1", label: "Split push", slots: {} };
+      const result = parseBuildContent(JSON.stringify(validBuild({ swaps: [swap] })));
+      expect(result).toEqual({ ok: true, data: validBuild({ swaps: [swap] }) });
     });
 
     it("tolerates a legacy row that never passed any schema (e.g. '{}') without throwing", () => {

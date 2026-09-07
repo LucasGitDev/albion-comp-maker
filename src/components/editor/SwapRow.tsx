@@ -185,11 +185,12 @@ export function SwapRow({
         value={swap.label}
         onChange={(event) => onLabelChange(event.target.value)}
         onBlur={() => {
-          // swapSchema.label is min(1) (ACM-049): a swap can never persist
-          // an empty label. Substituting the default here — instead of
-          // pre-filling it at creation — keeps the real placeholder
-          // ("Quando usar? ...") visible until the leader actually leaves
-          // the field empty (ACM-012 review round 2).
+          // An empty label is valid and persistable (swapSchema.label
+          // allows "" — ACM-012 review round 3). This substitution is
+          // purely cosmetic: keeping the real placeholder ("Quando usar?
+          // ...") visible until the leader actually leaves the field,
+          // then swapping in a friendlier default than a blank input
+          // (ACM-012 review round 2).
           if (swap.label.trim() === "") onLabelChange(DEFAULT_SWAP_LABEL);
         }}
         placeholder="Quando usar? ex.: fights de bridge"

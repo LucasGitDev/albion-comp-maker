@@ -285,4 +285,30 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
     const ids = useBuildStore.getState().build.swaps.map((s) => s.id);
     expect(new Set(ids).size).toBe(3);
   });
+
+  it("saving succeeds when a swap is added and never touched (ACM-012 review round 3: swapSchema.label allows '', so no onBlur is required before Salvar)", async () => {
+    mockSession(true);
+    mockSaveBuild.mockResolvedValue({ id: "b1" });
+    useBuildStore.getState().actions.setName("Bruiser de Frontline");
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
+      8,
+      0
+    );
+
+    render(<NewBuildPage />);
+
+    // Add a swap and never focus/blur its label input.
+    fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
+    expect(useBuildStore.getState().build.swaps[0].label).toBe("");
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
+    const [payload] = mockSaveBuild.mock.calls[0] as [{ content: string }];
+    expect(JSON.parse(payload.content).swaps[0].label).toBe("");
+    expect(await screen.findByText("Build salva.")).toBeInTheDocument();
+    expect(screen.queryByText("Não deu para salvar.")).not.toBeInTheDocument();
+  });
 });
