@@ -1,0 +1,43 @@
+name: nightly-ao
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/cache@v4
+        with:
+          path: .cache
+          key: ao-cdn-cache-${{ github.run_id }}
+          restore-keys: |
+            ao-cdn-cache-
+
+      - run: pnpm sync:ao
+
+      - run: pnpm build:fixture
+
+      - name: Fail if the committed acceptance corpus has drifted from upstream
+        run: git diff --exit-code -- src/__tests__/fixtures/ao-corpus.json
+
+      - run: pnpm test
