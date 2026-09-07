@@ -4,8 +4,8 @@ import type { Slot } from "@/data/ao-data";
 import { ItemIcon } from "@/components/icons/ItemIcon";
 import { SpellIcon, type SpellSlotLabel } from "@/components/icons/SpellIcon";
 import type { EquippedItem, SpellGroup } from "@/types/build";
-import { EnchantSelect, TierSelect } from "./TierEnchantSelectors";
-import type { EnchantOption, TierOption } from "./tier-enchant";
+import { TierSelect } from "./TierEnchantSelectors";
+import type { TierOption } from "./tier-enchant";
 
 const SLOT_LABELS: Record<Slot, string> = {
   mainhand: "Mão principal",
@@ -53,12 +53,9 @@ export type SlotCardProps = {
    * never fetches the catalogue itself.
    */
   tierOptions?: readonly TierOption[];
-  /** Enchant levels (0..maxEnchant) available for the equipped item (ACM-009 AC #2). */
-  enchantOptions?: readonly EnchantOption[];
   onRequestItemPick: (slot: Slot) => void;
   onClear?: (slot: Slot) => void;
   onTierChange?: (slot: Slot, option: TierOption) => void;
-  onEnchantChange?: (slot: Slot, option: EnchantOption) => void;
 };
 
 const ALL_SPELL_GROUPS: readonly SpellGroup[] = ["q", "w", "e", "passive"];
@@ -70,11 +67,9 @@ export function SlotCard({
   spellGroups = ALL_SPELL_GROUPS,
   locked = false,
   tierOptions = [],
-  enchantOptions = [],
   onRequestItemPick,
   onClear,
   onTierChange,
-  onEnchantChange,
 }: SlotCardProps): React.JSX.Element {
   const label = SLOT_LABELS[slot] ?? slot;
   const tierColor = item && item.tier > 0 ? (TIER_COLOR_VAR[item.tier] ?? "var(--color-tier-low)") : undefined;
@@ -158,36 +153,23 @@ export function SlotCard({
             T{item.tier}
           </span>
         )}
-        {item.enchant > 0 && (
-          <span
-            className="absolute bottom-0 right-0 rounded px-1 text-[10px] font-bold text-white"
-            style={{ backgroundColor: "var(--color-enchant)", lineHeight: "16px" }}
-          >
-            .{item.enchant}
-          </span>
-        )}
+        {/*
+          Enchant badge intentionally omitted until ACM-030 lands
+          `AOItem.maxEnchant`: `item.enchant` is always 0 for real data today
+          (see decision-011), so there is nothing genuine to display yet.
+        */}
       </div>
       <p className="line-clamp-2 text-[13px] font-medium" title={itemName ?? item.itemId}>
         {itemName ?? item.itemId}
       </p>
-      {(tierOptions.length > 0 || enchantOptions.length > 0) && (
+      {tierOptions.length > 0 && onTierChange && (
         <div className="flex flex-wrap items-center gap-2" data-testid="tier-enchant-selectors">
-          {tierOptions.length > 0 && onTierChange && (
-            <TierSelect
-              slotLabel={label}
-              tier={item.tier}
-              options={tierOptions}
-              onChange={(option) => onTierChange(slot, option)}
-            />
-          )}
-          {enchantOptions.length > 0 && onEnchantChange && (
-            <EnchantSelect
-              slotLabel={label}
-              enchant={item.enchant}
-              options={enchantOptions}
-              onChange={(option) => onEnchantChange(slot, option)}
-            />
-          )}
+          <TierSelect
+            slotLabel={label}
+            tier={item.tier}
+            options={tierOptions}
+            onChange={(option) => onTierChange(slot, option)}
+          />
         </div>
       )}
       {spellGroups.length > 0 && (

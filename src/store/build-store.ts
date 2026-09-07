@@ -26,8 +26,6 @@ export type BuildActions = {
    * caller from the ao-data catalogue (see src/components/editor/tier-enchant.ts).
    */
   setTier(slot: Slot, tier: number, itemId: string): void;
-  /** Switch the equipped item's enchant without touching its spells (ACM-009). */
-  setEnchant(slot: Slot, enchant: 0 | 1 | 2 | 3 | 4, itemId: string): void;
   clearSlot(slot: Slot): void;
   setSpell(slot: Slot, group: SpellGroup, spellId: string | null): void;
   reset(): void;
@@ -85,17 +83,6 @@ export const useBuildStore = create<BuildStore>((set) => ({
         const slots: Record<Slot, EquippedItem | null> = {
           ...state.build.slots,
           [slot]: { ...current, tier, itemId },
-        };
-        return { build: { ...state.build, slots } };
-      }),
-
-    setEnchant: (slot, enchant, itemId) =>
-      set((state) => {
-        const current = state.build.slots[slot];
-        if (!current) return {};
-        const slots: Record<Slot, EquippedItem | null> = {
-          ...state.build.slots,
-          [slot]: { ...current, enchant, itemId },
         };
         return { build: { ...state.build, slots } };
       }),
