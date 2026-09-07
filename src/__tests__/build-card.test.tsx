@@ -14,6 +14,7 @@ function buildWithMainhand(): BuildState {
     enchant: 1,
     spells: { q: "HAMMER_Q", w: "HAMMER_W", e: null, passive: null },
     twohanded: true,
+    maxEnchant: 4,
   };
   state.slots.head = {
     itemId: "T8_HEAD_PLATE_SET1",
@@ -21,6 +22,7 @@ function buildWithMainhand(): BuildState {
     enchant: 0,
     spells: { q: null, w: "HEAD_W", e: null, passive: null },
     twohanded: false,
+    maxEnchant: 4,
   };
   state.swaps = [{ id: "swap-1", label: "Martelo → Machado · Bridge fight", slots: {} }];
   return state;

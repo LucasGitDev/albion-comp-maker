@@ -17,7 +17,7 @@ describe("build store", () => {
 
   it("AC #2: selecting an item in a slot updates the store", () => {
     const { setItem } = selectActions(useBuildStore.getState());
-    setItem("head", { uniquename: "T8_HEAD_PLATE_SET1", twohanded: false }, 8, 1);
+    setItem("head", { uniquename: "T8_HEAD_PLATE_SET1", twohanded: false, maxEnchant: 4 }, 8, 1);
 
     const build = selectBuild(useBuildStore.getState());
     expect(build.slots.head).toEqual({
@@ -26,12 +26,13 @@ describe("build store", () => {
       enchant: 1,
       spells: { q: null, w: null, e: null, passive: null },
       twohanded: false,
+      maxEnchant: 4,
     });
   });
 
   it("AC #3: selecting a spell updates the store", () => {
     const { setItem, setSpell } = selectActions(useBuildStore.getState());
-    setItem("mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false }, 8, 0);
+    setItem("mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false, maxEnchant: 4 }, 8, 0);
     setSpell("mainhand", "q", "SWORD_Q_SPELL");
 
     const build = selectBuild(useBuildStore.getState());
@@ -48,8 +49,8 @@ describe("build store", () => {
 
   it("equipping a two-handed mainhand clears and locks offhand", () => {
     const { setItem } = selectActions(useBuildStore.getState());
-    setItem("offhand", { uniquename: "T8_OFFHAND_BOOK", twohanded: false }, 8, 0);
-    setItem("mainhand", { uniquename: "T8_2H_HAMMER", twohanded: true }, 8, 0);
+    setItem("offhand", { uniquename: "T8_OFFHAND_BOOK", twohanded: false, maxEnchant: 4 }, 8, 0);
+    setItem("mainhand", { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 }, 8, 0);
 
     const build = selectBuild(useBuildStore.getState());
     expect(build.slots.offhand).toBeNull();
@@ -57,8 +58,8 @@ describe("build store", () => {
 
   it("setting an offhand item while mainhand is already two-handed is a no-op (store-level lock)", () => {
     const { setItem } = selectActions(useBuildStore.getState());
-    setItem("mainhand", { uniquename: "T8_2H_HAMMER", twohanded: true }, 8, 0);
-    setItem("offhand", { uniquename: "T8_OFFHAND_BOOK", twohanded: false }, 8, 0);
+    setItem("mainhand", { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 }, 8, 0);
+    setItem("offhand", { uniquename: "T8_OFFHAND_BOOK", twohanded: false, maxEnchant: 4 }, 8, 0);
 
     const build = selectBuild(useBuildStore.getState());
     expect(build.slots.offhand).toBeNull();
@@ -66,9 +67,9 @@ describe("build store", () => {
 
   it("clearing the two-handed mainhand does not retroactively unlock offhand from a stale call", () => {
     const { setItem, clearSlot } = selectActions(useBuildStore.getState());
-    setItem("mainhand", { uniquename: "T8_2H_HAMMER", twohanded: true }, 8, 0);
+    setItem("mainhand", { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 }, 8, 0);
     clearSlot("mainhand");
-    setItem("offhand", { uniquename: "T8_OFFHAND_BOOK", twohanded: false }, 8, 0);
+    setItem("offhand", { uniquename: "T8_OFFHAND_BOOK", twohanded: false, maxEnchant: 4 }, 8, 0);
 
     const build = selectBuild(useBuildStore.getState());
     expect(build.slots.offhand?.itemId).toBe("T8_OFFHAND_BOOK");
@@ -76,7 +77,7 @@ describe("build store", () => {
 
   it("ACM-009: setTier swaps the itemId and tier without resetting spells", () => {
     const { setItem, setSpell, setTier } = selectActions(useBuildStore.getState());
-    setItem("mainhand", { uniquename: "T4_MAIN_SWORD", twohanded: false }, 4, 0);
+    setItem("mainhand", { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 }, 4, 0);
     setSpell("mainhand", "q", "SWORD_Q_SPELL");
     setTier("mainhand", 8, "T8_MAIN_SWORD");
 
@@ -93,9 +94,9 @@ describe("build store", () => {
 
   it("re-equipping a slot resets its spells", () => {
     const { setItem, setSpell } = selectActions(useBuildStore.getState());
-    setItem("mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false }, 8, 0);
+    setItem("mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false, maxEnchant: 4 }, 8, 0);
     setSpell("mainhand", "q", "SWORD_Q_SPELL");
-    setItem("mainhand", { uniquename: "T8_MAIN_AXE", twohanded: false }, 8, 0);
+    setItem("mainhand", { uniquename: "T8_MAIN_AXE", twohanded: false, maxEnchant: 4 }, 8, 0);
 
     const build = selectBuild(useBuildStore.getState());
     expect(build.slots.mainhand?.itemId).toBe("T8_MAIN_AXE");
@@ -106,7 +107,7 @@ describe("build store", () => {
     const { setItem, setSpell, setName, setRole } = selectActions(useBuildStore.getState());
     setName("Bruiser de frontline");
     setRole("Tank");
-    setItem("mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false }, 8, 2);
+    setItem("mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false, maxEnchant: 4 }, 8, 2);
     setSpell("mainhand", "q", "SWORD_Q_SPELL");
 
     const build = selectBuild(useBuildStore.getState());
@@ -127,7 +128,7 @@ describe("build store", () => {
 
   it("ACM-031: setEnchant updates the enchant level without touching tier/spells", () => {
     const { setItem, setSpell, setEnchant } = selectActions(useBuildStore.getState());
-    setItem("head", { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false }, 4, 0);
+    setItem("head", { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false, maxEnchant: 4 }, 4, 0);
     setSpell("head", "q", "ENERGY_BARRIER");
     setEnchant("head", 3);
 
@@ -144,7 +145,7 @@ describe("build store", () => {
 
   it("ACM-031: setEnchant clamps out-of-range values to 0..4", () => {
     const { setItem, setEnchant } = selectActions(useBuildStore.getState());
-    setItem("head", { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false }, 4, 0);
+    setItem("head", { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false, maxEnchant: 4 }, 4, 0);
 
     setEnchant("head", 99);
     expect(selectBuild(useBuildStore.getState()).slots.head?.enchant).toBe(4);
@@ -153,9 +154,19 @@ describe("build store", () => {
     expect(selectBuild(useBuildStore.getState()).slots.head?.enchant).toBe(0);
   });
 
+  it("ACM-031 review fix: setEnchant cannot exceed the equipped item's real maxEnchant (store-level, not just UI)", () => {
+    const { setItem, setEnchant } = selectActions(useBuildStore.getState());
+    // T1_OFF_SHIELD is a real maxEnchant-0 item (ao-corpus.json fixture, decision-011).
+    setItem("offhand", { uniquename: "T1_OFF_SHIELD", twohanded: false, maxEnchant: 0 }, 1, 0);
+
+    setEnchant("offhand", 3);
+
+    expect(selectBuild(useBuildStore.getState()).slots.offhand?.enchant).toBe(0);
+  });
+
   it("clearSlot empties a filled slot", () => {
     const { setItem, clearSlot } = selectActions(useBuildStore.getState());
-    setItem("cape", { uniquename: "T8_CAPE", twohanded: false }, 8, 0);
+    setItem("cape", { uniquename: "T8_CAPE", twohanded: false, maxEnchant: 4 }, 8, 0);
     clearSlot("cape");
     expect(selectBuild(useBuildStore.getState()).slots.cape).toBeNull();
   });

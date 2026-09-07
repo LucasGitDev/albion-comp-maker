@@ -16,6 +16,15 @@ export type EquippedItem = {
    * `slots.mainhand` is the only place that fact is available once equipped.
    */
   twohanded: boolean;
+  /**
+   * `AOItem.maxEnchant` at equip time (ACM-031 review fix). Kept on the
+   * slot for the same reason as `twohanded`: the store has no catalog
+   * access at the point `setEnchant` runs, so it cannot otherwise know the
+   * real per-item enchant ceiling. Without this, `setEnchant` could only
+   * clamp to a hardcoded constant, which would let it accept an enchant the
+   * real item data does not support (decision-011).
+   */
+  maxEnchant: number;
 };
 
 export type Swap = {

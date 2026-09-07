@@ -19,7 +19,12 @@ export type BuildActions = {
    * is "offhand" while mainhand already holds a two-handed item, the call is
    * a no-op — offhand is locked in the store itself, not only in the UI.
    */
-  setItem(slot: Slot, item: Pick<AOItem, "uniquename" | "twohanded">, tier: number, enchant: 0 | 1 | 2 | 3 | 4): void;
+  setItem(
+    slot: Slot,
+    item: Pick<AOItem, "uniquename" | "twohanded" | "maxEnchant">,
+    tier: number,
+    enchant: 0 | 1 | 2 | 3 | 4
+  ): void;
   /**
    * Switch the equipped item's tier without touching its spells (ACM-009).
    * `itemId` is the sibling item's uniquename at `tier`, resolved by the
@@ -27,9 +32,12 @@ export type BuildActions = {
    */
   setTier(slot: Slot, tier: number, itemId: string): void;
   /**
-   * Switch the equipped item's enchant level (ACM-031). Clamped to 0..4
-   * regardless of what the caller passes — the store never trusts UI input
-   * to already be in range, same rule as `setItem`/`setTier`.
+   * Switch the equipped item's enchant level (ACM-031). Clamped to
+   * `0..slot.maxEnchant` — the item's own real ceiling, persisted on the
+   * slot at equip time (`EquippedItem.maxEnchant`) — regardless of what the
+   * caller passes. The store never trusts UI input to already be in range,
+   * same rule as `setItem`/`setTier`; a hardcoded `0..4` clamp would still
+   * let e.g. a maxEnchant-0 item accept enchant 3 (review finding).
    */
   setEnchant(slot: Slot, enchant: number): void;
   clearSlot(slot: Slot): void;
@@ -71,6 +79,7 @@ export const useBuildStore = create<BuildStore>((set) => ({
           enchant,
           spells: { ...EMPTY_SPELLS },
           twohanded: item.twohanded,
+          maxEnchant: item.maxEnchant,
         };
         const slots: Record<Slot, EquippedItem | null> = {
           ...state.build.slots,
@@ -97,7 +106,10 @@ export const useBuildStore = create<BuildStore>((set) => ({
       set((state) => {
         const current = state.build.slots[slot];
         if (!current) return {};
-        const clamped = Math.max(0, Math.min(4, Math.trunc(enchant))) as EquippedItem["enchant"];
+        const clamped = Math.max(
+          0,
+          Math.min(current.maxEnchant, Math.trunc(enchant))
+        ) as EquippedItem["enchant"];
         const slots: Record<Slot, EquippedItem | null> = {
           ...state.build.slots,
           [slot]: { ...current, enchant: clamped },
