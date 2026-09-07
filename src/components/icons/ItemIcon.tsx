@@ -11,6 +11,7 @@ import {
   type IconSize,
 } from "./icon-tokens";
 import { useIconStatus } from "./use-icon-status";
+import { CategorySilhouette, type IconCategory } from "./category-glyphs";
 
 export type ItemIconProps = {
   itemId: string;
@@ -20,6 +21,13 @@ export type ItemIconProps = {
   decorative?: boolean;
   className?: string;
   title?: string;
+  /**
+   * Slot category used to pick the silhouette shown when the sprite
+   * resolves to a 1x1 blank PNG (ACM-044) — e.g. a vanity item with no
+   * upstream render. Defaults to a neutral generic silhouette for callers
+   * without slot context.
+   */
+  category?: IconCategory;
 };
 
 export function ItemIcon({
@@ -30,6 +38,7 @@ export function ItemIcon({
   decorative = false,
   className,
   title,
+  category = "generic",
 }: ItemIconProps): React.JSX.Element {
   const isValidId = ICON_ID_PATTERN.test(itemId);
   const src = isValidId ? buildItemIconUrl(itemId, quality) : null;
@@ -69,9 +78,8 @@ export function ItemIcon({
         <span
           aria-hidden="true"
           className="absolute inset-0 flex items-center justify-center text-icon-muted"
-          style={{ fontSize: glyphSize }}
         >
-          ?
+          <CategorySilhouette category={category} size={glyphSize} />
         </span>
       )}
       {resolvedStatus === "error" && (
