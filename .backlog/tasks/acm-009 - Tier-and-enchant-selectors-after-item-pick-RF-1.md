@@ -1,10 +1,10 @@
 ---
 id: ACM-009
 title: Tier and enchant selectors after item pick (RF-1)
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 17:22'
+updated_date: '2026-09-07 17:23'
 labels: []
 milestone: m-2
 dependencies:
