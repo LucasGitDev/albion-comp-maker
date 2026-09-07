@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppDatabase } from "@/db/client";
 import { createConnection, createDb } from "@/db/client";
 import { runMigrations } from "@/db/migrate";
-import { users } from "@/db/schema";
+import { builds, users } from "@/db/schema";
 import { __resetRateLimitState } from "@/lib/rate-limit";
 
 const { mockRequireSession } = vi.hoisted(() => ({
@@ -202,6 +202,27 @@ describe("build Server Actions (ACM-018)", () => {
       expect(copy.content).toBe(original.content);
       expect(copy.userId).toBe("user-a");
     });
+
+    it("refuses to duplicate a row whose content is legacy/invalid shape (ACM-049 AC#7)", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { duplicateBuild } = await import("@/actions/builds");
+      const { BuildContentInvalidError } = await import("@/actions/build-errors");
+
+      // Simulate a pre-ACM-049 row: written directly to the DB, bypassing
+      // `validateBuildContentForWrite`, so it never went through the schema.
+      const [legacy] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Legacy",
+          role: "dps",
+          content: JSON.stringify({ someOldShape: true }),
+          slug: "legacy-abc123",
+        })
+        .returning();
+
+      await expect(duplicateBuild(legacy.id)).rejects.toThrow(BuildContentInvalidError);
+    });
   });
 
   describe("forkBuild", () => {
@@ -226,6 +247,29 @@ describe("build Server Actions (ACM-018)", () => {
 
       mockRequireSession.mockResolvedValue(sessionFor("user-b"));
       await expect(forkBuild(original.id)).rejects.toThrow("Build not found");
+    });
+
+    it("refuses to fork a public build with legacy/invalid content instead of laundering it (ACM-049 AC#7)", async () => {
+      const { forkBuild } = await import("@/actions/builds");
+      const { BuildContentInvalidError } = await import("@/actions/build-errors");
+
+      // Another user's row, public, but written before ACM-049's schema
+      // existed (or otherwise malformed) — the sharpest case per decision-013:
+      // forking must not propagate unvalidated content across user boundaries.
+      const [legacy] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Legacy Public",
+          role: "dps",
+          content: "not even json",
+          slug: "legacy-public-abc123",
+          isPublic: true,
+        })
+        .returning();
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+      await expect(forkBuild(legacy.id)).rejects.toThrow(BuildContentInvalidError);
     });
   });
 

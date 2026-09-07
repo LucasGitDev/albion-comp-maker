@@ -5,10 +5,26 @@ import { and, desc, eq } from "drizzle-orm";
 import { requireSession } from "@/auth/session";
 import { getDb } from "@/db/client";
 import { builds } from "@/db/schema";
-import { validateBuildContentForWrite } from "@/lib/build-schema";
+import { parseBuildContent, validateBuildContentForWrite } from "@/lib/build-schema";
 import { checkWriteRateLimit } from "@/lib/rate-limit";
 import { generateSlug } from "@/lib/slug";
-import { BuildNotFoundError } from "./build-errors";
+import { BuildContentInvalidError, BuildNotFoundError } from "./build-errors";
+
+/**
+ * Re-validates a source row's `content` before it is copied into a new row
+ * (ACM-049 AC#7). Uses the tolerant `parseBuildContent` because the source
+ * may legitimately be a legacy payload, then re-serializes through
+ * `validateBuildContentForWrite` so the copy is normalized on write like
+ * any other write path. Refuses (throws) rather than guessing at a
+ * malformed/legacy source — see `BuildContentInvalidError`.
+ */
+function revalidateContentForCopy(content: string): string {
+  const result = parseBuildContent(content);
+  if (!result.ok) {
+    throw new BuildContentInvalidError();
+  }
+  return validateBuildContentForWrite(JSON.stringify(result.data));
+}
 
 /**
  * All mutations here call `requireSession()` themselves, first thing, and
@@ -132,6 +148,7 @@ export async function duplicateBuild(id: string): Promise<BuildRow> {
   checkWriteRateLimit(session.user.id);
 
   const source = await loadOwnedBuild(session.user.id, id);
+  const content = revalidateContentForCopy(source.content);
 
   const db = getDb();
   const [row] = await db
@@ -140,7 +157,7 @@ export async function duplicateBuild(id: string): Promise<BuildRow> {
       userId: session.user.id,
       name: source.name,
       role: source.role,
-      content: source.content,
+      content,
       slug: generateSlug(source.name),
     })
     .returning();
@@ -166,13 +183,15 @@ export async function forkBuild(id: string): Promise<BuildRow> {
     throw new BuildNotFoundError();
   }
 
+  const content = revalidateContentForCopy(source.content);
+
   const [row] = await db
     .insert(builds)
     .values({
       userId: session.user.id,
       name: source.name,
       role: source.role,
-      content: source.content,
+      content,
       slug: generateSlug(source.name),
       forkedFrom: source.id,
     })

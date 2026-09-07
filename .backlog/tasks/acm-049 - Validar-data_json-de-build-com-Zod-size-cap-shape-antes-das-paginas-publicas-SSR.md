@@ -3,7 +3,7 @@ id: ACM-049
 title: >-
   Validar data_json de build com Zod (size cap + shape) antes das paginas
   publicas SSR
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 18:54'
 updated_date: '2026-09-07 19:13'
@@ -30,6 +30,60 @@ Achado MEDIUM da auditoria de seguranca da ACM-018 (PR #28). Em src/actions/buil
 - [ ] #7 forkBuild e duplicateBuild validam o content ANTES de copiar — hoje copiam source.content direto (inclusive de outro usuario no fork), propagando row legada invalida para a biblioteca de quem forkou
 - [ ] #8 accent restrito por regex ^#[0-9a-fA-F]{6}$ e obrigatorio — vetor concreto de injecao de CSS via style={{color: accent}} em BuildCardVertical/BuildCardGrid
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implemented per decision-013. Added zod ^4.5.4 and server-only ^0.0.1 as
+direct production deps (both already resolvable, no new heavy resolution).
+
+src/lib/build-schema.ts: buildStateSchema (strict at every level, derived
+shape mirrors SLOT_ORDER/BuildState with a compile-time Exact<> check so
+tsc fails on drift). 128 KiB byte cap enforced on the raw string before
+JSON.parse. validateBuildContentForWrite() throws (strict write path,
+used by saveBuild/updateBuild) and re-serializes from the validated
+object, never the raw input. parseBuildContent() never throws (tolerant
+read path) and returns a discriminated result — not yet wired into any
+read path since no read path parses build content yet in this codebase;
+it exists now so ACM-021 (public SSR build pages) has it ready and does
+not have to invent its own tolerant-read handling.
+
+accent constrained to /^#[0-9a-fA-F]{6}$/ per the ADR's CSS-injection
+concern.
+
+Scope note: per the ADR's compatibility section, duplicateBuild and
+forkBuild also copy `content` directly and, per decision-013, should
+revalidate before copying (fork especially, since it copies another
+user's row). This was left OUT per the explicit task scope (AC#1 names
+only saveBuild/updateBuild) — flagging as a known gap for a follow-up
+task before ACM-021 ships, since a legacy-invalid row can otherwise
+propagate via fork today (though it is not yet reachable by SSR).
+
+vitest.config.ts: aliased "server-only" to its "react-server" no-op
+build (node_modules/server-only/empty.js) because Vitest resolves under
+Node conditions, not react-server, and the package's default export
+throws unconditionally otherwise. Every test importing build-schema.ts
+is exercising server code by construction, so this is a correct test-only
+resolution, not a bypass of the server-only guard for real client code.
+
+builds-actions.test.ts fixtures switched from "{}" to a schema-valid
+payload since saveBuild/updateBuild now enforce strict validation.
+
+AC#7 follow-up (fork/duplicate content laundering) now implemented in this PR, per orchestrator direction, instead of splitting into a follow-up task.
+
+Chosen behavior: REFUSE, do not normalize/guess. duplicateBuild and forkBuild now call a shared revalidateContentForCopy() helper that runs the source row's content through the tolerant parseBuildContent() first (legacy rows are a legitimate possibility on the read side), and if that fails (too-large/invalid-json/invalid-shape) the copy is rejected with a new BuildContentInvalidError rather than silently propagating unvalidated content into the copying user's library. If parseBuildContent succeeds, the parsed object is re-serialized through validateBuildContentForWrite so the copy is written in normalized form, same as any other write path. Reasoning: a legacy/malformed source is not something fork/duplicate can safely "fix" on the user's behalf (the shape may be ambiguous or lossy to normalize), and forkBuild in particular copies another user's row — refusing keeps the write path's strictness guarantee intact end-to-end and gives the caller a clear, actionable error instead of a 500 (JSON.parse/Zod would otherwise throw uncaught) or a silently corrupted copy.
+
+Tests added in src/__tests__/builds-actions.test.ts: duplicateBuild and forkBuild each get a case that inserts a legacy/malformed row directly via db.insert(builds) (bypassing the write-path validation, simulating a pre-ACM-049 row or a future incompatible payload) and asserts the copy is rejected with BuildContentInvalidError. Existing happy-path fork/duplicate tests (valid source content) continue to pass unchanged, confirming the normal path still works.
+
+No changes to authz logic in src/actions/builds.ts: requireSession(), the ownership-scoped WHERE clauses in loadOwnedBuild, and forkBuild's isPublic-or-owner check are untouched. The new validation runs strictly after those checks resolve which row is being copied.
+
+vitest.config.ts "server-only" alias — verified isolated to the test runner, does not weaken the production guard:
+- The alias lives under vitest.config.ts's own `resolve.alias`, consumed only by Vite/Vitest's bundler when running `vitest run`.
+- next.config.ts has no reference to vitest.config.ts and no alias for "server-only" — Next's Turbopack/webpack build resolves the package through its own `package.json` "exports" map (react-server condition -> empty.js for RSC bundles, default -> index.js otherwise), which is exactly the mechanism decision-013 relies on to turn a future client-side import of build-schema.ts into a build error.
+- Empirically confirmed via `make check`: `next build` in this PR still succeeds and does NOT go through the vitest alias (grep of the build output/config shows no vitest involvement in the `next build` step), so a client-importing build-schema.ts would still be resolved via the real index.js in a Client Component bundle and throw at import time (dev) / fail the build's RSC boundary checks — the guard is untouched in the real build. The alias only prevents `server-only`'s unconditional Node-condition throw from blocking tests that import server code by construction (every test importing build-schema.ts).
+
+Dependency delta for PR description: `server-only` ^0.0.1 added as a second new direct production dependency in addition to `zod` ^4.5.4 (already noted in a prior implementation-notes entry) — calling it out explicitly here per request so it's reviewable as its own line item.
+<!-- SECTION:NOTES:END -->
 
 ## Implementation Plan
 
