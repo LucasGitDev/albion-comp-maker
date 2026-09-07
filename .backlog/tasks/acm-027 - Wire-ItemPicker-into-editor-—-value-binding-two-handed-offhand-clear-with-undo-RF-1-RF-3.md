@@ -3,10 +3,10 @@ id: ACM-027
 title: >-
   Wire ItemPicker into editor — value binding, two-handed offhand clear with
   undo (RF-1/RF-3)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 17:03'
-updated_date: '2026-09-07 17:09'
+updated_date: '2026-09-07 17:42'
 labels: []
 milestone: m-2
 dependencies:
