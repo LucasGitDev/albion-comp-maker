@@ -4,7 +4,7 @@ title: Fix item-spell resolution against restructured ao-bin-dumps items.json sc
 status: In Progress
 assignee: []
 created_date: '2026-09-07 15:56'
-updated_date: '2026-09-07 16:08'
+updated_date: '2026-09-07 16:13'
 labels: []
 dependencies: []
 ordinal: 25000
@@ -23,4 +23,6 @@ formatted/items.json upstream now splits items by type (equipmentitem/weapon/mou
 - [ ] #3 A known weapon (e.g. T4_MAIN_FIRESTAFF) resolves a non-empty set of Q/W/E spell options through resolveSpells
 - [ ] #4 Unit tests cover buildItemIndex against a fixture of the new nested items.json schema
 - [ ] #5 make check exits 0
+- [ ] #6 T8_ARMOR_PLATE_SET1 yields passives in BOTH slot group 1 and group 2 (guards the @slots-as-group-index inference)
+- [ ] #7 sync fails loudly (non-zero exit) if items < 1500 or if no passive spells are emitted
 <!-- AC:END -->
