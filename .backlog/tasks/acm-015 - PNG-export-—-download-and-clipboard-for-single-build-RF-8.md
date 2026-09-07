@@ -4,12 +4,11 @@ title: PNG export — download and clipboard for single build (RF-8)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 16:35'
+updated_date: '2026-09-07 17:11'
 labels: []
 milestone: m-4
 dependencies:
-  - ACM-013
-  - ACM-014
+  - ACM-029
 ordinal: 15000
 ---
 
