@@ -158,7 +158,7 @@ export function ItemResultList({
             <span className="flex-1 truncate">
               {renderSegments(primarySegments, "p")}
               {secondarySegments && (
-                <span className="ml-1 text-[#6b7280]">
+                <span className="ml-1 text-icon-muted">
                   · {renderSegments(secondarySegments, "s")}
                 </span>
               )}
@@ -167,7 +167,7 @@ export function ItemResultList({
               <span className="text-xs font-medium tabular-nums text-[#c8a24a]">{`T${tier}`}</span>
             )}
             {item.twohanded && (
-              <span className="text-xs font-medium tabular-nums text-[#6b7280]">2H</span>
+              <span className="text-xs font-medium tabular-nums text-icon-muted">2H</span>
             )}
             {isEquipped && (
               <span aria-hidden="true" className="text-xs text-[#c8a24a]">
