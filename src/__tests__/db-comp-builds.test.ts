@@ -21,7 +21,7 @@ describe("comp_builds constraints (decision-001)", () => {
     db = createDb(sqlite);
 
     await db.insert(users).values({ id: "user-1", name: "Test User" });
-    await db.insert(comps).values({ id: "comp-1", userId: "user-1", name: "Test Comp" });
+    await db.insert(comps).values({ id: "comp-1", userId: "user-1", name: "Test Comp", slug: "test-comp-slug" });
     await db.insert(builds).values([
       { id: "build-1", userId: "user-1", name: "Build 1", slug: "build-1-slug", content: "{}" },
       { id: "build-2", userId: "user-1", name: "Build 2", slug: "build-2-slug", content: "{}" },

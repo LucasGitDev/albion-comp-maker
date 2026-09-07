@@ -15,6 +15,13 @@
       "when": 1788806882028,
       "tag": "0001_add_build_slug_public_forked",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788809303469,
+      "tag": "0002_add_comp_slug_and_label",
+      "breakpoints": true
     }
   ]
 }
