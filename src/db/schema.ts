@@ -115,23 +115,30 @@ export const builds = sqliteTable(
   (table) => [uniqueIndex("builds_slug_idx").on(table.slug)],
 );
 
-export const comps = sqliteTable("comps", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  // Free text per decision-002 — no DB-level CHECK constraint.
-  contentType: text("content_type"),
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .notNull()
-    .default(sql`(unixepoch() * 1000)`),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .notNull()
-    .default(sql`(unixepoch() * 1000)`),
-});
+export const comps = sqliteTable(
+  "comps",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    // Set once at creation (name + random suffix) and never regenerated
+    // afterwards (ACM-019 AC#1), mirroring `builds.slug` (ACM-018 AC#1).
+    slug: text("slug").notNull(),
+    // Free text per decision-002 — no DB-level CHECK constraint.
+    contentType: text("content_type"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [uniqueIndex("comps_slug_idx").on(table.slug)],
+);
 
 export const compBuilds = sqliteTable(
   "comp_builds",
@@ -151,6 +158,10 @@ export const compBuilds = sqliteTable(
     position: integer("position").notNull(),
     // Number of players running this build at this position.
     count: integer("count").notNull().default(1),
+    // Free-text label for this slot within the comp (e.g. "Main tank"),
+    // editable inline (ACM-019 AC#5). Independent of the referenced
+    // build's own name.
+    label: text("label"),
   },
   (table) => [
     // Non-unique per decision-001 — the same build may appear at multiple
