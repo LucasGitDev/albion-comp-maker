@@ -4,6 +4,7 @@ title: SSR public pages for build and comp with slugs (RF-9)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:34'
+updated_date: '2026-09-07 17:05'
 labels: []
 milestone: m-7
 dependencies:
@@ -25,3 +26,9 @@ Server-rendered pages /[locale]/build/[slug] and /[locale]/comp/[slug]. Works wi
 - [ ] #3 Slug does not change when build/comp is renamed
 - [ ] #4 Rename UI warns slug stays the same; "Regenerate link" button creates new slug (old URL 404s — warn user)
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+SECURITY (from ACM-016 audit, MEDIUM): neither builds nor comps has a visibility/isPublic column. Public slug pages are IDOR-by-omission if a slug lookup does not also check a public flag or ownership. Required before implementing: add the visibility column (migration) and make 'private build is NOT reachable via public slug URL' an explicit acceptance criterion with a test. Also: content/content_type are app-validated TEXT only — never interpolate raw stored JSON into SSR HTML (stored XSS).
+<!-- SECTION:NOTES:END -->

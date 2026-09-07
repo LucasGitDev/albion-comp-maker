@@ -4,7 +4,7 @@ title: Auth.js v5 with Discord provider
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 16:36'
+updated_date: '2026-09-07 17:05'
 labels: []
 milestone: m-5
 dependencies:
@@ -48,4 +48,6 @@ NextAuth v5 configured with Discord OAuth. Uses Drizzle adapter. Session stored 
 ATENCAO: decision-009 (Auth.js v5 Discord) foi criada vazia e marcada 'accepted' por engano, e removida. NAO existe decisao registrada sobre estrategia de sessao — spawn architect antes de implementar.
 
 Decision: decision-009 (Auth.js v5 Discord OAuth session strategy) - database sessions via @auth/drizzle-adapter, not JWT; middleware allow-list matcher on /builds/:path* and /comp/new; Server Actions self-check auth() regardless of middleware. Risk: shares src/db/schema.ts and package.json with ACM-016 - serialize these two tasks per CLAUDE.md parallelism rule, do not implement concurrently. Risk: AC#1 (full Discord OAuth flow) needs real Discord app client id/secret in env and cannot be fully automated in CI - write manual verification steps before marking Done.
+
+SECURITY (from ACM-016 audit): account.refresh_token/access_token are nullable TEXT holding OAuth credentials. Ensure no logging or error-serialization path emits these fields. Also see ACM-016 notes for the exact handoff list (install next-auth v5 + @auth/drizzle-adapter, VERIFY the adapter's generated column set against the hand-written schema.ts, wire DrizzleAdapter to getDb(), Discord provider, and wire runMigrations() into src/instrumentation.ts which ACM-016 deliberately left uncreated).
 <!-- SECTION:NOTES:END -->
