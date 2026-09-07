@@ -3,10 +3,10 @@ id: ACM-035
 title: >-
   CRÍTICO: ícones dos itens não carregam — todos os slots mostram ícone de erro
   (!) com borda vermelha
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 17:52'
+updated_date: '2026-09-07 18:45'
 labels: []
 dependencies: []
 priority: high

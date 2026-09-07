@@ -3,10 +3,10 @@ id: ACM-038
 title: >-
   IMPORTANTE: hierarquia visual quebrada — fundo branco da página conflita com
   card escuro, nenhum elemento se destaca como ação primária
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 18:08'
+updated_date: '2026-09-07 18:45'
 labels: []
 dependencies: []
 priority: high
