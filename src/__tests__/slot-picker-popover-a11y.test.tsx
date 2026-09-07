@@ -40,7 +40,12 @@ describe("SlotPickerPopover accessibility (ACM-034 follow-up)", () => {
     const input = screen.getByRole("combobox");
     input.focus();
 
-    fireEvent.keyDown(dialog, { key: "Tab" });
+    // Dispatched on the actually-focused input (not the dialog wrapper) so
+    // this genuinely exercises the real capture/bubble order a browser
+    // would produce. Dispatching directly on `dialog` (as this test
+    // previously did) skips the input's own bubble-phase keydown handler
+    // entirely and would pass even if that handler could hijack Tab.
+    fireEvent.keyDown(input, { key: "Tab" });
     expect(dialog.contains(document.activeElement)).toBe(true);
   });
 
@@ -50,7 +55,40 @@ describe("SlotPickerPopover accessibility (ACM-034 follow-up)", () => {
     const input = screen.getByRole("combobox");
     input.focus();
 
-    fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
+    fireEvent.keyDown(input, { key: "Tab", shiftKey: true });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it("regression (ACM-034): Tab does not let ItemPicker commit the highlighted result and escape the dialog", () => {
+    // With a non-empty catalogue and an empty query, ItemPicker highlights
+    // the first result by default (doc-002's default listing). Its own
+    // `input[role="combobox"]` keydown handler treats a bare Tab as
+    // "commit the highlighted item, then let the browser's native Tab
+    // proceed" — which, inside this modal, previously closed the popover
+    // and let focus escape into the document. The dialog must stay open
+    // and focus must stay inside it.
+    const onSelect = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <SlotPickerPopover
+        slot="head"
+        items={ITEMS}
+        value={null}
+        label="Cabeça"
+        onSelect={onSelect}
+        onClose={onClose}
+      />
+    );
+    const dialog = screen.getByRole("dialog");
+    const input = screen.getByRole("combobox");
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    fireEvent.keyDown(input, { key: "Tab" });
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.body.contains(dialog)).toBe(true);
     expect(dialog.contains(document.activeElement)).toBe(true);
   });
 
@@ -111,13 +149,14 @@ describe("SlotPickerPopover accessibility (ACM-034 follow-up)", () => {
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
-  it("shows an actionable failed state distinct from an empty result set", () => {
+  it("shows the sync:ao hint only when the server reports a missing artifact", () => {
     const onClose = vi.fn();
     render(
       <SlotPickerPopover
         slot="head"
         items={[]}
         catalogueFailed
+        catalogueFailedReason="missing-artifact"
         value={null}
         label="Cabeça"
         onSelect={vi.fn()}
@@ -129,6 +168,24 @@ describe("SlotPickerPopover accessibility (ACM-034 follow-up)", () => {
 
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("shows ordinary user-facing copy (no sync:ao hint) for a generic failure", () => {
+    render(
+      <SlotPickerPopover
+        slot="head"
+        items={[]}
+        catalogueFailed
+        catalogueFailedReason="generic"
+        value={null}
+        label="Cabeça"
+        onSelect={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert).not.toHaveTextContent(/sync:ao/);
+    expect(alert).toHaveTextContent(/não foi possível carregar/i);
   });
 
   it("offers a retry affordance in the failed state that calls onRetryCatalogue", () => {
