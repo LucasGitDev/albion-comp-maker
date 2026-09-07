@@ -198,3 +198,117 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     expect(screen.queryByText("Build salva.")).not.toBeInTheDocument();
   });
 });
+
+describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
+  it("renders the empty state and adding a swap via the real route reaches the store", () => {
+    render(<NewBuildPage />);
+
+    expect(screen.getByText("Nenhum swap definido")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
+
+    expect(screen.queryByText("Nenhum swap definido")).not.toBeInTheDocument();
+    expect(useBuildStore.getState().build.swaps).toHaveLength(1);
+    expect(screen.getAllByTestId("swap-row")).toHaveLength(1);
+  });
+
+  it("picking an item for a swap through the real ItemPicker writes it into the swap's slot", async () => {
+    render(<NewBuildPage />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
+
+    // The mocked catalogue only carries a head-slot item, so point the swap
+    // at "Cabeça" before opening the picker — the picker itself filters by
+    // slot the same way the main slot grid does.
+    fireEvent.change(screen.getByRole("combobox", { name: "Slot do swap 1" }), { target: { value: "head" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Escolher item alternativo/ }));
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+
+    const option = await screen.findByText("Soldier Helmet");
+    fireEvent.click(option);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const [swap] = useBuildStore.getState().build.swaps;
+    expect(swap.slots.head?.itemId).toBe("T4_HEAD_PLATE_SET1");
+  });
+
+  it("editing the label of a swap on the real route writes it into the store", () => {
+    render(<NewBuildPage />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
+
+    const [swap] = useBuildStore.getState().build.swaps;
+    const labelInput = screen.getByRole("textbox", { name: `Rótulo do swap 1` });
+    fireEvent.change(labelInput, { target: { value: "Bridge fight" } });
+
+    expect(useBuildStore.getState().build.swaps.find((s) => s.id === swap.id)?.label).toBe("Bridge fight");
+  });
+
+  it("removing a swap on the real route removes it from the store", () => {
+    render(<NewBuildPage />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
+    expect(useBuildStore.getState().build.swaps).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remover swap 1" }));
+
+    expect(useBuildStore.getState().build.swaps).toHaveLength(0);
+    expect(screen.getByText("Nenhum swap definido")).toBeInTheDocument();
+  });
+
+  it("reordering swaps on the real route is stable with no duplicate/gapped positions, including the boundary cases", () => {
+    render(<NewBuildPage />);
+    const addButton = screen.getByRole("button", { name: "+ Adicionar swap" });
+    fireEvent.click(addButton);
+    fireEvent.click(addButton);
+    fireEvent.click(addButton);
+
+    const [first, second, third] = useBuildStore.getState().build.swaps;
+    useBuildStore.getState().actions.setSwapLabel(first.id, "First");
+    useBuildStore.getState().actions.setSwapLabel(second.id, "Second");
+    useBuildStore.getState().actions.setSwapLabel(third.id, "Third");
+
+    // Boundary: moving the first item's "up" button is a no-op.
+    fireEvent.click(screen.getByRole("button", { name: "Mover swap 1 para cima" }));
+    expect(useBuildStore.getState().build.swaps.map((s) => s.label)).toEqual(["First", "Second", "Third"]);
+
+    // Move the first item down: First and Second swap places.
+    fireEvent.click(screen.getByRole("button", { name: "Mover swap 1 para baixo" }));
+    expect(useBuildStore.getState().build.swaps.map((s) => s.label)).toEqual(["Second", "First", "Third"]);
+
+    // Boundary: moving the last item's "down" button is a no-op.
+    fireEvent.click(screen.getByRole("button", { name: "Mover swap 3 para baixo" }));
+    expect(useBuildStore.getState().build.swaps.map((s) => s.label)).toEqual(["Second", "First", "Third"]);
+
+    // Move the last item up: First and Third swap places.
+    fireEvent.click(screen.getByRole("button", { name: "Mover swap 3 para cima" }));
+    expect(useBuildStore.getState().build.swaps.map((s) => s.label)).toEqual(["Second", "Third", "First"]);
+
+    const ids = useBuildStore.getState().build.swaps.map((s) => s.id);
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it("saving succeeds when a swap is added and never touched (ACM-012 review round 3: swapSchema.label allows '', so no onBlur is required before Salvar)", async () => {
+    mockSession(true);
+    mockSaveBuild.mockResolvedValue({ id: "b1" });
+    useBuildStore.getState().actions.setName("Bruiser de Frontline");
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
+      8,
+      0
+    );
+
+    render(<NewBuildPage />);
+
+    // Add a swap and never focus/blur its label input.
+    fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
+    expect(useBuildStore.getState().build.swaps[0].label).toBe("");
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
+    const [payload] = mockSaveBuild.mock.calls[0] as [{ content: string }];
+    expect(JSON.parse(payload.content).swaps[0].label).toBe("");
+    expect(await screen.findByText("Build salva.")).toBeInTheDocument();
+    expect(screen.queryByText("Não deu para salvar.")).not.toBeInTheDocument();
+  });
+});
