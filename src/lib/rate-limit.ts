@@ -19,6 +19,37 @@ type Bucket = {
 
 const buckets = new Map<string, Bucket>();
 
+// Bounds memory: without this, every distinct userId that ever calls
+// `checkWriteRateLimit` leaves a permanent entry in `buckets` for the
+// process lifetime. Sweep expired windows periodically and, as a hard
+// backstop, evict the oldest entries once the map grows past a cap.
+const SWEEP_INTERVAL_MS = 5 * 60_000;
+const MAX_BUCKETS = 10_000;
+let lastSweep = Date.now();
+
+function sweepExpiredBuckets(now: number): void {
+  if (now - lastSweep < SWEEP_INTERVAL_MS) return;
+  lastSweep = now;
+
+  for (const [userId, bucket] of buckets) {
+    if (now - bucket.windowStart >= WINDOW_MS) {
+      buckets.delete(userId);
+    }
+  }
+}
+
+function evictOldestIfOverCapacity(): void {
+  if (buckets.size <= MAX_BUCKETS) return;
+
+  // Map preserves insertion order; the oldest bucket is not necessarily
+  // the least-recently-used one, but this is only a hard backstop against
+  // unbounded growth, not a precision LRU.
+  const oldestKey = buckets.keys().next().value;
+  if (oldestKey !== undefined) {
+    buckets.delete(oldestKey);
+  }
+}
+
 export class RateLimitError extends Error {
   constructor(message = "Too many requests. Try again in a minute.") {
     super(message);
@@ -33,10 +64,13 @@ export class RateLimitError extends Error {
  * `requireSession()`.
  */
 export function checkWriteRateLimit(userId: string, now: number = Date.now()): void {
+  sweepExpiredBuckets(now);
+
   const bucket = buckets.get(userId);
 
   if (!bucket || now - bucket.windowStart >= WINDOW_MS) {
     buckets.set(userId, { count: 1, windowStart: now });
+    evictOldestIfOverCapacity();
     return;
   }
 
@@ -50,4 +84,5 @@ export function checkWriteRateLimit(userId: string, now: number = Date.now()): v
 /** Test-only helper to reset state between specs. */
 export function __resetRateLimitState(): void {
   buckets.clear();
+  lastSweep = Date.now();
 }
