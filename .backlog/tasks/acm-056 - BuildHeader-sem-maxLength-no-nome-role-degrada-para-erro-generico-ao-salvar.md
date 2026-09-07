@@ -4,10 +4,11 @@ title: BuildHeader sem maxLength no nome/role degrada para erro generico ao salv
 status: To Do
 assignee: []
 created_date: '2026-09-07 19:26'
-updated_date: '2026-09-07 19:26'
+updated_date: '2026-09-07 20:01'
 labels: []
 dependencies:
   - ACM-036
+  - ACM-059
 ordinal: 56000
 ---
 
