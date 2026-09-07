@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 18:47'
+updated_date: '2026-09-07 18:50'
 labels: []
 dependencies: []
 priority: high
@@ -28,3 +28,9 @@ Em /build/new não existe nenhum header/nav global, breadcrumb, botão de voltar
 - [ ] #5 A action bar sticky nao aparece dentro do capture-root do export PNG (nao vaza para a imagem exportada)
 - [ ] #6 make check verde e testes cobrindo a presenca do header e o disparo das acoes primarias
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+SPEC: ver doc-004 'Header global, action bar sticky e navegacao do editor'. CORRECAO DE PREMISSA: a descricao original desta task esta ERRADA — Header.tsx JA existe e JA e montado no root layout, portanto JA renderiza em /build/new. O defeito real e outro: (1) CTA 'Nova build' com destaque accent aparece enquanto o usuario ESTA criando uma build (FINDING 5 da review da ACM-038) — deve virar contextual, suprimido em /build/*, dando lugar ao slot de conta; (2) BuildHeader parece um segundo header — remover border-b e o contador de slots, virando bloco de identidade. O trabalho novo de verdade e a ACTION BAR sticky, nao o header. AC#1 ja esta majoritariamente satisfeito.
+<!-- SECTION:NOTES:END -->
