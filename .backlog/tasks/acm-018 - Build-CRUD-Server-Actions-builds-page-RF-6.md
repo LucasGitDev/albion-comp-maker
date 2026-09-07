@@ -4,6 +4,7 @@ title: Build CRUD Server Actions + /builds page (RF-6)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:33'
+updated_date: '2026-09-07 17:05'
 labels: []
 milestone: m-5
 dependencies:
@@ -27,3 +28,9 @@ Save, list, edit, delete, duplicate, toggle public/private, fork builds. /[local
 - [ ] #6 Delete: hard delete, only by owner
 - [ ] #7 Rate limit: max 30 writes/min per user
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+SECURITY (from ACM-016 audit, MEDIUM): builds/comps ownership is not enforced by the schema. Every CRUD Server Action must scope queries by the session user_id — never trust an id from the client alone (IDOR). Add a test proving a user cannot read/update/delete another user's build.
+<!-- SECTION:NOTES:END -->
