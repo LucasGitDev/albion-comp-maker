@@ -171,3 +171,130 @@ describe("build store", () => {
     expect(selectBuild(useBuildStore.getState()).slots.cape).toBeNull();
   });
 });
+
+describe("build store — swaps (ACM-012, RF-3)", () => {
+  it("addSwap appends a new swap with a non-empty label and no item yet", () => {
+    const { addSwap } = selectActions(useBuildStore.getState());
+    addSwap();
+
+    const build = selectBuild(useBuildStore.getState());
+    expect(build.swaps).toHaveLength(1);
+    expect(build.swaps[0].label.length).toBeGreaterThan(0);
+    expect(build.swaps[0].id).toBeTruthy();
+  });
+
+  it("removeSwap removes exactly the targeted swap", () => {
+    const { addSwap, removeSwap } = selectActions(useBuildStore.getState());
+    addSwap();
+    addSwap();
+    const [first, second] = selectBuild(useBuildStore.getState()).swaps;
+
+    removeSwap(first.id);
+
+    const build = selectBuild(useBuildStore.getState());
+    expect(build.swaps).toHaveLength(1);
+    expect(build.swaps[0].id).toBe(second.id);
+  });
+
+  it("setSwapLabel updates only the targeted swap's label", () => {
+    const { addSwap, setSwapLabel } = selectActions(useBuildStore.getState());
+    addSwap();
+    addSwap();
+    const [first, second] = selectBuild(useBuildStore.getState()).swaps;
+
+    setSwapLabel(first.id, "Bridge fight");
+
+    const build = selectBuild(useBuildStore.getState());
+    expect(build.swaps.find((s) => s.id === first.id)?.label).toBe("Bridge fight");
+    expect(build.swaps.find((s) => s.id === second.id)?.label).toBe(second.label);
+  });
+
+  it("setSwapLabel never persists an empty string (swapSchema.label is min(1), ACM-049)", () => {
+    const { addSwap, setSwapLabel } = selectActions(useBuildStore.getState());
+    addSwap();
+    const [swap] = selectBuild(useBuildStore.getState()).swaps;
+
+    setSwapLabel(swap.id, "");
+
+    expect(selectBuild(useBuildStore.getState()).swaps[0].label.length).toBeGreaterThan(0);
+  });
+
+  it("setSwapSlot points the swap at a new slot, clearing any previously equipped item", () => {
+    const { addSwap, setSwapItem, setSwapSlot } = selectActions(useBuildStore.getState());
+    addSwap();
+    const [swap] = selectBuild(useBuildStore.getState()).swaps;
+    setSwapItem(swap.id, "mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false, maxEnchant: 4 }, 8, 0);
+
+    setSwapSlot(swap.id, "cape");
+
+    const updated = selectBuild(useBuildStore.getState()).swaps[0];
+    expect(Object.keys(updated.slots)).toEqual(["cape"]);
+    expect(updated.slots.cape).toBeNull();
+  });
+
+  it("setSwapItem equips an item into the swap's slot", () => {
+    const { addSwap, setSwapItem } = selectActions(useBuildStore.getState());
+    addSwap();
+    const [swap] = selectBuild(useBuildStore.getState()).swaps;
+
+    setSwapItem(swap.id, "mainhand", { uniquename: "T8_MAIN_AXE", twohanded: true, maxEnchant: 4 }, 8, 2);
+
+    const updated = selectBuild(useBuildStore.getState()).swaps[0];
+    expect(updated.slots.mainhand).toEqual({
+      itemId: "T8_MAIN_AXE",
+      tier: 8,
+      enchant: 2,
+      spells: { q: null, w: null, e: null, passive: null },
+      twohanded: true,
+      maxEnchant: 4,
+    });
+  });
+
+  it("moveSwap('up')/('down') reorders swaps and is a no-op at either boundary", () => {
+    const { addSwap, moveSwap } = selectActions(useBuildStore.getState());
+    addSwap();
+    addSwap();
+    addSwap();
+    const [a, b, c] = selectBuild(useBuildStore.getState()).swaps;
+
+    // Moving the first item down (boundary case: index 0 -> "up" is a no-op first).
+    moveSwap(a.id, "up");
+    expect(selectBuild(useBuildStore.getState()).swaps.map((s) => s.id)).toEqual([a.id, b.id, c.id]);
+
+    moveSwap(a.id, "down");
+    expect(selectBuild(useBuildStore.getState()).swaps.map((s) => s.id)).toEqual([b.id, a.id, c.id]);
+
+    // Moving the last item up.
+    moveSwap(c.id, "down");
+    expect(selectBuild(useBuildStore.getState()).swaps.map((s) => s.id)).toEqual([b.id, a.id, c.id]);
+
+    moveSwap(c.id, "up");
+    expect(selectBuild(useBuildStore.getState()).swaps.map((s) => s.id)).toEqual([b.id, c.id, a.id]);
+
+    // Reordering never produces duplicate or gapped positions.
+    const ids = selectBuild(useBuildStore.getState()).swaps.map((s) => s.id);
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it("setSwapSpell updates only the targeted group on the swap's equipped item", () => {
+    const { addSwap, setSwapItem, setSwapSpell } = selectActions(useBuildStore.getState());
+    addSwap();
+    const [swap] = selectBuild(useBuildStore.getState()).swaps;
+    setSwapItem(swap.id, "mainhand", { uniquename: "T8_MAIN_SWORD", twohanded: false, maxEnchant: 4 }, 8, 0);
+
+    setSwapSpell(swap.id, "mainhand", "q", "SWORD_Q_SPELL");
+
+    const updated = selectBuild(useBuildStore.getState()).swaps[0];
+    expect(updated.slots.mainhand?.spells.q).toBe("SWORD_Q_SPELL");
+    expect(updated.slots.mainhand?.spells.w).toBeNull();
+  });
+
+  it("enforces the swap cap at the store level, not only in the UI (mirrors buildStateSchema's swaps.max(20))", () => {
+    const { addSwap } = selectActions(useBuildStore.getState());
+    for (let i = 0; i < 25; i++) {
+      addSwap();
+    }
+
+    expect(selectBuild(useBuildStore.getState()).swaps).toHaveLength(20);
+  });
+});
