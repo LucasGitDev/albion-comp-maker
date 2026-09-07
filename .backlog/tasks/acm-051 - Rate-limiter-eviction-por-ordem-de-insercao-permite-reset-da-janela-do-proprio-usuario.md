@@ -3,9 +3,10 @@ id: ACM-051
 title: >-
   Rate limiter: eviction por ordem de insercao permite reset da janela do
   proprio usuario
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 19:08'
+updated_date: '2026-09-07 19:56'
 labels: []
 dependencies: []
 ordinal: 51000
