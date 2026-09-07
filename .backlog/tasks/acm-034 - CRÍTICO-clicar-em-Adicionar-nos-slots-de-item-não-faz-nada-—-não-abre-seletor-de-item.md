@@ -3,10 +3,10 @@ id: ACM-034
 title: >-
   CRÍTICO: clicar em 'Adicionar' nos slots de item não faz nada — não abre
   seletor de item
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 18:15'
+updated_date: '2026-09-07 18:45'
 labels: []
 dependencies: []
 priority: high
