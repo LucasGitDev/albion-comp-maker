@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 17:55'
+updated_date: '2026-09-07 18:12'
 labels: []
 dependencies: []
 priority: high
@@ -103,4 +103,14 @@ Verified passing (no finding):
 
 Verdict: BLOCKED: 4 findings (2 CRITICAL, 2 HIGH). Loop attempt should be counted; return to
 implementer with these four items named above.
+
+Attempt 2 fix (folded ACM-043 in): added GET /api/items (fs-based, same pattern as /api/icon) serving the item catalogue from src/data/ao-data.json server-side; the previous client-side dynamic import (@/data/ + ao-data.json with turbopackIgnore) was never a real fetch path -- browsers cannot resolve a build-time alias as a runtime module specifier, so it 404'd every time and silently fell back to []. Route returns only the fields ItemPicker/SlotCard use, drops the unused top-level spells registry, and gzips in-route (App Router route handlers get no compression from next start/Next's `compress` option): raw items ~2.0MB -> gzip ~62.7KB transferred, verified via curl against a production build. Missing-artifact and malformed-artifact cases return a typed 503 {code:"CATALOGUE_UNAVAILABLE"}, never a crash or silent empty list.
+
+useItemCatalogue now exposes {items, loading, failed} with failed distinct from an empty successful load. SlotPickerPopover surfaces visible loading (spinner) and failed (alert with `npm run sync:ao` instructions) states instead of the sole sr-only status, and no longer discards `loading`/`failed` in page.tsx.
+
+Also fixed (follow-up review HIGH/MEDIUM): real focus trap (Tab/Shift+Tab cycle within the dialog, tested), focus restored to the exact trigger element on close (captured in the click handler before the background is marked inert -- reading document.activeElement from an effect inside the popover is too late since an inert ancestor force-blurs synchronously in the same commit), background scroll locked via document.body.style.overflow and background content marked `inert` while the dialog is open.
+
+End-to-end verified via Playwright against a production build (`next build && next start`): opened /build/new, searched "sword" in the mainhand slot, selected T8_2H_DUALSWORD, it landed in the slot with a real icon from /api/icon (CDN fetch succeeded, 217x217 PNG). Also verified /api/items returns 2036 items and the gzip path (content-encoding: gzip, 62683 bytes) end-to-end.
+
+Merged origin/main into the branch (not rebased -- the branch already contains a merge commit reconciling the ACM-010 SpellPicker refactor; rebasing replayed and re-triggered that already-resolved conflict) to pick up unrelated backlog-status commits; only conflict was in this task's own backlog notes (timestamps/review text), resolved by keeping both. PR #25 verified CLEAN/MERGEABLE after push. make check green (166 tests).
 <!-- SECTION:NOTES:END -->
