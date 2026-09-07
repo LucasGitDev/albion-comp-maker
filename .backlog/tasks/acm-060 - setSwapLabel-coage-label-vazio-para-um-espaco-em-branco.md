@@ -1,9 +1,10 @@
 ---
 id: ACM-060
 title: setSwapLabel coage label vazio para um espaco em branco
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-07 20:01'
+updated_date: '2026-09-07 20:21'
 labels: []
 dependencies: []
 ordinal: 60000
