@@ -10,6 +10,7 @@ function equipped(overrides: Partial<EquippedItem>): EquippedItem {
     enchant: 0,
     spells: { q: null, w: null, e: null, passive: null },
     twohanded: false,
+    maxEnchant: 4,
     ...overrides,
   };
 }
