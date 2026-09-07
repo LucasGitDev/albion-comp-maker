@@ -1,10 +1,10 @@
 ---
 id: ACM-052
 title: Remover .vitest/json/output.json do controle de versao
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 19:08'
-updated_date: '2026-09-07 19:08'
+updated_date: '2026-09-07 19:11'
 labels: []
 dependencies: []
 ordinal: 52000
