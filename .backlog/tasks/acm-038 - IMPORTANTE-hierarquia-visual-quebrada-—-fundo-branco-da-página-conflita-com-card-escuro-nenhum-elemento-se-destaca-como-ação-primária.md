@@ -3,10 +3,10 @@ id: ACM-038
 title: >-
   IMPORTANTE: hierarquia visual quebrada — fundo branco da página conflita com
   card escuro, nenhum elemento se destaca como ação primária
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 17:47'
+updated_date: '2026-09-07 18:08'
 labels: []
 dependencies: []
 priority: high
@@ -49,4 +49,6 @@ FINDING 4 — informativo — `git diff origin/main...origin/task/33-home-and-th
 FINDING 5 — MEDIUM — Header (sticky, com nav "Minhas comps" e CTA "Nova build") é montado no layout raiz, portanto passa a renderizar também em /build/new, empilhado acima do próprio BuildHeader do editor (que já tem campos nome/papel e contagem de slots). Resultado: duas barras de "cabeçalho" na mesma tela e um CTA "Nova build" duplicado/redundante enquanto o usuário já está criando uma build. Não quebra funcionalmente (não há AC de ACM-033/038 que proíba isso), mas é dívida de UX que a task ACM-037 (action bar do editor) provavelmente vai colidir com. Recomenda-se registrar decisão ou nota para ACM-037 sobre como reconciliar Header global vs. barra de ações do editor.
 
 VEREDITO: BLOCKED: 1 finding (HIGH) — AC #4 de ACM-038 não está de fato atendido; a alegação de conformidade do implementer é falsa para --color-icon-muted usado como texto. Demais achados são MEDIUM/LOW/informativos e não bloqueiam sozinhos.
+
+FALSO POSITIVO ESCLARECIDO (orchestrator): o achado 'focus ring invisivel no CTA' (outlineColor rgb(20,23,29), 1.10:1) era ARTEFATO DE MEDICAO, nao defeito. Causa: os elementos que falhavam tinham 'transition-colors'; no Tailwind v4 essa utility inclui outline-color na transition-property, entao o anel animava de currentColor ate #ffffff em ~150ms. Reviewer e orchestrator amostraram o computed style no meio da transicao. Medicao em duas amostras confirmou: imediato rgb(28,31,36) -> assentado rgb(255,255,255). O anel SEMPRE chegava a branco. Corrigido mesmo assim com focus-visible:transition-none (indicador de foco nao deve ter fade); pos-fix imediato == assentado == branco, e :focus-visible preservado no clique de mouse.
 <!-- SECTION:NOTES:END -->
