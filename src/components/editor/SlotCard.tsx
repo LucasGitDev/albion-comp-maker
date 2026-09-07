@@ -113,7 +113,7 @@ export function SlotCard({
   if (locked) {
     return (
       <div
-        className="flex w-[168px] cursor-not-allowed flex-col gap-2 rounded-xl border border-icon-slot-empty bg-icon-slot p-3 opacity-60"
+        className="flex w-full md:max-w-[168px] cursor-not-allowed flex-col gap-2 rounded-xl border border-icon-slot-empty bg-icon-slot p-3 opacity-60"
         data-slot={slot}
         data-slot-state="locked"
       >
@@ -143,7 +143,7 @@ export function SlotCard({
       <button
         type="button"
         onClick={() => onRequestItemPick(slot)}
-        className="flex w-[168px] flex-col gap-2 rounded-xl border border-dashed border-icon-slot-empty bg-icon-slot p-3 text-left transition-colors duration-150 ease-out hover:border-solid hover:border-[var(--color-enchant)]"
+        className="flex w-full md:max-w-[168px] flex-col gap-2 rounded-xl border border-dashed border-icon-slot-empty bg-icon-slot p-3 text-left transition-colors duration-150 ease-out hover:border-solid hover:border-[var(--color-enchant)]"
         data-slot={slot}
         data-slot-state="empty"
       >
@@ -162,7 +162,7 @@ export function SlotCard({
 
   return (
     <div
-      className="group relative flex w-[168px] flex-col gap-2 rounded-xl border border-icon-slot-empty bg-icon-slot p-3"
+      className="group relative flex w-full md:max-w-[168px] flex-col gap-2 rounded-xl border border-icon-slot-empty bg-icon-slot p-3"
       data-slot={slot}
       data-slot-state="filled"
     >

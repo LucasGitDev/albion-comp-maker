@@ -8,8 +8,9 @@ import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { BuildHeader } from "@/components/editor/BuildHeader";
 import { EditorActionBar } from "@/components/editor/EditorActionBar";
 import { SLOT_LABELS } from "@/components/editor/SlotCard";
-import { SLOT_ORDER } from "@/types/build";
+import { SLOT_COLUMNS, SLOT_ORDER } from "@/types/build";
 import { SlotGrid } from "@/components/editor/SlotGrid";
+import { SlotGroupNav } from "@/components/editor/SlotGroupNav";
 import { SlotPickerPopover } from "@/components/editor/SlotPickerPopover";
 import { SwapsSection } from "@/components/editor/SwapsSection";
 import { groupSpellsForItem, type SpellCandidate } from "@/components/editor/spell-groups";
@@ -143,6 +144,25 @@ export default function NewBuildPage(): React.JSX.Element {
 
   const filledCount = SLOT_ORDER.filter((slot) => build.slots[slot] !== null).length;
   /**
+   * Denominator for the mobile group-nav strip (ACM-041, doc-005 §7): a
+   * locked offhand (two-handed mainhand) is excluded from both its group's
+   * and the global total, not counted as pending. `EditorActionBar` still
+   * passes `SLOT_ORDER.length` unmodified (ACM-065 tracks aligning it) — the
+   * two numbers can legitimately disagree on screen until that lands.
+   */
+  const groupCounters = useMemo(
+    () =>
+      SLOT_COLUMNS.map((column) => {
+        const reachableSlots = column.slots.filter(
+          (slot) => !(slot === "offhand" && offhandLocked)
+        );
+        const filled = reachableSlots.filter((slot) => build.slots[slot] !== null).length;
+        return { id: column.id, title: column.title, filled, total: reachableSlots.length };
+      }),
+    [build.slots, offhandLocked]
+  );
+  const totalReachableSlots = SLOT_ORDER.length - (offhandLocked ? 1 : 0);
+  /**
    * `#capture-root`/the `BuildCard` preview isn't wired into this route yet
    * (that's ACM-018/019 territory, not ACM-037). Deliberately left
    * unattached to any DOM node — `EditorActionBar` only ever *reads*
@@ -181,6 +201,18 @@ export default function NewBuildPage(): React.JSX.Element {
       */}
       <div inert={pickerOpen} className="flex flex-col gap-6">
         <BuildHeader build={build} onNameChange={actions.setName} onRoleChange={actions.setRole} />
+        {/*
+          Mobile-only (`md:hidden` inside the component). Lives inside the
+          `inert` wrapper alongside the grid so the item picker's focus trap
+          still covers it (doc-005 §8, ACM-046) — an anchor strip reachable
+          behind an open modal would defeat the trap.
+        */}
+        <SlotGroupNav
+          groups={groupCounters}
+          totalFilled={filledCount}
+          totalSlots={totalReachableSlots}
+          swapsCount={build.swaps.length}
+        />
         <SlotGrid
           build={build}
           offhandLocked={offhandLocked}
@@ -192,19 +224,27 @@ export default function NewBuildPage(): React.JSX.Element {
           onEnchantChange={(slot, enchant) => actions.setEnchant(slot, enchant)}
           onSpellChange={actions.setSpell}
         />
-        <SwapsSection
-          swaps={build.swaps}
-          buildSlots={build.slots}
-          itemNames={itemNames}
-          spellCandidatesByItemId={spellCandidatesByItemId}
-          onAddSwap={actions.addSwap}
-          onRemoveSwap={actions.removeSwap}
-          onMoveSwap={actions.moveSwap}
-          onSlotChange={actions.setSwapSlot}
-          onRequestItemPick={handleRequestSwapItemPick}
-          onLabelChange={actions.setSwapLabel}
-          onSpellChange={actions.setSwapSpell}
-        />
+        {/*
+          `id`/`tabIndex`/`scroll-mt` here rather than inside `SwapsSection`
+          itself (doc-005 §9 lists it "inalterado") — the Swaps chip in
+          `SlotGroupNav` targets this wrapper, not a heading owned by the
+          component.
+        */}
+        <div id="slot-group-swaps" tabIndex={-1} className="scroll-mt-[var(--group-nav-h)] outline-none">
+          <SwapsSection
+            swaps={build.swaps}
+            buildSlots={build.slots}
+            itemNames={itemNames}
+            spellCandidatesByItemId={spellCandidatesByItemId}
+            onAddSwap={actions.addSwap}
+            onRemoveSwap={actions.removeSwap}
+            onMoveSwap={actions.moveSwap}
+            onSlotChange={actions.setSwapSlot}
+            onRequestItemPick={handleRequestSwapItemPick}
+            onLabelChange={actions.setSwapLabel}
+            onSpellChange={actions.setSwapSpell}
+          />
+        </div>
       </div>
       {pickerTarget && !offhandLockBlocksPicker && (
         <SlotPickerPopover
