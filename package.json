@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "sync:ao": "tsx scripts/sync-ao-data.ts"
+    "sync:ao": "tsx scripts/sync-ao-data.ts",
+    "build:fixture": "tsx scripts/build-test-fixture.ts"
   },
   "dependencies": {
     "next": "16.3.4",
