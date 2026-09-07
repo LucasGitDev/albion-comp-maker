@@ -26,6 +26,12 @@ export type BuildActions = {
    * caller from the ao-data catalogue (see src/components/editor/tier-enchant.ts).
    */
   setTier(slot: Slot, tier: number, itemId: string): void;
+  /**
+   * Switch the equipped item's enchant level (ACM-031). Clamped to 0..4
+   * regardless of what the caller passes — the store never trusts UI input
+   * to already be in range, same rule as `setItem`/`setTier`.
+   */
+  setEnchant(slot: Slot, enchant: number): void;
   clearSlot(slot: Slot): void;
   setSpell(slot: Slot, group: SpellGroup, spellId: string | null): void;
   reset(): void;
@@ -83,6 +89,18 @@ export const useBuildStore = create<BuildStore>((set) => ({
         const slots: Record<Slot, EquippedItem | null> = {
           ...state.build.slots,
           [slot]: { ...current, tier, itemId },
+        };
+        return { build: { ...state.build, slots } };
+      }),
+
+    setEnchant: (slot, enchant) =>
+      set((state) => {
+        const current = state.build.slots[slot];
+        if (!current) return {};
+        const clamped = Math.max(0, Math.min(4, Math.trunc(enchant))) as EquippedItem["enchant"];
+        const slots: Record<Slot, EquippedItem | null> = {
+          ...state.build.slots,
+          [slot]: { ...current, enchant: clamped },
         };
         return { build: { ...state.build, slots } };
       }),

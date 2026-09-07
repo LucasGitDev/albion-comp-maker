@@ -1,6 +1,6 @@
 "use client";
 
-import type { TierOption } from "./tier-enchant";
+import type { EnchantOption, TierOption } from "./tier-enchant";
 
 export type TierSelectProps = {
   slotLabel: string;
@@ -26,6 +26,43 @@ export function TierSelect({ slotLabel, tier, options, onChange }: TierSelectPro
         {options.map((option) => (
           <option key={option.tier} value={option.tier}>
             T{option.tier}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+export type EnchantSelectProps = {
+  slotLabel: string;
+  enchant: EnchantOption;
+  options: readonly EnchantOption[];
+  onChange: (enchant: EnchantOption) => void;
+};
+
+/**
+ * Renders only when `options` has more than a single level — the caller
+ * (`SlotCard`) is expected to gate on `maxEnchant > 0` (ACM-031 AC#2), but
+ * this component also degrades gracefully if handed a single-option list.
+ */
+export function EnchantSelect({ slotLabel, enchant, options, onChange }: EnchantSelectProps): React.JSX.Element | null {
+  if (options.length <= 1) return null;
+
+  return (
+    <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+      Encantamento
+      <select
+        aria-label={`Encantamento de ${slotLabel}`}
+        className="rounded border border-icon-slot-empty bg-icon-slot px-1 py-0.5 text-[11px] font-normal normal-case text-white"
+        value={enchant}
+        onChange={(event) => {
+          const nextEnchant = Number(event.target.value) as EnchantOption;
+          if (options.includes(nextEnchant)) onChange(nextEnchant);
+        }}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            .{option}
           </option>
         ))}
       </select>
