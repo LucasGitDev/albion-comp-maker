@@ -1,10 +1,10 @@
 ---
 id: ACM-003
 title: Implement spell resolver algorithm (Section 3)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 13:32'
+updated_date: '2026-09-07 14:57'
 labels: []
 milestone: m-0
 dependencies:
@@ -26,3 +26,9 @@ Core algorithm: resolve inherited spell lists per item via craftingspelllist ref
 - [ ] #4 No resolved spell references an ID absent from spells.json
 - [ ] #5 Cycle detection: circular @reference does not hang
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+spell-resolver.ts: resolveSpells() + buildItemIndex() + toArray(). Handles multi-level inheritance, removespell, cycle detection. 7 unit tests with inline fixtures. PR #3, make check green.
+<!-- SECTION:FINAL_SUMMARY:END -->

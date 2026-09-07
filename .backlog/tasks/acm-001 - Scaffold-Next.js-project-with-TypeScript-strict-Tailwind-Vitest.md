@@ -1,10 +1,10 @@
 ---
 id: ACM-001
 title: Scaffold Next.js project with TypeScript strict + Tailwind + Vitest
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 14:36'
+updated_date: '2026-09-07 14:54'
 labels: []
 milestone: m-0
 dependencies: []
