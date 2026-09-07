@@ -1,10 +1,10 @@
 ---
 id: ACM-018
 title: Build CRUD Server Actions + /builds page (RF-6)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 19:00'
+updated_date: '2026-09-07 19:07'
 labels: []
 milestone: m-5
 dependencies:
