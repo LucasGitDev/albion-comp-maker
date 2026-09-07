@@ -4,7 +4,7 @@ title: Spell picker per item — Q/W/E/Passive (RF-2)
 status: In Progress
 assignee: []
 created_date: '2026-09-07 13:32'
-updated_date: '2026-09-07 17:46'
+updated_date: '2026-09-07 17:50'
 labels: []
 milestone: m-2
 dependencies:
@@ -92,4 +92,22 @@ Deviations (mirrors ACM-009's documented stance, not new scope creep):
 
 make check: green (lint 0 errors/2 pre-existing <img> warnings, tsc, next
 build, vitest 140/140).
+
+Review PR #23 (task/10-spell-picker) — verdict: LGTM
+
+Verified quantitatively against the full 2036-item ao-corpus.json fixture (throwaway script, not committed):
+- 0 items have any spell with slotGroup outside {1,2,3} for actives — no silent drop path exists in the current corpus.
+- 0 items end up with a spell unreachable in every group (no "feature loss" case found).
+- 584 items have zero spells (matches decision-005); all 112 offhands are among them — SpellPicker.tsx returns null when rows.length===0, so no empty group row renders. Confirmed via spell-picker-slotcard.test.tsx's offhand case too.
+- 1939/2036 items have >1 candidate spell in the same Q/W/E group (e.g. T4_MAIN_SWORD: Q={HEROICSTRIKE2, CLEAVE}, W={SWORD_SPIN, INTERRUPT2, SPLITTINGSLASH, HAMSTRINGSWORD, PARRY, DEFENSERUN}, E={MIGHTYBLOW}) — this matches Albion's real "choose one ability per slot" mechanic. SpellPicker renders every candidate as its own selectable chip via GROUP_ORDER.filter + candidates.map, so the picker genuinely lets the user choose among them (not just displays the first one). Confirmed by clicking a non-first candidate in spell-picker-slotcard.test.tsx ("TAUNT").
+- Initially suspected `slotGroup` ("index within the spell's own kind-group", per ao-data.d.ts and spell-resolver.ts's own doc comment on `@slots`) was being misread as a Q/W/E discriminator that doesn't exist upstream. Spot-checked against T4_MAIN_SWORD's real in-game abilities (Q=Heroic Strike, W=Whirlwind, E=Mighty Blow) and the mapping lines up correctly — not a bug.
+
+Other checks:
+- Mutation test: flipped ACTIVE_SLOT_GROUP_TO_SPELL_GROUP["1"] from "q" to "w" in spell-groups.ts — 4/5 tests in spell-picker-groups.test.ts fail. Test suite actually pins the mapping.
+- Store integrity: src/store/build-store.ts has zero diff (verified via `git diff main...HEAD`). setSpell always writes `string | null`, never undefined — JSON-serializable. Two-handed offhand-lock guard (build-store.ts:56-58) untouched.
+- Export safety: no oklch/color-mix/alpha-slash utilities, no emoji in the new files. src/components/icons/SpellIcon.tsx has zero diff (ACM-029 fix intact). SpellPicker.tsx is editor chrome, not touched by/touching src/components/export/**.
+- Scope: diff touches only src/components/editor/**, src/app/(editor)/build/new/page.tsx, and the three named test files. No touch of src/lib/**, src/components/export/**, package.json or lockfile — no collision with concurrent ACM-015 work.
+- AC #1-#5: all verifiably met by the diff and exercised by tests (spell-picker-groups.test.ts, spell-picker-component.test.tsx, spell-picker-slotcard.test.tsx).
+
+No CRITICAL/HIGH/MEDIUM findings. LOW (non-blocking): the "Deviations" note in the implementation notes documents that spellCandidatesByGroup still isn't wired to a real catalogue fetch in build/new/page.tsx — pre-existing gap from ACM-009/011, not new scope creep, not blocking this PR.
 <!-- SECTION:NOTES:END -->
