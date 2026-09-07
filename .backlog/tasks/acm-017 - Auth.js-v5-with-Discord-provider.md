@@ -1,10 +1,10 @@
 ---
 id: ACM-017
 title: Auth.js v5 with Discord provider
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-07 17:17'
+updated_date: '2026-09-07 17:40'
 labels: []
 milestone: m-5
 dependencies:

@@ -3,10 +3,10 @@ id: ACM-029
 title: >-
   Export safety: remove color-mix/alpha utilities from capture-root icons and
   harden the guard
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 17:11'
-updated_date: '2026-09-07 17:29'
+updated_date: '2026-09-07 17:39'
 labels: []
 milestone: m-2
 dependencies:
