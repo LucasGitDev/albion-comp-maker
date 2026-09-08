@@ -56,12 +56,17 @@ export const SLOT_ORDER: readonly Slot[] = [
   "potion",
 ] as const;
 
-/** Column grouping used by the editor grid and the exported card layout. */
-export const SLOT_COLUMNS: readonly { title: string; slots: readonly Slot[] }[] = [
-  { title: "Armas", slots: ["mainhand", "offhand"] },
-  { title: "Armadura", slots: ["head", "armor", "shoes"] },
-  { title: "Utilidade", slots: ["cape", "bag", "mount"] },
-  { title: "Consumíveis", slots: ["food", "potion"] },
+/**
+ * Column grouping used by the editor grid and the exported card layout.
+ * `id` is the anchor target for the mobile group-nav strip (ACM-041) —
+ * stable ASCII slugs so `#slot-group-<id>` never depends on the
+ * (accented, PT-BR) display title.
+ */
+export const SLOT_COLUMNS: readonly { id: string; title: string; slots: readonly Slot[] }[] = [
+  { id: "armas", title: "Armas", slots: ["mainhand", "offhand"] },
+  { id: "armadura", title: "Armadura", slots: ["head", "armor", "shoes"] },
+  { id: "utilidade", title: "Utilidade", slots: ["cape", "bag", "mount"] },
+  { id: "consumiveis", title: "Consumíveis", slots: ["food", "potion"] },
 ] as const;
 
 export const EMPTY_SPELLS: Record<SpellGroup, string | null> = {
