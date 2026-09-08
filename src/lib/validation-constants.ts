@@ -30,13 +30,13 @@ export const SWAP_LABEL_MAX_LENGTH = 60;
 
 /**
  * Mirrors `accentSchema` in `src/lib/build-schema.ts` (6-digit hex only —
- * the *strict* write-side bound).
+ * the *strict* write-side bound). Every `BuildState.accent` that reaches
+ * storage/exchange (Zod parse, `POST`/`PATCH` payloads) must match this
+ * exact pattern — there is never a persisted 3/4/8-digit value.
  *
- * NOTE (ACM-054, not resolved by this task): `src/components/build-card/
- * tokens.ts`'s `resolveAccent()` independently validates against a wider
- * `^#[0-9a-fA-F]{3,8}$` pattern. The two patterns genuinely disagree today;
- * this task only extracts existing values verbatim and does not unify them
- * — see ACM-054 for the decision on which pattern is correct.
+ * ACM-054: also the sole pattern used by `resolveAccent()` in
+ * `src/components/build-card/tokens.ts` — write and render share this one
+ * regex so the two validators cannot drift apart again.
  */
 export const ACCENT_HEX_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
