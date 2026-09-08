@@ -7,7 +7,7 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
     {
       uniquename: "T4_HEAD_PLATE_SET1",
       slot: "head",
-      localizedNames: { "en-US": "Soldier Helmet" },
+      localizedNames: { "EN-US": "Soldier Helmet" },
       spells: [],
       twohanded: false,
       maxEnchant: 4,
@@ -15,10 +15,10 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
     {
       uniquename: "T4_MAIN_SWORD",
       slot: "mainhand",
-      localizedNames: { "en-US": "Broadsword" },
+      localizedNames: { "EN-US": "Broadsword" },
       spells: [
-        { uniquename: "SWORD_Q", slotGroup: "1", kind: "active", localizedNames: { "en-US": "Slash" } },
-        { uniquename: "SWORD_W", slotGroup: "2", kind: "active", localizedNames: { "en-US": "Guard" } },
+        { uniquename: "SWORD_Q", slotGroup: "1", kind: "active", localizedNames: { "EN-US": "Slash" } },
+        { uniquename: "SWORD_W", slotGroup: "2", kind: "active", localizedNames: { "EN-US": "Guard" } },
       ],
       twohanded: false,
       maxEnchant: 4,
@@ -26,7 +26,7 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
     {
       uniquename: "T4_BAG",
       slot: "bag",
-      localizedNames: { "en-US": "Bag" },
+      localizedNames: { "EN-US": "Bag" },
       spells: [],
       twohanded: false,
       maxEnchant: 0,

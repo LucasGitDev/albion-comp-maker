@@ -1,4 +1,5 @@
 import type { AOItem, Slot } from "@/data/ao-data.d";
+import { pickLocalizedName } from "@/lib/localized-name";
 
 /**
  * Pure, DOM-free search index over the item catalogue. See doc-002
@@ -57,7 +58,7 @@ function extractEnchant(uniquename: string): number {
 function buildIndexedItem(item: AOItem): IndexedItem {
   const names: Record<string, string> = {};
   for (const locale of SEARCHED_LOCALES) {
-    const raw = item.localizedNames?.[locale];
+    const raw = pickLocalizedName(item.localizedNames, locale);
     if (raw) names[locale] = normalize(raw);
   }
   return {
