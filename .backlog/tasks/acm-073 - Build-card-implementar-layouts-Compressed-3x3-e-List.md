@@ -1,10 +1,10 @@
 ---
 id: ACM-073
 title: 'Build card: implementar layouts Compressed (3x3) e List'
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-09-08 00:04'
-updated_date: '2026-09-08 00:06'
+updated_date: '2026-09-08 01:04'
 labels: []
 dependencies: []
 priority: high
@@ -48,4 +48,16 @@ BLOQUEADOR A RESOLVER ANTES DE CODAR: as tres referencias pedidas (killboard ofi
 Teste obrigatorio: KILLBOARD_MATRIX.flat() concatenado com ["mount"] deve ser permutacao exata de SLOT_ORDER — sem isso um slot novo some do card em silencio.
 
 Estados obrigatorios (secoes 2.7 e 3.2 do doc): vazio, slot vazio, erro de icone. O Compressed NAO colapsa quando a build esta vazia: renderiza as 9 celulas em placeholder tracejado (a grade incompleta e o gancho para completar a build).
+
+Implementado: BuildCardCompressed (540px, matriz 3x3 KILLBOARD_MATRIX, célula fixa 80x93, SpellStrip com posição Q/W/E/P preservada, painel de meta com montaria + até 3 swaps) e BuildCardList (480px, 10 linhas via SLOT_ORDER, ListRow 64/48px, nome sempre visível, tier como pill). BuildCardLayout aceita 'compressed'/'list'; 'vertical'/'grid' não foram tocados.
+
+Novos arquivos: layout-matrix.ts (KILLBOARD_MATRIX), slot-meta.ts (SLOT_LABELS/SLOT_CATEGORY compartilhados pelos dois layouts novos), SpellStrip.tsx, CompressedTile.tsx, BuildCardCompressed.tsx, ListRow.tsx, BuildCardList.tsx. Tokens novos: CARD_SLOT_EMPTY_BORDER, CARD_ROW_DIVIDER (tokens.ts); ICON_SIZE_PX.xxs=18 / ICON_SIZE_CLASS.xxs (icon-tokens.ts).
+
+BLOQUEADOR não resolvido conforme decisão do orchestrator: as 3 referências externas (killboard oficial, albiononlinegrind, albiononlinebuilds) retornam HTTP 403 para fetch programático; não foi possível abrir o killboard no browser neste ambiente para confirmar visualmente a KILLBOARD_MATRIX da doc-006 §2.1. Prossegui com a matriz documentada (convenção do paperdoll in-game). Rede de segurança real: teste de permutação KILLBOARD_MATRIX.flat()+['mount'] === SLOT_ORDER (build-card-layout-matrix.test.ts) — se um slot novo for adicionado sem atualizar a matriz, este teste falha.
+
+Desvio da spec: ícone do item no CompressedTile usa size='lg' (56px) em vez do valor literal de 64px do doc — não há step de ICON_SIZE_PX entre 56 e 80, e a task só autoriza adicionar o token xxs=18; abrir um novo step só para esse caso foi julgado fora de escopo. Continua dentro da caixa de 72px.
+
+Testes adicionados: build-card-layout-matrix.test.ts (AC#3), build-card-layouts.test.tsx (AC#1, #4, #5, #6, parcial #7 via DOM), build-card-no-palette-classes.test.ts (AC#7, scan estático de todo src/components/build-card/**). AC#8 (export PNG) coberto indiretamente pelos mesmos guards de ausência de oklch/color-mix que build-card.test.tsx já usa para vertical/grid — não há um teste de export end-to-end dedicado nesta task.
+
+make check: verde (pnpm install --frozen-lockfile, lint, tsc --noEmit, build, vitest — 433/433 testes passando).
 <!-- SECTION:NOTES:END -->

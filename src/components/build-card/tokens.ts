@@ -23,6 +23,21 @@ export const CARD_FG = "#ECEDEE";
 export const CARD_FG_MUTED = "#9aa1ad";
 export const CARD_PLACEHOLDER = "#2a2e37";
 
+/**
+ * Dashed border for an empty slot placeholder (Compressed §2.7, List §3.2).
+ * `CARD_BORDER` (`#2a2e37`) is nearly invisible against `CARD_SURFACE_2`
+ * (`#171a21`) — the empty state needs a lighter border to read as a slot at
+ * all, not just a blank tile.
+ */
+export const CARD_SLOT_EMPTY_BORDER = "#3f4552";
+
+/**
+ * Divider between List rows (§3.1). `CARD_BORDER` is strong enough that
+ * repeating it 10 times (one per slot) turns the card into a striped grid
+ * instead of a plain list — this is the muted, single-purpose variant.
+ */
+export const CARD_ROW_DIVIDER = "#22262e";
+
 /** Enchant badge color — same hex value as the `--color-enchant` token added by ACM-011. */
 export const CARD_ENCHANT = "#3f8f4a";
 
