@@ -1,16 +1,46 @@
 import type { SpellGroup } from "@/types/build";
 
-/** Display-only theme toggles (ACM-014 wires these to real user controls). */
+/**
+ * Background image layer for the card (ACM-014, decision-018/decision-019).
+ * `imageId` references a row in `background_images` — the theme never stores
+ * a path or a dataURL, only the opaque id. The client resolves the actual
+ * `<img src>` as `/api/background/${imageId}`.
+ */
+export type BuildCardBackground = {
+  imageId: string;
+  /** 0..20 px, applied as `filter: blur(Npx)` on the image layer only. */
+  blur: number;
+  /** 0..0.9, opacity of the black overlay drawn between the image and the content. */
+  darken: number;
+  /** 1..2.5, applied as `transform: scale(N)` on the image layer. */
+  scale: number;
+};
+
+/**
+ * BuildCard's full theme contract (ACM-014, decision-019). `preset` selects
+ * the token set from `theme-presets.ts`; `"custom"` is a derived marker (the
+ * user changed something after applying a named preset) and resolves to the
+ * same tokens as `"dark-purple"` — see `resolvePresetTokens`.
+ */
 export type BuildCardTheme = {
+  preset: "dark-purple" | "gold" | "blood" | "ice" | "custom";
+  aspectRatio: "square" | "wide" | "auto";
+  /** Same-origin font stacks only (`next/font` Geist) — see decision-017/doc-007 D4. */
+  fontFamily: "sans" | "mono";
   /** Show item names under each icon. Default: false (icon is the identifier). */
   showItemNames: boolean;
   /** Show spell names under each spell chip. Default: true. */
   showSpellNames: boolean;
+  background: BuildCardBackground | null;
 };
 
 export const DEFAULT_BUILD_CARD_THEME: BuildCardTheme = {
+  preset: "dark-purple",
+  aspectRatio: "auto",
+  fontFamily: "sans",
   showItemNames: false,
   showSpellNames: true,
+  background: null,
 };
 
 /**
