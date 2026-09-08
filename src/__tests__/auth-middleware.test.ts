@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { __resetPublicReadRateLimitState } from "@/lib/public-read-rate-limit";
 
 // `src/proxy.ts` calls `auth(callback)` at module load time, so `@/auth`
 // must be mocked before importing it. This mirrors next-auth's real
@@ -8,10 +10,19 @@ vi.mock("@/auth", () => ({
   auth: (handler: (req: unknown) => unknown) => handler,
 }));
 
+afterEach(() => {
+  __resetPublicReadRateLimitState();
+});
+
 describe("middleware", () => {
-  it("scopes the matcher to /builds/:path* and /comp/new only (allow-list, not global)", async () => {
+  it("scopes the matcher to /builds/:path*, /comp/new, /build/:slug and /comp/:slug (allow-list, not global)", async () => {
     const { config } = await import("@/proxy");
-    expect(config.matcher).toEqual(["/builds/:path*", "/comp/new"]);
+    expect(config.matcher).toEqual([
+      "/builds/:path*",
+      "/comp/new",
+      "/build/:slug",
+      "/comp/:slug",
+    ]);
   });
 
   it("redirects unauthenticated requests to / (AC#3)", async () => {
@@ -20,11 +31,12 @@ describe("middleware", () => {
     const req = {
       auth: null,
       nextUrl: new URL("http://localhost:3000/builds/some-build"),
+      headers: new Headers(),
     };
 
-    const res = (middleware as (r: unknown) => unknown)(req) as
-      | Response
-      | undefined;
+    const res = (
+      middleware as (r: unknown) => unknown
+    )(req) as Response | undefined;
 
     expect(res).toBeInstanceOf(Response);
     expect(res?.status).toBe(302);
@@ -37,11 +49,12 @@ describe("middleware", () => {
     const req = {
       auth: { user: { id: "user-1" }, expires: "" },
       nextUrl: new URL("http://localhost:3000/comp/new"),
+      headers: new Headers(),
     };
 
-    const res = (middleware as (r: unknown) => unknown)(req) as
-      | Response
-      | undefined;
+    const res = (
+      middleware as (r: unknown) => unknown
+    )(req) as Response | undefined;
 
     expect(res).toBeUndefined();
   });
