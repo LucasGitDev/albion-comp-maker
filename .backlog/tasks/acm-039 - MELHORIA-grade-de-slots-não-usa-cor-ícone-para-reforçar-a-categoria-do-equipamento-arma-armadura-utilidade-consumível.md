@@ -44,3 +44,17 @@ Restrição de dívida técnica: as cores nascem como tokens nomeados, nunca har
 - [ ] #8 Teste automatizado que renderiza slots das 4 categorias e afirma que cada um expõe seu marcador de categoria (ex.: atributo data-slot-category) com os 4 valores distintos
 - [ ] #9 make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+## Verificação manual (obrigatória — task de UI)
+1. Abrir /build/new com a grade vazia. Esperado: os cards de Mão principal/secundária, os de Armadura, os de Utilidade e os de Consumíveis exibem quatro cores distintas de borda/faixa, e os títulos dos 4 grupos acompanham a mesma cor.
+2. Equipar itens em um slot de cada categoria. Esperado: a cor de categoria permanece a mesma do estado vazio (só a intensidade muda) e não é sobreposta pela cor de tier do badge T4-T8.
+3. No DevTools, inspecionar um card de cada categoria. Esperado: a cor vem de var(--color-slot-category-*), nenhum hex literal no atributo style ou nas classes.
+
+## Coordenação com outras tasks
+- ACM-041 (mergeada) já entregou o agrupamento e a nav mobile: esta task NÃO cria agrupamento novo, apenas colore o que já existe (SLOT_COLUMNS em src/types/build.ts:65).
+- ACM-048 (To Do) migra hexes do item-picker para tokens. Para não gerar dívida na mesma semana, as cores de categoria já nascem como tokens — nunca hardcoded.
+- Conflito de arquivo: ACM-039 e ACM-075 tocam SlotCard.tsx. Serializar (ACM-075 depende desta).
+<!-- SECTION:NOTES:END -->
