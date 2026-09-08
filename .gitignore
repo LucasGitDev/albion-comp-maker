@@ -55,3 +55,7 @@ src/data/ao-data.json
 .claude/loop/events.jsonl
 .claude/loop/last-check.json
 .claude/loop/state.json
+
+# ui-reviewer artifacts
+.playwright-mcp/
+screenshot-*.png
