@@ -152,6 +152,83 @@ function buildTmxNameIndex(raw: unknown, prefix: string): Map<string, Record<str
   return index;
 }
 
+/**
+ * Weapon-type suffixes that upstream strips when a passive is a generic
+ * "per weapon family" variant of a base passive (see decision-021 / ACM-079).
+ * e.g. `PASSIVE_ARMORCHANCE_SWORD` has no TMX entry of its own — only the
+ * weapon-agnostic `PASSIVE_ARMORCHANCE` ("Increased Defense") does.
+ */
+const WEAPON_SUFFIXES = [
+  "_SWORD", "_AXE", "_DAGGER", "_SPEAR", "_BOW", "_CROSSBOW",
+  "_CURSEDSTAFF", "_FIRESTAFF", "_FROSTSTAFF", "_ARCANESTAFF",
+  "_HOLYSTAFF", "_NATURESTAFF", "_QUARTERSTAFF", "_HAMMER", "_MACE", "_TANK",
+] as const;
+
+const TIER_SUFFIX = /^(.+)_T(\d+)$/;
+const MAX_TIER = 8;
+
+/** Strips a known prefix/tag noise from a raw spell uniquename before humanizing. */
+const HUMANIZE_STRIP_PREFIXES = ["PASSIVE_", "ACTIVE_", "TOGGLE_", "VANITY_"];
+
+/**
+ * Last-resort display name for a spell with no upstream translation anywhere
+ * in the TMX dump (decision-021): title-cased words from the uniquename,
+ * instead of surfacing the raw uniquename to the end user.
+ */
+export function humanizeSpellName(uniquename: string): string {
+  let rest = uniquename;
+  for (const prefix of HUMANIZE_STRIP_PREFIXES) {
+    if (rest.startsWith(prefix)) { rest = rest.slice(prefix.length); break; }
+  }
+  return rest
+    .split("_")
+    .filter(Boolean)
+    .map((word) => (word.length <= 2 ? word.toUpperCase() : word[0] + word.slice(1).toLowerCase()))
+    .join(" ");
+}
+
+/**
+ * Resolves the localized names for a spell uniquename against the TMX
+ * spell-name index, applying two known upstream key patterns before falling
+ * back to a humanized uniquename (see decision-021 / ACM-079):
+ *
+ *  1. exact match on the uniquename
+ *  2. weapon-family passives: strip a known weapon-type suffix and retry
+ *     against the weapon-agnostic base spell (e.g. `..._SWORD` → base)
+ *  3. tiered passives localized only at one tier (commonly T4): strip the
+ *     `_T<n>` suffix and retry every tier — these upstream entries are
+ *     identical in name across tiers, only the tier-specific description differs
+ *
+ * Returns `undefined` when no match is found by any strategy — callers
+ * decide the final humanized fallback.
+ */
+export function resolveSpellLocalizedNames(
+  uniquename: string,
+  index: Map<string, Record<string, string>>,
+): Record<string, string> | undefined {
+  const exact = index.get(uniquename);
+  if (exact) return exact;
+
+  for (const suffix of WEAPON_SUFFIXES) {
+    if (uniquename.endsWith(suffix)) {
+      const base = index.get(uniquename.slice(0, -suffix.length));
+      if (base) return base;
+      break;
+    }
+  }
+
+  const tierMatch = uniquename.match(TIER_SUFFIX);
+  if (tierMatch) {
+    const base = tierMatch[1];
+    for (let tier = 1; tier <= MAX_TIER; tier++) {
+      const found = index.get(`${base}_T${tier}`);
+      if (found) return found;
+    }
+  }
+
+  return undefined;
+}
+
 // ─── Step 3: Item name index (formatted/items.json — names only, no gameplay) ─
 
 type FormattedItem = {
@@ -254,9 +331,12 @@ async function emit(): Promise<void> {
       uniquename: s.uniquename,
       slotGroup: s.slot,
       kind: s.kind,
-      // fallback to uniquename for utility spells absent from localization
-      // (e.g. PASSIVE_BACKPACK_*) — see decision-004
-      localizedNames: spellNameIndex.get(s.uniquename) ?? { "EN-US": s.uniquename },
+      // resolveSpellLocalizedNames covers weapon-family and tiered upstream
+      // key patterns; humanizeSpellName is the last resort for spells with
+      // no TMX entry under any pattern (decision-021 / ACM-079).
+      localizedNames: resolveSpellLocalizedNames(s.uniquename, spellNameIndex) ?? {
+        "EN-US": humanizeSpellName(s.uniquename),
+      },
     }));
 
     items.push({
@@ -290,7 +370,9 @@ async function emit(): Promise<void> {
       {
         uniquename,
         kind,
-        localizedNames: spellNameIndex.get(uniquename) ?? { "EN-US": uniquename },
+        localizedNames: resolveSpellLocalizedNames(uniquename, spellNameIndex) ?? {
+          "EN-US": humanizeSpellName(uniquename),
+        },
       },
     ]),
   );
