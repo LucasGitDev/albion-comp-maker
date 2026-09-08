@@ -4,6 +4,11 @@ import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { NextRequest, NextResponse } from "next/server";
 import type { AOData, AOItem } from "@/data/ao-data.d";
+import {
+  checkItemsRateLimit,
+  clientKeyFromHeaders,
+  throttledApiResponse,
+} from "@/lib/editor-api-rate-limit";
 
 const ARTIFACT_PATH = path.join(process.cwd(), "src", "data", "ao-data.json");
 
@@ -101,6 +106,11 @@ export type ItemsErrorResponse = {
  * `code` they can branch on, never a silently empty list (ACM-043).
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const key = clientKeyFromHeaders(request.headers);
+  if (!checkItemsRateLimit(key)) {
+    return throttledApiResponse();
+  }
+
   try {
     const json = await loadItemsJson();
     const etag = cachedItemsEtag as string;

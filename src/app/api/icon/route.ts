@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  checkIconRateLimit,
+  clientKeyFromHeaders,
+  throttledApiResponse,
+} from "@/lib/editor-api-rate-limit";
 
 const ID_PATTERN = /^[A-Z0-9_@]+$/;
 const RENDER_BASE_URL = "https://render.albiononline.com/v1";
@@ -21,6 +26,11 @@ function fallbackResponse(): NextResponse {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const key = clientKeyFromHeaders(request.headers);
+  if (!checkIconRateLimit(key)) {
+    return throttledApiResponse();
+  }
+
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type");
   const id = searchParams.get("id");
