@@ -3,11 +3,12 @@ id: ACM-041
 title: >-
   MELHORIA: layout mobile (390px) empilha os 4 grupos de slots numa coluna única
   gerando scroll extremamente longo sem nenhum atalho
-status: In Review
+status: In Progress
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 20:45'
+updated_date: '2026-09-08 00:00'
 labels: []
+milestone: m-2
 dependencies: []
 priority: medium
 ordinal: 41000
@@ -22,88 +23,29 @@ Em 390px, /build/new empilha Armas, Armadura, Utilidade e Consumíveis verticalm
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Implemented per doc-005 (approved spec), no redesign:
-- SlotCard: w-[168px] -> w-full md:max-w-[168px] on all 3 states (empty/filled/locked). Desktop pixel-identical since the max-width pins it to 168px wherever available width >=168px (always true at md+).
-- SlotGrid: outer container flex-col -> md:flex-row md:flex-wrap; each group wrapper grid grid-cols-2 -> md:flex md:flex-col; group heading gets id=slot-group-<id> + tabIndex=-1 + scroll-mt-[var(--group-nav-h)].
-- SLOT_COLUMNS (types/build.ts) gained a stable ASCII `id` slug per group (armas/armadura/utilidade/consumiveis) used for anchor ids.
-- New SlotGroupNav component: sticky z-10 strip, real <a href="#..."> chips (never tabs/buttons), aria-current="location" via IntersectionObserver scroll-spy (guarded for missing IntersectionObserver), focus() on the target heading after native anchor scroll (preventScroll: true). Swaps gets its own anchor via a wrapper div (id=slot-group-swaps, tabIndex=-1) in page.tsx rather than modifying SwapsSection, per doc-005 §9 ("SwapsSection inalterado").
-- New --group-nav-h: 44px token in globals.css, plus html { scroll-behavior: smooth } (already deferred to `auto` by the existing prefers-reduced-motion block).
-- Denominator logic (page.tsx groupCounters/totalReachableSlots): a locked offhand is excluded from both its group's and the global total — verified by test that a two-handed build shows Armas 1/1 and global 1/9, never 1/10 or stuck below 9/9.
-- EditorActionBar's totalSlots prop was NOT touched (out of scope, ACM-065's job) — its counter and the new strip's counters can legitimately disagree on screen until ACM-065 aligns it. Documented in code comment at the groupCounters derivation.
+REVIEW PR #43 (task/41-mobile-slot-layout) — BLOCKED: 1 finding
 
-Tests added: slot-card-fluid-width.test.tsx, slot-grid-2up.test.tsx, slot-group-nav.test.tsx, build-new-page-group-nav.test.tsx (denominator exclusion, anchor focus movement, picker focus trap still works with the strip mounted inside the inert wrapper).
+HIGH — src/components/editor/SlotGroupNav.tsx:108 vs src/components/editor/EditorActionBar.tsx:151-153
+Cenário de falha: viewport entre 640px e 767px (ex.: tablet retrato 700px, ou desktop com janela redimensionada). O contador da EditorActionBar usa `sm:inline` (visível a partir de 640px) enquanto o SlotGroupNav usa `md:hidden` (visível até 767px). Nessa faixa de 640-767px AMBOS os contadores ficam visíveis simultaneamente na mesma tela. Com um mainhand de duas mãos equipado (offhand locked), a EditorActionBar mostra "1/10" (usa SLOT_ORDER.length sem excluir o offhand travado — rastreado em ACM-065) e o SlotGroupNav mostra "1/9" (exclui o offhand travado) para o mesmíssimo estado de build, ao mesmo tempo, na mesma viewport. Dois números de progresso divergentes visíveis simultaneamente é uma regressão de UX perceptível, não apenas dívida documentada em comentário — o comentário em page.tsx reconhece a divergência de números mas não que os dois pontos ficam visíveis ao mesmo tempo numa faixa real de viewport.
 
-make check: green (lint, tsc --noEmit, next build, 340/340 tests). One unrelated flaky perf test (item-index.test.ts "builds the full 2036-item index in a single fast pass") failed once under load and passed on retry in isolation — not touched by this task.
+Ação corretiva sugerida: alinhar os breakpoints (ambos `md:hidden`/`md:inline` ou ambos `sm:hidden`/`sm:inline`) para que nunca haja uma faixa de largura em que os dois contadores fiquem visíveis ao mesmo tempo — independente de quando ACM-065 alinhar os valores numéricos.
 
-PR: https://github.com/LucasGitDev/albion-comp-maker/pull/43
+Resto do diff: SlotCard fluid width (w-full → md:w-[168px] fixo, não max-w), SlotGrid grid-cols-2 abaixo de md / flex-col preservado em md+, testes cobrindo contrato de largura, scroll-spy, foco e a11y do nav strip — sem outros problemas encontrados. `make check`/testes (370 testes, 48 arquivos) passam localmente. Nenhum arquivo fora do escopo esperado (SlotCard, SlotGrid, novo SlotGroupNav, types/build.ts, page.tsx, globals.css, testes).
 
-CODE REVIEW (PR #43, correctness/regression focus) — VERDICT: LGTM
+AUDITORIA PR #43 (task/41-mobile-slot-layout) — veredito: BLOCKED: 1 finding
 
-Empirically verified (not just diff-reasoned):
+[CRITICAL] Branch desatualizada reverte estado de OUTRAS tasks no backlog ao dar merge
+- Evidência: `git diff origin/main HEAD -- .backlog/tasks/` mostra que o PR reverte:
+  - ACM-037: status Done -> In Progress, todos os 6 ACs de [x] para [ ], e a seção "Final Summary" inteira é apagada (registro de entrega do PR #31 perdido).
+  - ACM-063: status In Progress -> To Do.
+- Causa raiz: a branch foi criada a partir de 561ad7b, ANTES dos commits 088689a ("close ACM-037") e 00dd4b6 ("claim ACM-054") que já estão em origin/main. A branch nunca foi rebaseada, então os arquivos desses task ficaram "congelados" no estado antigo dentro do diff do PR.
+- Cenário de falha concreto: se este PR for mergeado como está (merge commit ou squash preservando esse conteúdo), o merge desfaz o fechamento de ACM-037 e o claim de ACM-063 no board — perda de histórico de auditoria (Final Summary) e falso sinal de "trabalho não feito" em duas tasks que não têm nenhuma relação com layout mobile. Isso viola diretamente a regra de escopo do harness (arquivos fora de `touches`/escopo do task sem justificativa) e o princípio de "Backlog.md é o sistema de documentação canônico".
+- Ação corretiva: `git rebase origin/main` (ou merge) na branch `task/41-mobile-slot-layout` e resolver o conflito nesses dois arquivos preservando o estado atual de main (ACM-037 Done com Final Summary, ACM-063 In Progress); depois reabrir/atualizar o PR e reverificar `make check`.
 
-1. Persisted-state drift (TOP PRIORITY): CLEARED. SLOT_COLUMNS (types/build.ts) is
-   a pure UI layout constant — only referenced by SlotGrid.tsx and build/new/page.tsx,
-   never by src/lib/build-schema.ts or any actions/*. BuildState/EquippedItem (the
-   actual persisted shape) are byte-identical pre/post diff. `make check` runs the
-   full 340-test suite green, including whatever build-schema round-trip tests
-   already exist; no legacy-payload-unloadable class of bug (ACM-031's prior
-   incident) is possible here since the persisted schema file has zero diff.
-
-2. Global scroll-behavior:smooth in globals.css: verified the existing
-   `@media (prefers-reduced-motion: reduce)` block does contain
-   `scroll-behavior: auto !important` on `*, *::before, *::after` (not just
-   animation/transition durations as I suspected before checking) — the
-   implementer's claim holds. Checked for interference with export/capture path
-   (src/lib/export-png.ts, html2canvas usage) and the item-picker's own scroll
-   (item-result-list.tsx uses local `el.scrollTop`, unrelated to `html`
-   scroll-behavior) — no interaction found.
-
-3. --group-nav-h: 44px is consumed identically in all 3 places (SlotGroupNav's
-   `getComputedStyle` read for rootMargin, SlotGrid's heading
-   `scroll-mt-[var(--group-nav-h)]`, and the swaps wrapper's same class) — no
-   hardcoded duplicate found via grep.
-
-4. SlotCard: `w-[168px]` -> `w-full md:max-w-[168px]` confirmed on all 3 states
-   (locked/empty/filled) via diff; test file exercises all 3 and passes.
-
-5. Anchor chips are real `<a href="#...">`, `aria-current="location"`. Grepped
-   the whole nav for `role="tab"`/`aria-selected` — none found. No tab/accordion
-   pattern introduced.
-
-6. Focus management: mutation-tested by hand — commented out
-   `target?.focus({ preventScroll: true })` in SlotGroupNav.tsx and re-ran the
-   two focus-assertion test files: 3 of 9 tests failed as expected (focus stayed
-   on <body>/click target instead of moving to the heading). Restored the file
-   after. The tests are real, not tautological.
-
-7. IntersectionObserver guard (`typeof IntersectionObserver === "undefined"`)
-   is inside a client-only `useEffect`, so it cannot run during SSR; degrades to
-   "no chip ever active, links still work" per spec §8, matches test coverage.
-
-8. Two-handed/locked-offhand denominator: ran the actual fixture test
-   (`build-new-page-group-nav.test.tsx`, real store + real page, item catalogue
-   mocked only) — "1/9" and "Armas 1 de 1" assertions pass against the real
-   `groupCounters`/`totalReachableSlots` logic, not a mock of it.
-
-9. Focus-trap regression: confirmed via diff that `SlotGroupNav` is mounted
-   inside the same `<div inert={pickerOpen}>` wrapper as `SlotGrid`
-   (build/new/page.tsx). The dedicated test opens the picker and walks up from
-   a strip chip asserting an inert ancestor — passes in the full run.
-
-10. Scope: `git diff main...HEAD --name-only` = exactly the 4 non-test source
-    files claimed (types/build.ts, globals.css, SlotCard.tsx, SlotGrid.tsx,
-    build/new/page.tsx) + new SlotGroupNav.tsx + 4 new test files. No
-    package.json/lockfile churn, no touch to EditorActionBar, SwapsSection
-    (wrapped only, its own file untouched), src/lib/**, src/app/comp/**.
-    `make check` green on the branch: lint, tsc --noEmit, next build,
-    340/340 vitest.
-
-Non-blocking note: doc-005 (the approved spec) was committed to master in
-commit 39614ca, which lands *after* this task branch diverged — it is absent
-from `.backlog/docs/` on task/41-mobile-slot-layout itself. Had no functional
-impact (content matches implementation, verified by reading it from the
-master worktree), but flagging so future branches rebase docs before
-finalizing to avoid reviewers hitting a missing file.
-
-No CRITICAL/HIGH findings. LGTM.
+Revisão de código (fora esse ponto) — sem findings bloqueantes:
+- Sticky/z-index vs ACM-037 (EditorActionBar): sem conflito. `Header` só é `sticky` em `md:` nas rotas de editor (mobile não fica sticky), `EditorActionBar` é `fixed bottom-0 z-20`, e `SlotGroupNav` é `sticky top-0 z-10` só em mobile (`md:hidden`) — não competem pelo mesmo eixo/breakpoint.
+- Acessibilidade da SlotGroupNav: landmark `<nav aria-label="Grupos de slots">` sem colisão com outros `<nav>` (`Principal`, `Trilha`); usa `<a href="#...">` reais (não simula tab/tablist, sem `aria-selected` indevido); `aria-current="location"` correto para navegação por âncora; foco movido explicitamente para o heading alvo via `.focus({preventScroll:true})` após o scroll nativo, cobrindo o caso de short-section/IntersectionObserver não disparar (`checkScrollEnd` no fim do documento). Nenhum problema encontrado.
+- Testes: não são tautológicos — `slot-card-fluid-width.test.tsx` fixa a regressão real medida (`md:max-w` não resolve para 168px na cadeia flex-in-flex, exige `md:w-[168px]`); `slot-group-nav.test.tsx`/`build-new-page-group-nav.test.tsx` cobrem foco não perdido para `<body>`, chip preso no grupo anterior, e denominador correto quando offhand está travado (2H) — casos que uma implementação ingênua (sem `.focus()` explícito, ou contando offhand travado no total) quebraria. 17/17 passam localmente.
+- Design tokens: sem cores hardcoded novas; `SlotGroupNav`/`globals.css` só referenciam `var(--color-*)` já existentes; `--group-nav-h` é consumido de forma idêntica nos 3 lugares (scroll-spy rootMargin, scroll-mt do heading, scroll-mt do wrapper de swaps).
+- Task ACM-041 em si não tem Acceptance Criteria definidos no backlog — registrar como MEDIUM (dívida de processo): a task deveria ter ganho ACs explícitos antes de ir para implementação, dificultando validar "atendimento a AC" nesta auditoria além do que a doc-005 referenciada nos comentários do código descreve.
 <!-- SECTION:NOTES:END -->

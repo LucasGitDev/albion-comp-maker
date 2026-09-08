@@ -1,10 +1,10 @@
 ---
 id: ACM-063
 title: Rate limiting nas paginas publicas anonimas (primeira superficie sem throttle)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 20:30'
-updated_date: '2026-09-07 20:30'
+updated_date: '2026-09-07 23:59'
 labels: []
 dependencies: []
 priority: high

@@ -3,10 +3,10 @@ id: ACM-037
 title: >-
   IMPORTANTE: editor de build não tem header, navegação, nem ação primária
   (salvar/exportar) visível
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-07 20:42'
+updated_date: '2026-09-07 23:58'
 labels: []
 milestone: m-3
 dependencies: []
@@ -22,12 +22,12 @@ Em /build/new não existe nenhum header/nav global, breadcrumb, botão de voltar
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Header global persistente com logo/marca, navegacao (Home, Builds) e CTA primario 'Criar build', presente em todas as rotas via layout
-- [ ] #2 Na pagina de edicao de build existe uma action bar sticky sempre visivel durante scroll longo, com acao primaria 'Salvar' e secundaria 'Exportar PNG'
-- [ ] #3 Existe caminho de volta explicito a partir do editor (breadcrumb ou botao voltar) sem depender do back do navegador
-- [ ] #4 Header e action bar sao navegaveis por teclado, com foco visivel e landmarks semanticos (header/nav/main)
-- [ ] #5 A action bar sticky nao aparece dentro do capture-root do export PNG (nao vaza para a imagem exportada)
-- [ ] #6 make check verde e testes cobrindo a presenca do header e o disparo das acoes primarias
+- [x] #1 Header global persistente com logo/marca, navegacao (Home, Builds) e CTA primario 'Criar build', presente em todas as rotas via layout
+- [x] #2 Na pagina de edicao de build existe uma action bar sticky sempre visivel durante scroll longo, com acao primaria 'Salvar' e secundaria 'Exportar PNG'
+- [x] #3 Existe caminho de volta explicito a partir do editor (breadcrumb ou botao voltar) sem depender do back do navegador
+- [x] #4 Header e action bar sao navegaveis por teclado, com foco visivel e landmarks semanticos (header/nav/main)
+- [x] #5 A action bar sticky nao aparece dentro do capture-root do export PNG (nao vaza para a imagem exportada)
+- [x] #6 make check verde e testes cobrindo a presenca do header e o disparo das acoes primarias
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -68,3 +68,9 @@ VERIFIED (empirically, not on faith):
 
 Verdict: LGTM, with one MEDIUM (item 4, skip-link href/landmark linkage not actually asserted) recorded as debt, not a blocker.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Entregue via PR #31 (merged). Header contextual por rota, EditorActionBar sticky (desktop top / mobile fixed-bottom), Breadcrumb, skip link e landmarks semanticos. Action bar fora do capture-root do export PNG (invariante coberta por teste). Follow-ups filhos abertos: ACM-053 (skip-link test nao prova ancora->landmark), ACM-056, ACM-070. make check verde na main pos-merge (353 testes).
+<!-- SECTION:FINAL_SUMMARY:END -->
