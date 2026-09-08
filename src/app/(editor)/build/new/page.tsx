@@ -323,7 +323,7 @@ export default function NewBuildPage(): React.JSX.Element {
         </div>
         {themePanelOpen && (
           <div id="theme-panel">
-            <ThemePanel theme={theme} onChange={setTheme} />
+            <ThemePanel theme={theme} onChange={setTheme} accent={build.accent} onAccentChange={actions.setAccent} />
           </div>
         )}
       </div>

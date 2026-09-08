@@ -33,7 +33,7 @@ function swapItemName(swap: Swap, lookups: BuildCardLookups): string {
  * it stops being "the same component".
  */
 export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompressedProps): React.JSX.Element {
-  const accent = resolveAccent(state.role, state.accent);
+  const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
   const hasBuild = mainhand !== null;
   const mount = state.slots.mount;

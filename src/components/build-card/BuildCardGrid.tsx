@@ -20,7 +20,7 @@ export type BuildCardGridProps = {
 const COLUMN_WIDTH = 320;
 
 export function BuildCardGrid({ state, theme, lookups, tokens }: BuildCardGridProps): React.JSX.Element {
-  const accent = resolveAccent(state.role, state.accent);
+  const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
   const equipmentSlots = SLOT_ORDER.filter((slot) => slot !== "mainhand" && state.slots[slot] !== null);
 

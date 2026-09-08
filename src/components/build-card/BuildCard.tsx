@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import type { BuildState } from "@/types/build";
 import { BuildCardCompressed } from "./BuildCardCompressed";
 import { BuildCardGrid } from "./BuildCardGrid";
@@ -39,6 +42,57 @@ const ASPECT_WRAPPER: Readonly<Record<BuildCardTheme["aspectRatio"], { aspectRat
   wide: { aspectRatio: "16 / 9" },
 };
 
+/** Numeric ratio for each named aspect option, used only for overflow detection below. */
+const ASPECT_RATIO_NUMBER: Readonly<Record<BuildCardTheme["aspectRatio"], number | null>> = {
+  auto: null,
+  square: 1,
+  wide: 16 / 9,
+};
+
+/** How far below the declared ratio counts as "actually cropped" vs. sub-pixel rounding noise. */
+const ASPECT_OVERFLOW_EPSILON = 0.02;
+
+/**
+ * doc-007 §8's "protection rule": the card is never cropped. `aspect-ratio`
+ * on the wrapper only *proposes* a height for a given width — with
+ * `overflow: visible` (see render below) a browser lets the box grow past
+ * that proposal when content needs more room, it never clips it. This hook
+ * only detects that it happened, so the UI can also *say* so (PR #50 CRITICAL
+ * fix): it compares the wrapper's actually-rendered aspect ratio against the
+ * one it asked for; a real ratio narrower than requested means content pushed
+ * the box taller than the square/wide box would otherwise be.
+ */
+function useAspectOverflowWarning(
+  ref: React.RefObject<HTMLDivElement | null>,
+  aspectRatio: BuildCardTheme["aspectRatio"]
+): boolean {
+  const [overflow, setOverflow] = useState(false);
+  const expected = ASPECT_RATIO_NUMBER[aspectRatio];
+
+  useEffect(() => {
+    const reset = (): void => setOverflow(false);
+    if (expected === null) {
+      reset();
+      return;
+    }
+    const node = ref.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+
+    const check = (): void => {
+      const rect = node.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      setOverflow(rect.width / rect.height < expected - ASPECT_OVERFLOW_EPSILON);
+    };
+
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [ref, expected]);
+
+  return overflow;
+}
+
 /**
  * Single source of truth for the build preview AND the exported PNG (RF-4,
  * RF-5 / ACM-013 AC#4). This component:
@@ -73,6 +127,8 @@ export function BuildCard({
   const resolvedTheme: BuildCardTheme = { ...DEFAULT_BUILD_CARD_THEME, ...theme };
   const tokens = resolvePresetTokens(resolvedTheme.preset);
   const fontFamily = resolveFontFamily(resolvedTheme.fontFamily);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const overflowWarning = useAspectOverflowWarning(wrapperRef, resolvedTheme.aspectRatio);
   const lookups: BuildCardLookups = {
     itemNames: itemNames ?? EMPTY_LOOKUPS.itemNames,
     spellNames: spellNames ?? EMPTY_LOOKUPS.spellNames,
@@ -86,18 +142,27 @@ export function BuildCard({
   const blurCompensation = background ? 1 + background.blur / 100 : 1;
 
   return (
-    <div
-      id={captureId}
-      data-build-card
-      data-layout={layout}
-      style={{
-        display: "inline-flex",
-        position: "relative",
-        overflow: "hidden",
-        fontFamily,
-        ...ASPECT_WRAPPER[resolvedTheme.aspectRatio],
-      }}
-    >
+    <div data-build-card-wrapper style={{ display: "inline-flex", flexDirection: "column", gap: 8 }}>
+      <div
+        id={captureId}
+        data-build-card
+        data-layout={layout}
+        ref={wrapperRef}
+        style={{
+          display: "inline-flex",
+          position: "relative",
+          // doc-007 §8's protection rule: the card is NEVER cropped. Unlike
+          // the pre-fix version, this wrapper does not clip — `aspect-ratio`
+          // below only proposes a height for `square`/`wide`; if the card's
+          // actual content needs more room than that, the box (and therefore
+          // the PNG export, since this is the capture root) grows to fit it
+          // instead of silently cutting content off. `overflowWarning` below
+          // surfaces that this happened instead of hiding it.
+          overflow: "visible",
+          fontFamily,
+          ...ASPECT_WRAPPER[resolvedTheme.aspectRatio],
+        }}
+      >
       {background && (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element -- must be a real <img> for the export waitForImage guard, see module doc. */}
@@ -138,6 +203,12 @@ export function BuildCard({
           <BuildCardVertical state={state} theme={resolvedTheme} lookups={lookups} tokens={tokens} />
         )}
       </div>
+      </div>
+      {overflowWarning && (
+        <p role="status" aria-live="polite" data-build-card-overflow-warning className="text-[12px]" style={{ color: "#f87171" }}>
+          A build é alta demais para esse formato — o card foi ajustado.
+        </p>
+      )}
     </div>
   );
 }

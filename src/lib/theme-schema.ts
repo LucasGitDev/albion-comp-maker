@@ -37,7 +37,7 @@ const backgroundSchema = z
 export const themeSchema = z.strictObject({
   preset: z.enum([...THEME_PRESETS, "custom"]),
   aspectRatio: z.enum(ASPECT_RATIOS),
-  fontFamily: z.enum(["sans", "mono"]),
+  fontFamily: z.enum(["sans", "mono", "serif"]),
   showItemNames: z.boolean(),
   showSpellNames: z.boolean(),
   background: backgroundSchema,
