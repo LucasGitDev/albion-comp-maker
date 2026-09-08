@@ -1,9 +1,10 @@
 ---
 id: ACM-075
 title: 'Editor: reduzir densidade do SlotCard (ícone + nome em linha compacta)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-08 00:09'
+updated_date: '2026-09-08 15:01'
 labels: []
 milestone: m-3
 dependencies:
