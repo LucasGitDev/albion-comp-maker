@@ -3,10 +3,10 @@ id: ACM-040
 title: >-
   Editor: ligar spellCandidatesBySlot e itemNames no SlotGrid (ability slots
   existem mas não recebem dados)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-08 00:08'
+updated_date: '2026-09-08 00:10'
 labels: []
 milestone: m-3
 dependencies: []
