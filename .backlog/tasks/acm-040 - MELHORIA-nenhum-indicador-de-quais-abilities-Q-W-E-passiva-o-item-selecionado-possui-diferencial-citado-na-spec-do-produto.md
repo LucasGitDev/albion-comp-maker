@@ -3,10 +3,10 @@ id: ACM-040
 title: >-
   Editor: ligar spellCandidatesBySlot e itemNames no SlotGrid (ability slots
   existem mas não recebem dados)
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-08 00:10'
+updated_date: '2026-09-08 00:25'
 labels: []
 milestone: m-3
 dependencies: []
@@ -57,4 +57,16 @@ O empty state para itens que genuinamente não têm nenhuma ability (bolsa, capa
 Contraste decisivo: SwapsSection recebe spellCandidatesByItemId em page.tsx:232-245 e funciona; SlotGrid em page.tsx:216-225 não recebe e por isso a grade fica sem abilities. É omissão de prop em um único call site, não ausência de feature.
 
 CORREÇÃO DE REFERÊNCIA: o empty state citado acima foi criado como **ACM-074** (não ACM-076).
+
+Wiring fix applied: page.tsx now derives itemNamesBySlot and spellCandidatesBySlot (useMemo, adapted from the existing uniquename-keyed itemNames/spellCandidatesByItemId) and passes both into <SlotGrid>. SlotGrid/SlotCard/SpellPicker left untouched per scope lock. Added 3 regression tests in build-new-page.test.tsx; confirmed red (spell-picker missing, uniquename shown) by temporarily reverting the two new props, then green after restoring. make check green: lint, tsc, next build, 374 vitest tests passing. PR: https://github.com/LucasGitDev/albion-comp-maker/pull/48. Manual browser verification of the 3 steps in the task notes not yet performed by this agent — pending before Done.
+
+Review round 2 fix: the LOCALE lookup was an exact-key index (item.localizedNames[LOCALE]) against a lowercase "en-US" constant, while the real ao-data.json artifact keys localizedNames uppercase (EN-US/PT-BR) -- confirmed by reading the artifact directly. Every lookup silently missed and fell back to the raw uniquename across the whole page (main slot names, swap names, and every spell name via groupSpellsForItem), including the swaps section which had looked correct only because its test fixture used the same wrong-cased assumption.
+
+Root cause was systemic, not local to page.tsx: added src/lib/localized-name.ts (pickLocalizedName) doing a case-insensitive lookup, and applied it everywhere a raw localizedNames[locale]/[key] index existed: src/app/(editor)/build/new/page.tsx, src/components/editor/spell-groups.ts (groupItemSpells, used by both the main grid and swaps), src/lib/build-card-lookups.ts (public build-card SSR page, same bug), src/lib/item-index.ts (ItemPicker search index -- names map was silently empty for every item since SEARCHED_LOCALES is lowercase), and src/components/item-picker/item-result-list.tsx (item picker result rows). Kept LOCALE as "en-US" (matches the rest of the app's convention); pickLocalizedName normalizes casing so neither casing convention can silently regress again.
+
+Fixed all localizedNames test fixtures across src/__tests__ to use the real artifact casing (EN-US/PT-BR) instead of the wrong assumption that had let this pass review round 1 -- files: spell-picker-groups, item-picker-polish, item-picker, build-new-page-group-nav, slot-picker-popover-a11y, build-new-page, api-items-route, item-index.
+
+Red/green verified manually: reverted the page.tsx lookup back to the exact-key form, ran build-new-page.test.tsx -> 1 failed/19 passed ("shows the localized item name on the slot card instead of the raw uniquename" failed, textContent was T4_MAIN_SWORD). Restored the fix -> 20/20 passed. make check green: lint, tsc, next build, 374 vitest tests. Rebased onto origin/main.
+
+Scope note: this touched files beyond page.tsx (spell-groups.ts, build-card-lookups.ts, item-index.ts, item-result-list.tsx) because the defect (exact-case localizedNames lookup) was present in every consumer, per explicit reviewer instruction to fix "o mesmo defeito" wherever found rather than patching only the one call site AC#8 originally scoped to.
 <!-- SECTION:NOTES:END -->

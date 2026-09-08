@@ -14,13 +14,20 @@ import { SlotGroupNav } from "@/components/editor/SlotGroupNav";
 import { SlotPickerPopover } from "@/components/editor/SlotPickerPopover";
 import { SwapsSection } from "@/components/editor/SwapsSection";
 import { groupSpellsForItem, type SpellCandidate } from "@/components/editor/spell-groups";
+import { pickLocalizedName } from "@/lib/localized-name";
 import { getEnchantOptions, getTierVariants, parseUniquename } from "@/components/editor/tier-enchant";
 import type { EnchantOption, TierOption } from "@/components/editor/tier-enchant";
 import { useItemCatalogue } from "@/components/editor/use-item-catalogue";
 import type { SpellGroup } from "@/types/build";
 import { selectActions, selectBuild, useBuildStore } from "@/store/build-store";
 
-/** UI locale used for display and spell resolution (ACM-012, matches ItemPicker's own default). */
+/**
+ * UI locale used for display and spell resolution (ACM-012, matches
+ * ItemPicker's own default). The `ao-data.json` artifact keys
+ * `localizedNames` in the CDN's own casing (e.g. `"EN-US"`), so every
+ * lookup against it must go through `pickLocalizedName` rather than a
+ * plain `[LOCALE]` index (ACM-040 review round 2).
+ */
 const LOCALE = "en-US";
 
 type PickerTarget = { origin: "main"; slot: Slot } | { origin: "swap"; swapId: string; slot: Slot };
@@ -125,7 +132,7 @@ export default function NewBuildPage(): React.JSX.Element {
   const itemNames = useMemo(() => {
     const map: Record<string, string> = {};
     for (const item of items) {
-      map[item.uniquename] = item.localizedNames[LOCALE] ?? item.uniquename;
+      map[item.uniquename] = pickLocalizedName(item.localizedNames, LOCALE) ?? item.uniquename;
     }
     return map;
   }, [items]);
@@ -137,6 +144,36 @@ export default function NewBuildPage(): React.JSX.Element {
     }
     return map;
   }, [items]);
+
+  /**
+   * `SlotGrid` (and the `SlotCard`s it renders) index item name and spell
+   * candidates by `Slot`, not by uniquename — unlike `SwapsSection`, which
+   * indexes by uniquename because a swap's item isn't one of the 10 fixed
+   * slots. This adapts the uniquename-keyed lookups built above to the
+   * slot-keyed shape `SlotGrid` expects, without recomputing
+   * `groupSpellsForItem` per render (ACM-040).
+   */
+  const itemNamesBySlot = useMemo(() => {
+    const map: Partial<Record<Slot, string>> = {};
+    for (const slot of SLOT_ORDER) {
+      const equipped = build.slots[slot];
+      if (!equipped) continue;
+      const name = itemNames[equipped.itemId];
+      if (name !== undefined) map[slot] = name;
+    }
+    return map;
+  }, [build.slots, itemNames]);
+
+  const spellCandidatesBySlot = useMemo(() => {
+    const map: Partial<Record<Slot, Partial<Record<SpellGroup, readonly SpellCandidate[]>>>> = {};
+    for (const slot of SLOT_ORDER) {
+      const equipped = build.slots[slot];
+      if (!equipped) continue;
+      const candidates = spellCandidatesByItemId[equipped.itemId];
+      if (candidates !== undefined) map[slot] = candidates;
+    }
+    return map;
+  }, [build.slots, spellCandidatesByItemId]);
 
   const offhandLockBlocksPicker =
     pickerTarget?.origin === "main" && pickerTarget.slot === "offhand" && offhandLocked;
@@ -215,6 +252,8 @@ export default function NewBuildPage(): React.JSX.Element {
         />
         <SlotGrid
           build={build}
+          itemNames={itemNamesBySlot}
+          spellCandidatesBySlot={spellCandidatesBySlot}
           offhandLocked={offhandLocked}
           tierOptionsBySlot={tierOptionsBySlot}
           enchantOptionsBySlot={enchantOptionsBySlot}

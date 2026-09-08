@@ -1,5 +1,6 @@
 import type { AOItem, AOItemSpell } from "@/data/ao-data";
 import type { SpellGroup } from "@/types/build";
+import { pickLocalizedName } from "@/lib/localized-name";
 
 /** Q/W/E map to an item's own `slotGroup` ("1"/"2"/"3"); passives/toggles collect into a single group regardless of slotGroup. */
 const ACTIVE_SLOT_GROUP_TO_SPELL_GROUP: Record<string, SpellGroup> = {
@@ -51,7 +52,7 @@ export function groupItemSpells(
 
     const candidate: SpellCandidate = {
       uniquename: spell.uniquename,
-      name: spell.localizedNames[locale] ?? spell.uniquename,
+      name: pickLocalizedName(spell.localizedNames, locale) ?? spell.uniquename,
     };
     (groups[group] ??= []).push(candidate);
   }

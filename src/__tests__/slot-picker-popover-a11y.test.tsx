@@ -7,7 +7,7 @@ const ITEMS: AOItem[] = [
   {
     uniquename: "T4_HEAD_PLATE_SET1",
     slot: "head",
-    localizedNames: { "en-US": "Soldier Helmet" },
+    localizedNames: { "EN-US": "Soldier Helmet" },
     spells: [],
     twohanded: false,
     maxEnchant: 0,

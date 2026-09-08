@@ -17,18 +17,18 @@ const ITEMS: AOItem[] = [
   item({
     uniquename: "T4_MAIN_SWORD",
     slot: "mainhand",
-    localizedNames: { "en-US": "Broadsword", "pt-BR": "Espadão" },
+    localizedNames: { "EN-US": "Broadsword", "PT-BR": "Espadão" },
   }),
   item({
     uniquename: "T8_2H_HAMMER",
     slot: "mainhand",
     twohanded: true,
-    localizedNames: { "en-US": "Sacred Hammer", "pt-BR": "Martelo Sagrado" },
+    localizedNames: { "EN-US": "Sacred Hammer", "PT-BR": "Martelo Sagrado" },
   }),
   item({
     uniquename: "T1_OFF_SHIELD",
     slot: "offhand",
-    localizedNames: { "en-US": "Shield", "pt-BR": "Escudo" },
+    localizedNames: { "EN-US": "Shield", "PT-BR": "Escudo" },
   }),
 ];
 
@@ -154,7 +154,7 @@ describe("ItemPicker — <mark> substring highlighting", () => {
       item({
         uniquename: "T4_MAIN_SPECIAL",
         slot: "mainhand",
-        localizedNames: { "en-US": "Fire(Staff)", "pt-BR": "Cajado de Fogo" },
+        localizedNames: { "EN-US": "Fire(Staff)", "PT-BR": "Cajado de Fogo" },
       }),
     ];
     render(
@@ -183,7 +183,7 @@ describe("ItemPicker — result virtualization (>40 results)", () => {
       item({
         uniquename: `T4_MAIN_ITEM_${i}`,
         slot: "mainhand",
-        localizedNames: { "en-US": `Sword ${i}`, "pt-BR": `Espada ${i}` },
+        localizedNames: { "EN-US": `Sword ${i}`, "PT-BR": `Espada ${i}` },
       })
     );
   }

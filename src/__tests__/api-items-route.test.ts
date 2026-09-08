@@ -26,7 +26,7 @@ describe("GET /api/items (ACM-034/043)", () => {
           {
             uniquename: "T4_HEAD_PLATE_SET1",
             slot: "head",
-            localizedNames: { "en-US": "Soldier Helmet" },
+            localizedNames: { "EN-US": "Soldier Helmet" },
             spells: [],
             twohanded: false,
             maxEnchant: 0,
@@ -47,7 +47,7 @@ describe("GET /api/items (ACM-034/043)", () => {
       {
         uniquename: "T4_HEAD_PLATE_SET1",
         slot: "head",
-        localizedNames: { "en-US": "Soldier Helmet" },
+        localizedNames: { "EN-US": "Soldier Helmet" },
         spells: [],
         twohanded: false,
         maxEnchant: 0,
@@ -60,7 +60,7 @@ describe("GET /api/items (ACM-034/043)", () => {
       {
         uniquename: "T4_HEAD_PLATE_SET1",
         slot: "head",
-        localizedNames: { "en-US": "Soldier Helmet" },
+        localizedNames: { "EN-US": "Soldier Helmet" },
         spells: [],
         twohanded: false,
         maxEnchant: 0,
