@@ -3,7 +3,7 @@
 import type { Slot } from "@/data/ao-data";
 import type { BuildState, SpellGroup } from "@/types/build";
 import { SLOT_COLUMNS } from "@/types/build";
-import { SlotCard } from "./SlotCard";
+import { CATEGORY_COLOR_VAR, SLOT_CATEGORY, SlotCard } from "./SlotCard";
 import type { SpellCandidate } from "./spell-groups";
 import type { EnchantOption, TierOption } from "./tier-enchant";
 
@@ -44,7 +44,9 @@ export function SlotGrid({
 }: SlotGridProps): React.JSX.Element {
   return (
     <div className="flex flex-col gap-5 md:flex-row md:flex-wrap md:gap-8">
-      {SLOT_COLUMNS.map((column) => (
+      {SLOT_COLUMNS.map((column) => {
+        const groupCategory = SLOT_CATEGORY[column.slots[0]];
+        return (
         <div key={column.id} className="flex flex-col gap-3">
           {/*
            * `id` + `tabIndex={-1}` + `scroll-mt-[var(--group-nav-h)]` are the
@@ -56,7 +58,9 @@ export function SlotGrid({
           <h3
             id={`slot-group-${column.id}`}
             tabIndex={-1}
-            className="scroll-mt-[var(--group-nav-h)] text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted outline-none"
+            className="scroll-mt-[var(--group-nav-h)] text-[11px] font-semibold uppercase tracking-[0.04em] outline-none"
+            style={{ color: CATEGORY_COLOR_VAR[groupCategory] }}
+            data-slot-category={groupCategory}
           >
             {column.title}
           </h3>
@@ -80,7 +84,8 @@ export function SlotGrid({
             ))}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

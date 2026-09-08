@@ -63,6 +63,21 @@ html {
   --color-tier-7: #e8c95f;
   --color-tier-8: #d9d9e3;
   --color-enchant: #3f8f4a;
+
+  /*
+   * Slot category color tokens (ACM-039): the affordance that reinforces
+   * the weapon/armor/utility/consumable grouping already encoded in
+   * SLOT_CATEGORY (SlotCard.tsx) via a border/title color, on top of the
+   * category silhouette that already carries the same info non-color
+   * (ACM-035). Each contrast-checked >= 4.5:1 against --color-surface
+   * (#14171d): weapon 5.95:1, armor 7.36:1, utility 9.59:1, consumable
+   * 10.69:1 — WCAG AA for the SlotGrid group titles that use these tokens
+   * as text color.
+   */
+  --color-slot-category-weapon: #f16a5e;
+  --color-slot-category-armor: #6ea8f7;
+  --color-slot-category-utility: #4fd3a8;
+  --color-slot-category-consumable: #f2c14e;
 }
 
 body {
