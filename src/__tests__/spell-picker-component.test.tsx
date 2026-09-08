@@ -40,9 +40,38 @@ describe("SpellPicker (ACM-010)", () => {
     );
     const empty = screen.getByTestId("spell-picker-empty");
     expect(empty).toBeInTheDocument();
-    expect(empty).toHaveTextContent("não possui abilities");
+    expect(empty).toHaveTextContent("Sem abilities");
     expect(empty).toHaveClass("text-icon-muted");
     expect(screen.queryByTestId("spell-picker")).not.toBeInTheDocument();
+  });
+
+  it("ACM-074 AC#6: the empty state text stays within a single line at the SlotCard's real width", () => {
+    render(
+      <SpellPicker
+        itemName="Any Offhand"
+        selected={{ q: null, w: null, e: null, passive: null }}
+        candidatesByGroup={{}}
+        onSelect={vi.fn()}
+      />
+    );
+    const empty = screen.getByTestId("spell-picker-empty");
+
+    // The SlotCard is w-[168px] with p-3 (~24px horizontal padding), leaving
+    // ~144px of usable width at text-[12px]. At that size, roughly 6.5px per
+    // character, anything past ~20 characters realistically wraps to a
+    // second line and grows the card's height — the exact regression AC#6
+    // forbids. The visible copy itself must stay short enough to fit;
+    // whitespace-nowrap/truncate are a backstop, not a substitute.
+    expect(empty.textContent?.length).toBeLessThanOrEqual(20);
+
+    // Layout-defense classes: even if the copy grows later, it must never
+    // wrap onto a second line and silently increase the card height.
+    expect(empty).toHaveClass("whitespace-nowrap");
+    expect(empty).toHaveClass("truncate");
+
+    // Full message must remain accessible (e.g. via native title tooltip)
+    // in case the visible text is ever shortened further or truncated.
+    expect(empty).toHaveAttribute("title", "Este item não possui abilities.");
   });
 
   it("ACM-074 AC#4: the empty state is not interactive — no button role and not focusable by Tab", () => {
