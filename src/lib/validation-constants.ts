@@ -33,23 +33,12 @@ export const SWAP_LABEL_MAX_LENGTH = 60;
  * the *strict* write-side bound). Every `BuildState.accent` that reaches
  * storage/exchange (Zod parse, `POST`/`PATCH` payloads) must match this
  * exact pattern — there is never a persisted 3/4/8-digit value.
+ *
+ * ACM-054: also the sole pattern used by `resolveAccent()` in
+ * `src/components/build-card/tokens.ts` — write and render share this one
+ * regex so the two validators cannot drift apart again.
  */
 export const ACCENT_HEX_PATTERN = /^#[0-9a-fA-F]{6}$/;
-
-/**
- * Render-side accent pattern used by `resolveAccent()` in
- * `src/components/build-card/tokens.ts`.
- *
- * ACM-054: this is deliberately *wider* than {@link ACCENT_HEX_PATTERN} —
- * 3/4/8-digit hex is a real CSS shorthand (and legacy/test callers may pass
- * it directly as a prop rather than through the persisted `BuildState`), so
- * `resolveAccent()` must keep accepting it to avoid falling back to the
- * role default for values a browser would happily render. Both patterns
- * live here so the two validators can never drift apart silently again;
- * `ACCENT_HEX_PATTERN` is a strict subset of this one (every string it
- * matches also matches `ACCENT_HEX_RENDER_PATTERN`).
- */
-export const ACCENT_HEX_RENDER_PATTERN = /^#[0-9a-fA-F]{3,8}$/;
 
 /** Mirrors `compNameSchema.max(...)` in `src/lib/comp-schema.ts`. */
 export const COMP_NAME_MAX_LENGTH = 100;
