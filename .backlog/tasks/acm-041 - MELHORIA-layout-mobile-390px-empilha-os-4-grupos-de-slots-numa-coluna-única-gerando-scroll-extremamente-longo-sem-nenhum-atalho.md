@@ -3,10 +3,10 @@ id: ACM-041
 title: >-
   MELHORIA: layout mobile (390px) empilha os 4 grupos de slots numa coluna única
   gerando scroll extremamente longo sem nenhum atalho
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-08 00:00'
+updated_date: '2026-09-08 00:02'
 labels: []
 milestone: m-2
 dependencies: []
@@ -48,4 +48,6 @@ Revisão de código (fora esse ponto) — sem findings bloqueantes:
 - Testes: não são tautológicos — `slot-card-fluid-width.test.tsx` fixa a regressão real medida (`md:max-w` não resolve para 168px na cadeia flex-in-flex, exige `md:w-[168px]`); `slot-group-nav.test.tsx`/`build-new-page-group-nav.test.tsx` cobrem foco não perdido para `<body>`, chip preso no grupo anterior, e denominador correto quando offhand está travado (2H) — casos que uma implementação ingênua (sem `.focus()` explícito, ou contando offhand travado no total) quebraria. 17/17 passam localmente.
 - Design tokens: sem cores hardcoded novas; `SlotGroupNav`/`globals.css` só referenciam `var(--color-*)` já existentes; `--group-nav-h` é consumido de forma idêntica nos 3 lugares (scroll-spy rootMargin, scroll-mt do heading, scroll-mt do wrapper de swaps).
 - Task ACM-041 em si não tem Acceptance Criteria definidos no backlog — registrar como MEDIUM (dívida de processo): a task deveria ter ganho ACs explícitos antes de ir para implementação, dificultando validar "atendimento a AC" nesta auditoria além do que a doc-005 referenciada nos comentários do código descreve.
+
+Merge blocked: gh pr merge failed with mergeStateStatus=DIRTY / mergeable=CONFLICTING against main. Review approved (LGTM) but PR needs a rebase/merge from main before it can land. Reverting status from Done to In Review — implementer must resolve conflicts.
 <!-- SECTION:NOTES:END -->
