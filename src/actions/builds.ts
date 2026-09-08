@@ -1,14 +1,39 @@
 "use server";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 
 import { requireSession } from "@/auth/session";
 import { getDb } from "@/db/client";
-import { builds } from "@/db/schema";
+import { backgroundImages, builds } from "@/db/schema";
 import { parseBuildContent, validateBuildContentForWrite } from "@/lib/build-schema";
 import { checkWriteRateLimit } from "@/lib/rate-limit";
 import { generateSlug } from "@/lib/slug";
-import { BuildContentInvalidError, BuildNotFoundError } from "./build-errors";
+import { parseThemeJson, validateThemeJsonForWrite } from "@/lib/theme-schema";
+import { BuildContentInvalidError, BuildNotFoundError, ThemeBackgroundNotOwnedError } from "./build-errors";
+
+/**
+ * Validates `theme` for the write path (ACM-014, decision-019 §8) and
+ * confirms `background.imageId`, if present, is owned by `userId` — never
+ * trusts that a background id embedded in an incoming theme actually
+ * belongs to the caller.
+ */
+async function validateThemeForWrite(userId: string, theme: string): Promise<string> {
+  const validated = validateThemeJsonForWrite(theme);
+  const imageId = parseThemeJson(validated).background?.imageId;
+  if (!imageId) return validated;
+
+  const db = getDb();
+  const [row] = await db
+    .select({ userId: backgroundImages.userId })
+    .from(backgroundImages)
+    .where(eq(backgroundImages.id, imageId))
+    .limit(1);
+
+  if (!row || row.userId !== userId) {
+    throw new ThemeBackgroundNotOwnedError();
+  }
+  return validated;
+}
 
 /**
  * Re-validates a source row's `content` before it is copied into a new row
@@ -70,6 +95,8 @@ export type SaveBuildInput = {
   name: string;
   role?: string | null;
   content: string;
+  /** Raw JSON string, validated by `validateThemeForWrite` (ACM-014). Omitted = no theme saved yet. */
+  theme?: string;
 };
 
 /** Creates a new build owned by the current user (ACM-018 AC#1). */
@@ -81,6 +108,8 @@ export async function saveBuild(input: SaveBuildInput): Promise<BuildRow> {
   // then shape via a shared Zod schema. Persists the re-serialized, validated
   // object, never the caller's raw string.
   const content = validateBuildContentForWrite(input.content);
+  const themeJson =
+    input.theme !== undefined ? await validateThemeForWrite(session.user.id, input.theme) : undefined;
 
   const db = getDb();
   const [row] = await db
@@ -90,6 +119,7 @@ export async function saveBuild(input: SaveBuildInput): Promise<BuildRow> {
       name: input.name,
       role: input.role ?? null,
       content,
+      themeJson,
       slug: generateSlug(input.name),
     })
     .returning();
@@ -102,6 +132,8 @@ export type UpdateBuildInput = {
   name?: string;
   role?: string | null;
   content?: string;
+  /** Raw JSON string, validated by `validateThemeForWrite` (ACM-014). */
+  theme?: string;
 };
 
 /**
@@ -119,6 +151,8 @@ export async function updateBuild(input: UpdateBuildInput): Promise<BuildRow> {
   // Strict write validation (decision-013 / ACM-049) — same rules as
   // `saveBuild`. Only runs when `content` is actually being updated.
   const content = input.content !== undefined ? validateBuildContentForWrite(input.content) : undefined;
+  const themeJson =
+    input.theme !== undefined ? await validateThemeForWrite(session.user.id, input.theme) : undefined;
 
   const db = getDb();
   const [row] = await db
@@ -127,6 +161,7 @@ export async function updateBuild(input: UpdateBuildInput): Promise<BuildRow> {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.role !== undefined ? { role: input.role } : {}),
       ...(content !== undefined ? { content } : {}),
+      ...(themeJson !== undefined ? { themeJson } : {}),
       updatedAt: new Date(),
     })
     .where(and(eq(builds.id, input.id), eq(builds.userId, session.user.id)))
@@ -158,6 +193,9 @@ export async function duplicateBuild(id: string): Promise<BuildRow> {
       name: source.name,
       role: source.role,
       content,
+      // Same owner as the source, so any referenced background image is
+      // still owned by this user — safe to carry over verbatim.
+      themeJson: source.themeJson,
       slug: generateSlug(source.name),
     })
     .returning();
@@ -169,6 +207,13 @@ export async function duplicateBuild(id: string): Promise<BuildRow> {
  * Copies a build into the current user's library, regardless of who owns
  * the source, provided the source is public (ACM-018 AC#4). Sets
  * `forkedFrom` to the source id.
+ *
+ * Deliberately does NOT carry over `theme_json` (ACM-014): a background
+ * image referenced there belongs to the original owner, not the forker, and
+ * `validateThemeForWrite`'s ownership check would reject it anyway on the
+ * next save. Dropping it here means the fork starts on
+ * `DEFAULT_BUILD_CARD_THEME` instead of a theme that would silently lose its
+ * background the first time the forker touches it.
  */
 export async function forkBuild(id: string): Promise<BuildRow> {
   const session = await requireSession();

@@ -2,13 +2,15 @@ import { ItemIcon } from "@/components/icons/ItemIcon";
 import type { BuildState, Swap } from "@/types/build";
 import { CompressedTile } from "./CompressedTile";
 import { KILLBOARD_MATRIX } from "./layout-matrix";
-import { CARD_BORDER, CARD_FG, CARD_FG_MUTED, CARD_SURFACE, resolveAccent } from "./tokens";
+import type { BuildCardTokenSet } from "./theme-presets";
+import { resolveAccent } from "./tokens";
 import type { BuildCardLookups, BuildCardTheme } from "./types";
 
 export type BuildCardCompressedProps = {
   state: BuildState;
   theme: BuildCardTheme;
   lookups: BuildCardLookups;
+  tokens: BuildCardTokenSet;
 };
 
 /** Fixed logical width (doc-006 §2.2): 540px, sized for Discord's inline embed preview. */
@@ -30,8 +32,8 @@ function swapItemName(swap: Swap, lookups: BuildCardLookups): string {
  * layout's flow-based structure cannot express without branching so heavily
  * it stops being "the same component".
  */
-export function BuildCardCompressed({ state, lookups }: BuildCardCompressedProps): React.JSX.Element {
-  const accent = resolveAccent(state.role, state.accent);
+export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompressedProps): React.JSX.Element {
+  const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
   const hasBuild = mainhand !== null;
   const mount = state.slots.mount;
@@ -48,7 +50,7 @@ export function BuildCardCompressed({ state, lookups }: BuildCardCompressedProps
   return (
     <div
       className="flex flex-col overflow-hidden rounded-xl border"
-      style={{ width: CARD_WIDTH, backgroundColor: CARD_SURFACE, borderColor: CARD_BORDER, color: CARD_FG }}
+      style={{ width: CARD_WIDTH, backgroundColor: tokens.surface, borderColor: tokens.border, color: tokens.fg }}
     >
       <div style={{ backgroundColor: accent, height: 4 }} />
       <div className="flex flex-col p-4" style={{ gap: 4 }}>
@@ -57,7 +59,7 @@ export function BuildCardCompressed({ state, lookups }: BuildCardCompressedProps
             {state.role || "Papel"}
           </span>
           {mainhand && mainhand.tier > 0 && (
-            <span className="text-[12px]" style={{ color: CARD_FG_MUTED }}>
+            <span className="text-[12px]" style={{ color: tokens.fgMuted }}>
               T{mainhand.tier}
               {mainhand.enchant > 0 ? `.${mainhand.enchant}` : ""}
             </span>
@@ -78,7 +80,7 @@ export function BuildCardCompressed({ state, lookups }: BuildCardCompressedProps
             }}
           >
             {KILLBOARD_MATRIX.flat().map((slot) => (
-              <CompressedTile key={slot} slot={slot} item={state.slots[slot]} lookups={lookups} />
+              <CompressedTile key={slot} slot={slot} item={state.slots[slot]} lookups={lookups} tokens={tokens} />
             ))}
           </div>
 
@@ -86,18 +88,18 @@ export function BuildCardCompressed({ state, lookups }: BuildCardCompressedProps
             (hasMeta ? (
               <div className="flex flex-1 flex-col" style={{ gap: 12, minWidth: 0 }}>
                 {hasAnySpell && (
-                  <span className="text-[9px] font-semibold uppercase tracking-[0.06em]" style={{ color: CARD_FG_MUTED }}>
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.06em]" style={{ color: tokens.fgMuted }}>
                     Q W E P
                   </span>
                 )}
                 {mount && (
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: CARD_FG_MUTED }}>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: tokens.fgMuted }}>
                       Montaria
                     </span>
                     <div className="flex items-center gap-2">
                       <ItemIcon itemId={mount.itemId} alt={lookups.itemNames[mount.itemId] ?? mount.itemId} size="md" decorative />
-                      <span className="text-[11px]" style={{ color: CARD_FG }}>
+                      <span className="text-[11px]" style={{ color: tokens.fg }}>
                         {lookups.itemNames[mount.itemId] ?? mount.itemId}
                         {mount.tier > 0 ? ` T${mount.tier}` : ""}
                       </span>
@@ -106,18 +108,18 @@ export function BuildCardCompressed({ state, lookups }: BuildCardCompressedProps
                 )}
                 {state.swaps.length > 0 && (
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: CARD_FG_MUTED }}>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: tokens.fgMuted }}>
                       Swaps
                     </span>
                     <ul className="flex flex-col gap-0.5">
                       {visibleSwaps.map((swap) => (
-                        <li key={swap.id} className="line-clamp-1 text-[11px]" style={{ color: CARD_FG_MUTED }}>
+                        <li key={swap.id} className="line-clamp-1 text-[11px]" style={{ color: tokens.fgMuted }}>
                           • {swap.label}
                           {swapItemName(swap, lookups) ? `: ${swapItemName(swap, lookups)}` : ""}
                         </li>
                       ))}
                       {remainingSwaps > 0 && (
-                        <li className="text-[11px]" style={{ color: CARD_FG_MUTED }}>
+                        <li className="text-[11px]" style={{ color: tokens.fgMuted }}>
                           • +{remainingSwaps} swaps
                         </li>
                       )}
@@ -129,7 +131,7 @@ export function BuildCardCompressed({ state, lookups }: BuildCardCompressedProps
 
           {!hasBuild && (
             <div className="flex flex-1 items-center" style={{ minWidth: 0 }}>
-              <p className="text-[11px]" style={{ color: CARD_FG_MUTED }}>
+              <p className="text-[11px]" style={{ color: tokens.fgMuted }}>
                 Escolha a mão principal para montar a build
               </p>
             </div>

@@ -11,6 +11,8 @@ export type SpellRowProps = {
   lookups: BuildCardLookups;
   size: IconSize;
   showSpellNames: boolean;
+  /** Themed muted-text color (ACM-014). Defaults to the untheme'd `dark-purple` value. */
+  fgMuted?: string;
 };
 
 /** Non-interactive row of spell chips shared by the hero weapon and the equipment tiles. */
@@ -21,6 +23,7 @@ export function SpellRow({
   lookups,
   size,
   showSpellNames,
+  fgMuted = CARD_FG_MUTED,
 }: SpellRowProps): React.JSX.Element | null {
   const groups = SPELL_GROUP_ORDER.filter(({ group }) => spellGroups.includes(group));
   if (groups.length === 0) return null;
@@ -51,7 +54,7 @@ export function SpellRow({
               <span
                 key={group}
                 className="text-center text-[11px] leading-tight"
-                style={{ color: CARD_FG_MUTED, width: ICON_SIZE_PX[size] }}
+                style={{ color: fgMuted, width: ICON_SIZE_PX[size] }}
               >
                 {name ?? ""}
               </span>

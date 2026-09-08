@@ -4,7 +4,8 @@ import { SpellIcon } from "@/components/icons/SpellIcon";
 import type { Slot } from "@/data/ao-data";
 import type { EquippedItem } from "@/types/build";
 import { SLOT_CATEGORY, SLOT_LABELS } from "./slot-meta";
-import { CARD_FG, CARD_FG_MUTED, CARD_ROW_DIVIDER, CARD_SLOT_EMPTY_BORDER, CARD_SURFACE_2, TIER_BADGE_TEXT, tierColor } from "./tokens";
+import type { BuildCardTokenSet } from "./theme-presets";
+import { TIER_BADGE_TEXT, tierColor } from "./tokens";
 import { ALL_SPELL_GROUPS, SPELL_GROUP_ORDER, type BuildCardLookups } from "./types";
 
 export type ListRowProps = {
@@ -14,6 +15,7 @@ export type ListRowProps = {
   showSpellNames: boolean;
   /** `false` for the first row of a list — it has no divider above it. */
   withDivider: boolean;
+  tokens: BuildCardTokenSet;
 };
 
 const ROW_HEIGHT_WITH_SPELLS = 64;
@@ -28,7 +30,7 @@ const EMPTY_GLYPH_PX = 20;
  * dropping empty rows (what `CardSlotTile`'s callers do today) would make it
  * indistinguishable from a denser `BuildCardVertical`.
  */
-export function ListRow({ slot, item, lookups, showSpellNames, withDivider }: ListRowProps): React.JSX.Element {
+export function ListRow({ slot, item, lookups, showSpellNames, withDivider, tokens }: ListRowProps): React.JSX.Element {
   const label = SLOT_LABELS[slot] ?? slot;
   const itemName = item ? (lookups.itemNames[item.itemId] ?? item.itemId) : "";
   const spellGroups = item ? (lookups.spellGroupsByItem[item.itemId] ?? ALL_SPELL_GROUPS) : [];
@@ -42,12 +44,12 @@ export function ListRow({ slot, item, lookups, showSpellNames, withDivider }: Li
       className="flex items-center gap-3"
       data-slot={slot}
       data-slot-state={item ? "filled" : "empty"}
-      style={{ height: rowHeight, borderTop: withDivider ? `1px solid ${CARD_ROW_DIVIDER}` : undefined }}
+      style={{ height: rowHeight, borderTop: withDivider ? `1px solid ${tokens.rowDivider}` : undefined }}
     >
       {item ? (
         <div
           className="relative flex shrink-0 items-center justify-center rounded-md"
-          style={{ width: ICON_BOX_PX, height: ICON_BOX_PX, backgroundColor: CARD_SURFACE_2 }}
+          style={{ width: ICON_BOX_PX, height: ICON_BOX_PX, backgroundColor: tokens.surface2 }}
         >
           <ItemIcon itemId={item.itemId} alt={itemName} size="sm" decorative />
         </div>
@@ -57,8 +59,8 @@ export function ListRow({ slot, item, lookups, showSpellNames, withDivider }: Li
           style={{
             width: ICON_BOX_PX,
             height: ICON_BOX_PX,
-            backgroundColor: CARD_SURFACE_2,
-            border: `1px dashed ${CARD_SLOT_EMPTY_BORDER}`,
+            backgroundColor: tokens.surface2,
+            border: `1px dashed ${tokens.slotEmptyBorder}`,
           }}
         >
           <span style={{ opacity: 0.28 }}>
@@ -70,16 +72,16 @@ export function ListRow({ slot, item, lookups, showSpellNames, withDivider }: Li
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span
           className="text-[9px] font-bold uppercase tracking-[0.06em]"
-          style={{ color: CARD_FG_MUTED }}
+          style={{ color: tokens.fgMuted }}
         >
           {label}
         </span>
         {item ? (
-          <p className="line-clamp-1 text-[13px] font-semibold" style={{ color: CARD_FG }} title={itemName}>
+          <p className="line-clamp-1 text-[13px] font-semibold" style={{ color: tokens.fg }} title={itemName}>
             {itemName}
           </p>
         ) : (
-          <p className="text-[13px] italic" style={{ color: CARD_FG_MUTED }}>
+          <p className="text-[13px] italic" style={{ color: tokens.fgMuted }}>
             Vazio
           </p>
         )}
@@ -92,7 +94,7 @@ export function ListRow({ slot, item, lookups, showSpellNames, withDivider }: Li
                 <span key={group} className="flex items-center gap-1">
                   <SpellIcon sprite={sprite} alt={`${groupLabel} de ${itemName}`} size="xs" slotLabel={groupLabel} decorative />
                   {showNames && (
-                    <span className="text-[10px]" style={{ color: CARD_FG_MUTED }}>
+                    <span className="text-[10px]" style={{ color: tokens.fgMuted }}>
                       {spellName ?? ""}
                     </span>
                   )}
