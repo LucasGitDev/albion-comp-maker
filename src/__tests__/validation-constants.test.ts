@@ -4,7 +4,6 @@ import { validateBuildContentForWrite } from "@/lib/build-schema";
 import { compBuildLabelSchema, compNameSchema } from "@/lib/comp-schema";
 import {
   ACCENT_HEX_PATTERN,
-  ACCENT_HEX_RENDER_PATTERN,
   BUILD_NAME_MAX_LENGTH,
   BUILD_ROLE_MAX_LENGTH,
   COMP_BUILD_LABEL_MAX_LENGTH,
@@ -125,26 +124,22 @@ describe("validation-constants (ACM-059 anti-drift)", () => {
     expect(ACCENT_HEX_PATTERN.test("#abc")).toBe(false);
   });
 
-  it("ACM-054: write and render accent patterns come from the same module and agree on every valid persisted value", () => {
+  it("ACM-054: write and render accent patterns come from the same single module constant", () => {
     const validPersistedAccents = ["#abcdef", "#000000", "#FFFFFF", "#4a8fd4"];
     for (const accent of validPersistedAccents) {
       // Every accent that can pass the write-side schema must also be
-      // accepted verbatim by resolveAccent() — the render pattern is a
-      // deliberate superset of the write pattern, not an unrelated one.
+      // accepted verbatim by resolveAccent() — both share ACCENT_HEX_PATTERN.
       expect(() =>
         validateBuildContentForWrite(JSON.stringify(validBuild({ accent })))
       ).not.toThrow();
       expect(ACCENT_HEX_PATTERN.test(accent)).toBe(true);
-      expect(ACCENT_HEX_RENDER_PATTERN.test(accent)).toBe(true);
       expect(resolveAccent("dps", accent)).toBe(accent);
     }
 
-    // Render-only shorthand (never produced by the write side, but a
-    // legitimate CSS hex form) must still resolve for non-persisted
-    // callers (defaults, direct props, tests).
+    // Shorthand hex is rejected on both sides — no production path ever
+    // generates a 3/4/8-digit accent, so there is a single strict pattern.
     expect(ACCENT_HEX_PATTERN.test("#abc")).toBe(false);
-    expect(ACCENT_HEX_RENDER_PATTERN.test("#abc")).toBe(true);
-    expect(resolveAccent("dps", "#abc")).toBe("#abc");
+    expect(resolveAccent("dps", "#abc")).not.toBe("#abc");
   });
 
   it("compNameSchema enforces COMP_NAME_MAX_LENGTH", () => {
