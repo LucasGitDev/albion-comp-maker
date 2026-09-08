@@ -99,6 +99,11 @@ export const builds = sqliteTable(
     // that schema existed — see `parseBuildContent` in the same module.
     // The DB layer itself does not interpret this column's contents.
     content: text("content").notNull(),
+    // How the card looks (ACM-014, decision-019) — separate column from
+    // `content` (what the build is). Nullable: rows written before this
+    // task have no theme and read as `DEFAULT_BUILD_CARD_THEME` via
+    // `parseThemeJson`, never a migration/backfill.
+    themeJson: text("theme_json"),
     isPublic: integer("is_public", { mode: "boolean" }).notNull().default(false),
     // Self-reference: set when this row was created via "fork" from another
     // user's public build (ACM-018 AC#4). Null for builds not forked.
@@ -173,4 +178,34 @@ export const compBuilds = sqliteTable(
       table.position,
     ),
   ],
+);
+
+/**
+ * Uploaded theme background images (ACM-014, decision-018). One row per
+ * successful `POST /api/background` upload; `id` is the opaque value stored
+ * in `builds.theme_json.background.imageId` — the actual file lives on disk
+ * at `${UPLOADS_DIR}/${file_name}` (`src/lib/uploads.ts`), never `public/`,
+ * and is served only via `GET /api/background/[id]` after an authz check
+ * (owner or referenced by a public build).
+ */
+export const backgroundImages = sqliteTable(
+  "background_images",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Server-generated `${nanoid()}.webp` — never derived from the
+    // client-supplied original filename (decision-018 path-traversal note).
+    fileName: text("file_name").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    bytes: integer("bytes").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [index("background_images_user_id_idx").on(table.userId)],
 );
