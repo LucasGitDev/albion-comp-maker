@@ -4,7 +4,7 @@ title: 'Bug: seleção de food e potion não funciona no editor'
 status: In Review
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-08 22:40'
+updated_date: '2026-09-08 22:43'
 labels: []
 milestone: m-2
 dependencies: []
@@ -117,4 +117,16 @@ Para nomear os 3 itens especificos, comparei o fixture pruned da main (src/__tes
 Sao as 3 pecas do set "Dragonknight" (T8, categoria equipmentitem/armor de placa), conteudo novo adicionado ao dump upstream do jogo entre a geracao anterior (pinada em 280/264/256) e a atual (281/265/257) — nao tem relacao com categoria consumableitem nem com qualquer linha alterada nesta task. Classificado como drift benigno de conteudo upstream (novo set do jogo), nao como bug de predicado ou vazamento de categoria. Nao ha nada para reverter ou investigar alem disso.
 
 HIGH-2 (artefato commitado, .gitignore desatualizado): removida a linha `src/data/ao-data.json` do .gitignore e substituida por comentario explicando que o arquivo e rastreado de proposito. Registrado em decision-023 (ver .backlog/decisions/decision-023 - ...): nao existe pipeline de CI/deploy que gere e publique o artefato, o runtime le via fs em server components dinamicos, logo commitar o artefato e a decisao correta. Referencia junto de decision-022.
+
+RE-REVIEW PR #59 (commit ce53978) — LGTM.
+
+HIGH-1 (drift investigation): RESOLVED. Verified method is sound — rerunning main's unmodified sync-ao-data.ts against the identical cached .cache/ dump (281/265/257, zero consumables) genuinely isolates the variable, since isEmittedConsumable is only reachable for category===consumableitem and main's script never touches that path yet reproduces the same higher counts. Independently confirmed T8_HEAD_PLATE_PROTOTYPE / T8_ARMOR_PLATE_PROTOTYPE / T8_SHOES_PLATE_PROTOTYPE exist in the regenerated src/data/ao-data.json and are absent from main's src/__tests__/fixtures/ao-corpus.json. Investigation durably recorded per acceptance.test.ts:100-119 procedure.
+
+HIGH-2 (gitignore/artifact): RESOLVED. Verified .gitignore:48-50 is now a comment only, git check-ignore confirms no shadowing rule (exit 1), git ls-files confirms src/data/ao-data.json is tracked. decision-023 is substantive (context, decision, consequences incl. re-review-if-CI-changes), not a stub.
+
+make check reconfirmed: exit 0, 589/589 tests passed.
+
+NEW finding (MEDIUM, non-blocking, not caused by this task's diff): the 3 identified items are not ordinary new upstream content — T8_HEAD_PLATE_PROTOTYPE's spell list includes PROTOTYPE_ICESHIELD and it has no PT-BR localizedName (EN-US only), unlike normal shipped items. This strongly suggests unreleased/test-bench game data that the emission pipeline should probably exclude rather than surface to end users. This is pre-existing pipeline behavior (EMITTED_CATEGORIES/equipmentitem filter never excluded prototype/test items) unrelated to the food/potion fix, and correctly filtering it is a non-trivial design decision. Recommend opening a follow-up task/decision to filter unreleased/prototype items from the data pipeline. Does not block this PR.
+
+Verdict: LGTM.
 <!-- SECTION:NOTES:END -->
