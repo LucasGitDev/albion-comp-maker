@@ -20,6 +20,14 @@ export type EditorActionBarProps = {
    * storage mechanism.
    */
   onSave: () => Promise<void>;
+  /**
+   * ACM-014: renders the "Aparência" ghost toggle, to the left of
+   * "Exportar PNG" (doc-007 D2 — tema is a tertiary action, never accent).
+   * Omitted entirely when not provided, so callers that don't have a theme
+   * panel yet keep the exact previous 2-button layout.
+   */
+  themePanelOpen?: boolean;
+  onToggleThemePanel?: () => void;
 };
 
 function resolveCaptureNode(container: HTMLElement | null): HTMLElement | null {
@@ -60,6 +68,8 @@ export function EditorActionBar({
   totalSlots,
   captureNodeRef,
   onSave,
+  themePanelOpen,
+  onToggleThemePanel,
 }: EditorActionBarProps): React.JSX.Element {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>({ kind: "idle", dirty: false });
   const [exportStatus, setExportStatus] = useState<ExportStatus>({ kind: "idle" });
@@ -191,6 +201,17 @@ export function EditorActionBar({
         >
           {exporting ? "Exportando…" : "Exportar PNG"}
         </button>
+        {onToggleThemePanel && (
+          <button
+            type="button"
+            onClick={onToggleThemePanel}
+            aria-expanded={themePanelOpen}
+            aria-controls="theme-panel"
+            className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-[var(--color-icon-slot)] focus-visible:transition-none"
+          >
+            Aparência
+          </button>
+        )}
 
         {gateOpen && (
           <div
