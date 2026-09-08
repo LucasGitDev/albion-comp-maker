@@ -1,8 +1,11 @@
-export type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
+export type IconSize = "xxs" | "xs" | "sm" | "md" | "lg" | "xl";
 
 // Static lookup (not `size-${n}` interpolation) so Tailwind v4 can see the
 // class names at build time and does not purge them.
 export const ICON_SIZE_CLASS: Record<IconSize, string> = {
+  // `xxs` (18px, ACM-073) has no bare Tailwind `size-*` step that matches, so
+  // it uses the arbitrary-value form like the rest of this static lookup.
+  xxs: "size-[18px]",
   xs: "size-6",
   sm: "size-8",
   md: "size-10",
@@ -11,6 +14,10 @@ export const ICON_SIZE_CLASS: Record<IconSize, string> = {
 };
 
 export const ICON_SIZE_PX: Record<IconSize, number> = {
+  // Compressed layout's spell strip (ACM-073 §2.4): the smallest existing
+  // step, `xs: 24`, doesn't fit 4 columns inside the 80px matrix cell
+  // (4*24 + gaps = 102px). 18 is the largest size that still fits.
+  xxs: 18,
   xs: 24,
   sm: 32,
   md: 40,
