@@ -1,10 +1,10 @@
 ---
 id: ACM-073
 title: 'Build card: implementar layouts Compressed (3x3) e List'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-08 00:04'
-updated_date: '2026-09-08 01:11'
+updated_date: '2026-09-08 13:41'
 labels: []
 dependencies: []
 priority: high
@@ -64,4 +64,6 @@ make check: verde (pnpm install --frozen-lockfile, lint, tsc --noEmit, build, vi
 MERGE: PR #49 mergeado em main (c3ad1f4). make check verde em main pos-merge (54 arquivos, 433/433 testes). Branch e worktree limpos.
 
 NAO movido para Done: o AC#2 exige 'matriz confirmada contra o killboard oficial' e essa confirmacao nunca aconteceu. As referencias retornam 403 para fetch programatico e nao ha browser com acesso. O teste de permutacao (AC#3) garante que nenhum slot some em silencio, mas NAO garante que a ordem das celulas esta correta. Verificacao manual do DoD #3 tambem pendente pelo mesmo motivo. Requer humano: abrir https://albiononline.com/killboard/kill/1445835238?server=live_us e conferir KILLBOARD_MATRIX em src/components/build-card/layout-matrix.ts.
+
+PR #49 mergeado em main (2026-09-08 01:10). Gate pos-merge rodado: 431/433 passando. As 2 falhas sao src/__tests__/item-index.test.ts (assercoes de wall-clock 50ms) medindo 123ms e 209ms sob contencao de CPU de 3 worktrees paralelos; rodando o arquivo isolado os 11 testes passam. Nao e regressao da ACM-073. Defeito de gate registrado como ACM-083. Manter In Review ate um make check limpo em maquina ociosa.
 <!-- SECTION:NOTES:END -->

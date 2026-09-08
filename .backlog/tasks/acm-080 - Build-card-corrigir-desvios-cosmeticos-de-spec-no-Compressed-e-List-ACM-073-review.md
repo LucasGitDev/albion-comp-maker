@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-08 01:11'
+updated_date: '2026-09-08 13:18'
 labels: []
 dependencies: []
 priority: low
@@ -33,3 +34,9 @@ Restricao herdada: zero classe de paleta Tailwind em src/components/build-card/*
 - [ ] #3 Icone de swap no BuildCardList mede 32px, alinhado ao wrapper size-8
 - [ ] #4 make check verde e teste estatico de ausencia de classe de paleta continua passando
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+BLOQUEADA por sobreposicao de arquivos com a ACM-014 (PR #50, aberto). O PR #50 reescreve exatamente os arquivos-alvo desta task: CompressedTile.tsx (+7/-5), BuildCardList.tsx (+12/-9) e tokens.ts (+27/-2). Implementar agora garante conflito de merge, e os findings podem ja estar resolvidos ou deslocados pelo theme system. Serializar: so iniciar apos o merge do PR #50, e revalidar os 3 findings contra o codigo novo antes de implementar.
+<!-- SECTION:NOTES:END -->
