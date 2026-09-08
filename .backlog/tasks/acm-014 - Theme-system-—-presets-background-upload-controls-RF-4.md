@@ -4,7 +4,7 @@ title: 'Theme system — presets, background upload, controls (RF-4)'
 status: In Progress
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-08 01:11'
+updated_date: '2026-09-08 01:40'
 labels: []
 milestone: m-3
 dependencies:
@@ -230,4 +230,43 @@ A ACM-073 esta em progresso e mexe nos mesmos arquivos. Pontos de colisao litera
 - **`BuildCardCompressed.tsx` / `BuildCardList.tsx`** — criados pela ACM-073; a ACM-014 precisa liga-los ao token set e aos toggles de nome. Nao existem ainda; nao planejar contra assinatura suposta, ler quando existirem.
 - **`icons/icon-tokens.ts`** — a ACM-073 adiciona `ICON_SIZE_PX.xxs`. A ACM-014 **nao** toca este arquivo; se tocar, e sinal de que o escopo vazou.
 - **`build-card.test.tsx`** — as duas adicionam casos. A ACM-014 tambem precisa rodar os guards **contra os 4 layouts**, o que so faz sentido pos-ACM-073.
+
+## Review PR #50 (task/14-theme-system) — veredito: LGTM (com 2 MEDIUM, sem CRITICAL/HIGH)
+
+### Regressão ACM-073 (Prioridade 1): NÃO HÁ REGRESSÃO
+Auditados BuildCardVertical/Grid/Compressed/List, CardSlotTile, SpellRow, CompressedTile, ListRow.
+- Larguras fixas preservadas: vertical 960px, compressed 540px, list 480px, grid COLUMN_WIDTH inalterado.
+- Células/ícones preservados: size-20 (CardSlotTile), size-24 (grid), size-36 (vertical), BOX_PX/ICON_SIZE_PX em CompressedTile/ListRow não tocados pelo diff.
+- SpellRow: grupo ausente continua sendo filtrado por `SPELL_GROUP_ORDER.filter(...)` antes do render — nenhuma mudança na lógica de posicionamento dos chips, só troca de `CARD_FG_MUTED` (import direto) por `fgMuted` (prop com fallback `= CARD_FG_MUTED`), byte-idêntico no caso não-temático.
+- Toda a mudança nesses arquivos é mecânica: import de constante de cor → prop `tokens: BuildCardTokenSet`. Nenhum valor numérico de layout foi tocado.
+Confirmado por teste: `theme-presets.test.ts` prova `dark-purple` é byte-idêntico às constantes antigas de `tokens.ts`, e `theme_json` ausente cai em `DEFAULT_BUILD_CARD_THEME` (preset `dark-purple`) via `parseThemeJson` — build sem tema explícito não muda nenhum pixel.
+
+### Armadilhas silenciosas (Prioridade 2): as 3 confirmadas corrigidas
+1. `sharp`: `pnpm-workspace.yaml` tem `sharp` em `onlyBuiltDependencies` (linha 5-6), removido de `ignoredBuiltDependencies`. Correto.
+2. Background: `BuildCard.tsx` renderiza `<img data-build-card-background src="/api/background/{id}">` real, nunca `background-image:` CSS. Teste `build-card.test.tsx:228-238` é regressão real — asserta `root.outerHTML).not.toMatch(/background-image\s*:/)` sobre o HTML renderizado, não espelha a implementação; um dev que trocasse para CSS `background-image` faria esse teste falhar de verdade.
+3. `resolveFontFamily` (`theme-presets.ts`) retorna apenas stacks de fontes de sistema (`ui-sans-serif...`, `ui-monospace...`), nunca `var(--font-geist-*)` nem URL. Confirmado.
+
+### Guard decision-017 (Prioridade 3): extensão confirmada e funcional
+`build-card-no-palette-classes.test.ts` tem bloco novo que varre todo `src/components/build-card/**` (exceto `ExportBar.tsx`, fora do capture root) banindo a substring `var(--` no source bruto. Um `var(--x)` introduzido em qualquer arquivo do diretório faria esse teste falhar — não é cosmético.
+
+### ACs — avaliação teste-por-teste
+- AC#1 (upload 4MB/JPEG-PNG-WebP/resize 2000/WebP): `uploads.test.ts` usa buffers reais gerados com `sharp` e prova sniff por magic bytes (não por Content-Type), rejeição de SVG/exe disfarçados, e resize para lado maior = 2000px. Teste prova comportamento real, não espelha a implementação.
+- AC#2 (theme_json guarda id opaco): `route.ts` (`POST /api/background`) só retorna `{ id }`, nunca path/filename; `theme-schema.ts` valida `imageId` como string opaca. Confirmado no código.
+- AC#3 (sliders atualizam preview em tempo real): `theme-panel.test.tsx` dispara `fireEvent.change` real no slider e assere o JSON do tema mutado sem debounce — prova comportamento.
+- AC#4 (aspect ratio muda dimensões do wrapper): `build-card.test.tsx:245` assere `root.style.aspectRatio === "1 / 1"` — prova real, não mock.
+- AC#5 (4 presets aplicam tokens): `theme-presets.test.ts` prova hex de 6 dígitos por preset + contraste WCAG real (função de luminância própria) + preset `dark-purple` byte-idêntico ao card atual. Prova comportamento genuíno.
+
+Nenhum dos testes de AC é apenas espelho da implementação — todos exercitam comportamento observável (DOM renderizado, resposta HTTP, buffers reais).
+
+### Desvios declarados (Prioridade 5) — achados
+**MEDIUM-1**: ThemePanel é rail único fixo (`w-80` = 320px), sem slide-over/bottom-sheet responsivo. Em viewport 390px com `p-8` (64px de padding total) sobra ~326px — cabe, mas no limite; não há teste de overflow em 390px para o painel aberto. Dado o histórico do projeto com findings de overflow, registrar como dívida e cobrir em ACM-082 com teste de viewport explícito, não é bloqueante agora pois não há evidência de quebra real.
+
+**MEDIUM-2**: falta o fluxo "preset vira `custom`" descrito no plano original (mexer em qualquer controle depois de aplicar um preset deveria marcar `preset: "custom"`). `ThemePanel.tsx` não faz isso — `handlePresetClick` seta o preset, mas `LabeledSlider`/checkboxes/select nunca tocam `theme.preset`. Isso é uma AC de plano (não do ticket formal, que só lista 5 ACs) mas está descrito na spec doc-007 §9.2 referenciada pelo próprio `theme-presets.ts`. Aceitável como follow-up explícito (ACM-082), não bloqueia esta task porque as 5 ACs formais não exigem o marcador `custom`.
+
+**Não é achado**: `aria-live` já existe parcialmente (`role="status" aria-live="polite"` no upload) — a alegação do implementer de "sem aria-live" no PR description está um pouco desatualizada/imprecisa, mas não é uma lacuna real de a11y crítica (o status de upload é anunciado; falta é só anunciar mudança de preset/tema, que é cosmético).
+
+**Não é scope creep**: o preview de `BuildCard` ligado em `src/app/(editor)/build/new/page.tsx` é necessário para que AC#3/AC#4 sejam demonstráveis/testáveis em uso real (sliders/aspect ratio não têm efeito visível sem um preview montado) — está dentro do espírito do plano da task mesmo que o arquivo do plano cite um caminho (`build/page.tsx`) que não existe no repo (a rota real sempre foi `build/new/page.tsx`); não é um arquivo fora do `touches` real do produto.
+
+### Veredito: LGTM
+Sem CRITICAL/HIGH. 2 MEDIUM registrados como dívida/follow-up (ACM-082). Segurança do upload deixada para o security-reviewer paralelo, não duplicada aqui.
 <!-- SECTION:NOTES:END -->

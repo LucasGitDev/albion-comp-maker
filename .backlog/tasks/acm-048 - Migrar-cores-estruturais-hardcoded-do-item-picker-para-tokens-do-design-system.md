@@ -4,7 +4,7 @@ title: Migrar cores estruturais hardcoded do item-picker para tokens do design s
 status: To Do
 assignee: []
 created_date: '2026-09-07 18:51'
-updated_date: '2026-09-07 20:42'
+updated_date: '2026-09-08 13:18'
 labels: []
 milestone: m-3
 dependencies:
@@ -27,3 +27,9 @@ Levantado pelo grep da ACM-042. Alem do drift de texto ja corrigido (text-[#6b72
 - [ ] #5 Contraste de todo texto do picker permanece >= 4.5:1
 - [ ] #6 make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+BLOQUEADA: dependencia declarada ACM-014 ainda esta In Progress (PR #50 aberto, nao mergeado). O objetivo desta task (AC#4: item-picker acompanha troca de tema) depende do sistema de presets de tema entregue pela ACM-014 — migrar para tokens antes de existirem os tokens de tema seria migrar para o alvo errado. Serializar apos o merge do PR #50.
+<!-- SECTION:NOTES:END -->
