@@ -162,3 +162,86 @@ describe("BuildCard", () => {
     expect(container.textContent).toContain("Bruiser de Frontline");
   });
 });
+
+/**
+ * ACM-014/decision-017: the 5 export-safety guards above only ever exercised
+ * the DEFAULT theme. This task is the first to put user-chosen color (a
+ * non-default preset) and an alpha overlay (the darken veil) inside the
+ * capture root, across all 4 layouts — exactly the surface decision-017
+ * flags as most likely to regress. Re-running the same 5 checks against a
+ * fully non-default theme on every layout closes that gap.
+ */
+describe("BuildCard export-safety guards with a full non-default theme (ACM-014)", () => {
+  const layouts = ["vertical", "grid", "compressed", "list"] as const;
+  const fullTheme = {
+    preset: "ice" as const,
+    aspectRatio: "square" as const,
+    fontFamily: "mono" as const,
+    showItemNames: true,
+    showSpellNames: true,
+    background: { imageId: "abcdefghijklmnopqrstu", blur: 8, darken: 0.6, scale: 1.3 },
+  };
+
+  it.each(layouts)("%s: never uses a Tailwind palette color utility", (layout) => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} layout={layout} theme={fullTheme} />);
+    const offenders = collectClassNames(container).filter((cls) => PALETTE_COLOR_UTILITY.test(cls));
+    expect(offenders).toEqual([]);
+  });
+
+  it.each(layouts)("%s: never uses a Tailwind alpha-slash utility", (layout) => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} layout={layout} theme={fullTheme} />);
+    const offenders = collectClassNames(container).filter((cls) => ALPHA_SLASH_UTILITY.test(cls));
+    expect(offenders).toEqual([]);
+  });
+
+  it.each(layouts)("%s: never emits a literal oklch()/oklab()/color-mix() anywhere in markup", (layout) => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} layout={layout} theme={fullTheme} />);
+    expect(container.innerHTML).not.toContain("oklch(");
+    expect(container.innerHTML).not.toContain("oklab(");
+    expect(container.innerHTML).not.toContain("color-mix(");
+  });
+
+  it.each(layouts)("%s: never sets an inline style to color-mix()/oklab()/oklch()", (layout) => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} layout={layout} theme={fullTheme} />);
+    const root = container.querySelector("#capture-root")!;
+    const offenders: string[] = [];
+    const walk = (el: Element) => {
+      const style = el.getAttribute("style");
+      if (style && /color-mix\(|oklab\(|oklch\(/.test(style)) offenders.push(style);
+      for (const child of Array.from(el.children)) walk(child);
+    };
+    walk(root);
+    expect(offenders).toEqual([]);
+  });
+
+  it.each(layouts)("%s: never references a CSS custom property (var(--...))", (layout) => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} layout={layout} theme={fullTheme} />);
+    const root = container.querySelector("#capture-root")!;
+    expect(root.outerHTML.includes("var(--")).toBe(false);
+  });
+
+  it.each(layouts)("%s: renders the background as a real <img>, never a CSS background-image", (layout) => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} layout={layout} theme={fullTheme} />);
+    const root = container.querySelector("#capture-root")!;
+    const bgImg = root.querySelector("img[data-build-card-background]");
+    expect(bgImg).toBeTruthy();
+    expect(bgImg?.getAttribute("src")).toBe("/api/background/abcdefghijklmnopqrstu");
+    // The regression this guards against: html-to-image's waitForImage walks
+    // every <img>, never a CSS background-image, so the background must
+    // never be expressed that way.
+    expect(root.outerHTML).not.toMatch(/background-image\s*:/);
+  });
+
+  it.each(layouts)("%s: applies square aspect ratio to the capture root wrapper", (layout) => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} layout={layout} theme={fullTheme} />);
+    const root = container.querySelector("#capture-root") as HTMLElement;
+    expect(root.style.aspectRatio).toBe("1 / 1");
+  });
+});

@@ -75,4 +75,41 @@ describe("src/components/build-card/** source (AC#7)", () => {
       expect(offenders).toEqual([]);
     }
   );
+
+  /**
+   * ACM-014 / decision-017: the render-time guard in `build-card.test.tsx`
+   * cannot resolve CSS custom properties — a `style={{ color:
+   * "var(--color-accent)" }}` passes all 5 of its checks even if
+   * `--color-accent` resolves to `oklch()` in `globals.css`. This static
+   * scan closes that hole by banning the `var(--` substring outright from
+   * every file that actually renders INSIDE `#capture-root`: every color
+   * there must be a hex literal (from `tokens.ts`/`theme-presets.ts`) or an
+   * inline hex value, never a custom property. Introduce
+   * `var(--color-accent)` in any of these files and this test fails; that is
+   * the regression it exists to catch.
+   *
+   * `ExportBar.tsx` is deliberately excluded: it is chrome that lives
+   * OUTSIDE `#capture-root` (decision-010 — buttons, never cloned by
+   * `html-to-image`), so it is exempt from decision-017 the same way
+   * `globals.css`-token-based Tailwind utilities are exempt everywhere else
+   * in the app.
+   */
+  const captureRootFiles = files.filter((file) => path.basename(file) !== "ExportBar.tsx");
+
+  it.each(captureRootFiles.map((file) => [path.relative(BUILD_CARD_DIR, file), file] as const))(
+    "%s never contains a CSS custom property reference (var(--...))",
+    (_relative, file) => {
+      const source = stripComments(readFileSync(file, "utf-8"));
+      expect(source.includes("var(--")).toBe(false);
+    }
+  );
+});
+
+describe("src/app/globals.css (decision-017)", () => {
+  it("never contains oklch()/oklab() — the raster export cannot parse either", () => {
+    const globalsCssPath = path.join(process.cwd(), "src", "app", "globals.css");
+    const source = readFileSync(globalsCssPath, "utf-8");
+    expect(/oklch\(/i.test(source)).toBe(false);
+    expect(/oklab\(/i.test(source)).toBe(false);
+  });
 });
