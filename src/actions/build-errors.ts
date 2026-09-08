@@ -23,3 +23,18 @@ export class BuildContentInvalidError extends Error {
     this.name = "BuildContentInvalidError";
   }
 }
+
+/**
+ * Thrown by `saveBuild`/`updateBuild` (ACM-014, decision-019 §8) when
+ * `theme.background.imageId` does not resolve to a `background_images` row
+ * owned by the current session's user — without this check a user could
+ * reference (and thus read, via `GET /api/background/[id]`'s
+ * owner-or-public-build authz) another user's private upload by simply
+ * pasting its id into their own theme.
+ */
+export class ThemeBackgroundNotOwnedError extends Error {
+  constructor(message = "The referenced background image does not belong to you") {
+    super(message);
+    this.name = "ThemeBackgroundNotOwnedError";
+  }
+}
