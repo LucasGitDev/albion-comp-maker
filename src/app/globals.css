@@ -17,6 +17,24 @@
    */
   --header-h: 56px;
   --header-h-sm: 48px;
+
+  /*
+   * Height of the mobile-only sticky slot-group nav strip (ACM-041, doc-005
+   * §10). Named like `--header-h`: two surfaces must agree on this number —
+   * the strip's `sticky top-0`, the `scroll-margin-top` of each slot-group
+   * heading, and the IntersectionObserver `rootMargin` used for scroll-spy.
+   * A bare `44px` in three places would drift silently the moment the
+   * chip's padding changes.
+   */
+  --group-nav-h: 44px;
+}
+
+/*
+ * Smooth-scrolls anchor navigation (ACM-041 group-nav strip, doc-005 §5.4).
+ * The `prefers-reduced-motion` block below already forces `auto` back on.
+ */
+html {
+  scroll-behavior: smooth;
 }
 
 @theme inline {
