@@ -1,9 +1,10 @@
 ---
 id: ACM-089
 title: 'Editor: auto-selecionar skill E de armas (única opção, sem picker redundante)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-08 14:49'
+updated_date: '2026-09-08 22:08'
 labels: []
 milestone: m-2
 dependencies: []
