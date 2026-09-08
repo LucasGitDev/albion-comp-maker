@@ -105,6 +105,14 @@ describe("src/components/build-card/** source (AC#7)", () => {
   );
 });
 
+describe("CompressedTile.tsx (ACM-080 AC#2)", () => {
+  it("never contains a hardcoded '#ffffff' literal — color comes from a tokens.ts export", () => {
+    const file = path.join(BUILD_CARD_DIR, "CompressedTile.tsx");
+    const source = stripComments(readFileSync(file, "utf-8"));
+    expect(/#ffffff/i.test(source)).toBe(false);
+  });
+});
+
 describe("src/app/globals.css (decision-017)", () => {
   it("never contains oklch()/oklab() — the raster export cannot parse either", () => {
     const globalsCssPath = path.join(process.cwd(), "src", "app", "globals.css");

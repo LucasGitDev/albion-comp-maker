@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { BuildCard } from "@/components/build-card";
+import { CARD_FG_MUTED } from "@/components/build-card/tokens";
 import { createEmptyBuild, SLOT_ORDER, type BuildState } from "@/types/build";
 
 function buildWithFullEquipment(): BuildState {
@@ -51,6 +52,14 @@ const ALPHA_SLASH_UTILITY = new RegExp(
   String.raw`\b(?:bg|text|border|ring|from|to|via|outline|shadow|decoration|accent|caret|fill|stroke|divide|placeholder)-` +
     String.raw`[a-zA-Z0-9_-]+/(?:\d{1,3}\b|\[)`
 );
+
+/** jsdom's `getComputedStyle` resolves inline hex colors to `rgb(...)`. */
+function hexToRgb(hex: string): string {
+  const r = Number.parseInt(hex.slice(1, 3), 16);
+  const g = Number.parseInt(hex.slice(3, 5), 16);
+  const b = Number.parseInt(hex.slice(5, 7), 16);
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 function collectClassNames(root: Element): string[] {
   const classNames: string[] = [];
@@ -117,6 +126,26 @@ describe("BuildCardCompressed", () => {
       expect(cell.getAttribute("data-slot-state")).toBe("empty");
     }
     expect(container.textContent).toContain("Sem nome");
+  });
+
+  it("renders 'Sem nome' in italic with CARD_FG_MUTED when mainhand is null (ACM-080 AC#1)", () => {
+    const state = createEmptyBuild();
+    const { container } = render(<BuildCard state={state} layout="compressed" />);
+    const heading = Array.from(container.querySelectorAll("h2")).find((h2) => h2.textContent === "Sem nome");
+    expect(heading).toBeTruthy();
+    const computed = getComputedStyle(heading!);
+    expect(computed.fontStyle).toBe("italic");
+    expect(computed.color).toBe(hexToRgb(CARD_FG_MUTED));
+  });
+
+  it("keeps the build name upright and non-muted once mainhand is set (ACM-080 AC#1)", () => {
+    const state = buildWithFullEquipment();
+    const { container } = render(<BuildCard state={state} layout="compressed" />);
+    const heading = Array.from(container.querySelectorAll("h2")).find((h2) => h2.textContent === "Bruiser de Frontline");
+    expect(heading).toBeTruthy();
+    const computed = getComputedStyle(heading!);
+    expect(computed.fontStyle).toBe("normal");
+    expect(computed.color).not.toBe(hexToRgb(CARD_FG_MUTED));
   });
 
   it("preserves Q/W/E/Passive chip position: an absent group occupies 18px instead of shifting others (AC#4)", () => {
@@ -193,5 +222,37 @@ describe("BuildCardList", () => {
     const alphaOffenders = collectClassNames(container).filter((cls) => ALPHA_SLASH_UTILITY.test(cls));
     expect(alphaOffenders).toEqual([]);
     expect(container.innerHTML).not.toContain("oklch(");
+  });
+
+  it("renders the swap icon at 32px, matching the size-8 wrapper (ACM-080 AC#3)", () => {
+    const state = buildWithFullEquipment();
+    state.swaps = [
+      {
+        id: "swap-1",
+        label: "Martelo → Machado",
+        slots: {
+          mainhand: {
+            itemId: "T8_MAIN_AXE",
+            tier: 8,
+            enchant: 0,
+            spells: { q: null, w: null, e: null, passive: null },
+            twohanded: true,
+            maxEnchant: 4,
+          },
+        },
+      },
+    ];
+    const { container } = render(<BuildCard state={state} layout="list" />);
+    // `size-8` (32px) wrapper `div` from `BuildCardList`, distinct from the
+    // `ItemIcon`'s own root `span` nested inside it.
+    const wrapperDiv = Array.from(container.querySelectorAll("div")).find((el) =>
+      el.className.split(" ").includes("size-8")
+    );
+    expect(wrapperDiv).toBeTruthy();
+    // `ItemIcon`'s root span uses `ICON_SIZE_CLASS[size]` directly — `sm`
+    // resolves to `size-8` (32px), matching the wrapper; `xs` (`size-6`,
+    // 24px) would fail this assertion.
+    const iconSpan = wrapperDiv!.querySelector("span");
+    expect(iconSpan?.className.split(" ")).toContain("size-8");
   });
 });
