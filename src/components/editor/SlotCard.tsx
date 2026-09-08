@@ -180,7 +180,7 @@ export function SlotCard({
 
   return (
     <div
-      className="group relative flex w-full md:w-[168px] flex-col gap-2 rounded-xl border bg-icon-slot p-3"
+      className="group relative flex w-full md:w-[168px] flex-col gap-2 rounded-xl border bg-icon-slot p-2"
       style={{ borderColor: CATEGORY_COLOR_VAR[filledCategory] }}
       data-slot={slot}
       data-slot-state="filled"
@@ -196,26 +196,32 @@ export function SlotCard({
           ×
         </button>
       )}
-      <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
-        {label}
-      </span>
+      {/*
+       * ACM-075: icon + name sit side-by-side in one compact row instead of
+       * stacked, cutting a filled card's height from 174px to 66px in a real
+       * browser (see task notes for the measurement method) — well over the
+       * 30% floor (AC#2). Icon (size-10, 40px) + p-1 padding (4px each side)
+       * already clears the 44x44 CSS px click-target floor (AC#3) on both
+       * axes before the name column adds anything, and the name column
+       * itself extends the button's width further, never shrinking it.
+       */}
       <button
         type="button"
         onClick={() => onRequestItemPick(slot)}
         aria-label={`Alterar ${label}`}
-        className="flex flex-col gap-2 rounded-md text-left transition-opacity duration-150 ease-out hover:opacity-90"
+        className="flex min-w-0 items-center gap-2 rounded-md p-1 text-left transition-opacity duration-150 ease-out hover:opacity-90"
       >
-        <div className="relative flex size-24 items-center justify-center">
+        <div className="relative flex size-10 shrink-0 items-center justify-center">
           <ItemIcon
             itemId={item.itemId}
             alt={itemName ?? item.itemId}
-            size="xl"
+            size="md"
             category={SLOT_CATEGORY[slot] ?? "weapon"}
           />
           {item.tier > 0 && (
             <span
-              className="absolute bottom-0 left-0 rounded px-1 text-[10px] font-bold text-[#0b0d11]"
-              style={{ backgroundColor: tierColor, lineHeight: "16px" }}
+              className="absolute bottom-0 left-0 rounded px-1 text-[9px] font-bold text-[#0b0d11]"
+              style={{ backgroundColor: tierColor, lineHeight: "14px" }}
             >
               T{item.tier}
             </span>
@@ -223,16 +229,24 @@ export function SlotCard({
           {item.enchant > 0 && (
             <span
               data-testid="enchant-badge"
-              className="absolute bottom-0 right-0 rounded px-1 text-[10px] font-bold text-white"
-              style={{ backgroundColor: "var(--color-enchant)", lineHeight: "16px" }}
+              className="absolute bottom-0 right-0 rounded px-1 text-[9px] font-bold text-white"
+              style={{ backgroundColor: "var(--color-enchant)", lineHeight: "14px" }}
             >
               .{item.enchant}
             </span>
           )}
         </div>
-        <p className="line-clamp-2 text-[13px] font-medium" title={itemName ?? item.itemId}>
-          {itemName ?? item.itemId}
-        </p>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+            {label}
+          </span>
+          <p
+            className="truncate whitespace-nowrap text-[13px] font-medium"
+            title={itemName ?? item.itemId}
+          >
+            {itemName ?? item.itemId}
+          </p>
+        </div>
       </button>
       {((tierOptions.length > 0 && onTierChange) || (enchantOptions.length > 1 && onEnchantChange)) && (
         <div className="flex flex-wrap items-center gap-2" data-testid="tier-enchant-selectors">
