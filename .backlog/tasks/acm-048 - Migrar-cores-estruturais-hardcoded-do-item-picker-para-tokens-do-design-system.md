@@ -1,10 +1,10 @@
 ---
 id: ACM-048
 title: Migrar cores estruturais hardcoded do item-picker para tokens do design system
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 18:51'
-updated_date: '2026-09-08 13:18'
+updated_date: '2026-09-08 14:44'
 labels: []
 milestone: m-3
 dependencies:

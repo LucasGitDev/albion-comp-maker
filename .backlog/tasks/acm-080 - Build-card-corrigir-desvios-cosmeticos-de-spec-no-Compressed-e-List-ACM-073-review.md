@@ -3,10 +3,10 @@ id: ACM-080
 title: >-
   Build card: corrigir desvios cosmeticos de spec no Compressed e List (ACM-073
   review)
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-09-08 01:11'
-updated_date: '2026-09-08 13:18'
+updated_date: '2026-09-08 14:50'
 labels: []
 dependencies: []
 priority: low
