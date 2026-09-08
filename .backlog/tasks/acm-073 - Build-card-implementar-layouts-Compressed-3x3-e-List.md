@@ -4,7 +4,7 @@ title: 'Build card: implementar layouts Compressed (3x3) e List'
 status: In Review
 assignee: []
 created_date: '2026-09-08 00:04'
-updated_date: '2026-09-08 01:04'
+updated_date: '2026-09-08 01:11'
 labels: []
 dependencies: []
 priority: high
@@ -60,4 +60,8 @@ Desvio da spec: ícone do item no CompressedTile usa size='lg' (56px) em vez do 
 Testes adicionados: build-card-layout-matrix.test.ts (AC#3), build-card-layouts.test.tsx (AC#1, #4, #5, #6, parcial #7 via DOM), build-card-no-palette-classes.test.ts (AC#7, scan estático de todo src/components/build-card/**). AC#8 (export PNG) coberto indiretamente pelos mesmos guards de ausência de oklch/color-mix que build-card.test.tsx já usa para vertical/grid — não há um teste de export end-to-end dedicado nesta task.
 
 make check: verde (pnpm install --frozen-lockfile, lint, tsc --noEmit, build, vitest — 433/433 testes passando).
+
+MERGE: PR #49 mergeado em main (c3ad1f4). make check verde em main pos-merge (54 arquivos, 433/433 testes). Branch e worktree limpos.
+
+NAO movido para Done: o AC#2 exige 'matriz confirmada contra o killboard oficial' e essa confirmacao nunca aconteceu. As referencias retornam 403 para fetch programatico e nao ha browser com acesso. O teste de permutacao (AC#3) garante que nenhum slot some em silencio, mas NAO garante que a ordem das celulas esta correta. Verificacao manual do DoD #3 tambem pendente pelo mesmo motivo. Requer humano: abrir https://albiononline.com/killboard/kill/1445835238?server=live_us e conferir KILLBOARD_MATRIX em src/components/build-card/layout-matrix.ts.
 <!-- SECTION:NOTES:END -->
