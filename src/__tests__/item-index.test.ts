@@ -17,29 +17,29 @@ const FIXTURE: AOItem[] = [
     uniquename: "T8_2H_HOLYSTAFF",
     slot: "mainhand",
     twohanded: true,
-    localizedNames: { "en-US": "Great Holy Staff", "pt-BR": "Grande Cajado Sagrado" },
+    localizedNames: { "EN-US": "Great Holy Staff", "PT-BR": "Grande Cajado Sagrado" },
   }),
   item({
     uniquename: "T4_MAIN_HOLYSTAFF",
     slot: "mainhand",
-    localizedNames: { "en-US": "Holy Staff", "pt-BR": "Cajado Sagrado" },
+    localizedNames: { "EN-US": "Holy Staff", "PT-BR": "Cajado Sagrado" },
   }),
   item({
     uniquename: "T8_2H_HAMMER",
     slot: "mainhand",
     twohanded: true,
-    localizedNames: { "en-US": "Sacred Hammer", "pt-BR": "Martelo Sagrado" },
+    localizedNames: { "EN-US": "Sacred Hammer", "PT-BR": "Martelo Sagrado" },
   }),
   item({
     uniquename: "T6_2H_BOW@2",
     slot: "mainhand",
     twohanded: true,
-    localizedNames: { "en-US": "Bloodletter", "pt-BR": "Sanguinário" },
+    localizedNames: { "EN-US": "Bloodletter", "PT-BR": "Sanguinário" },
   }),
   item({
     uniquename: "T1_OFF_SHIELD",
     slot: "offhand",
-    localizedNames: { "en-US": "Shield", "pt-BR": "Escudo" },
+    localizedNames: { "EN-US": "Shield", "PT-BR": "Escudo" },
   }),
 ];
 
@@ -102,7 +102,7 @@ describe("searchItems", () => {
       slot: "mainhand",
       twohanded: false,
     maxEnchant: 0,
-      localizedNames: { "en-US": "Undead Skull", "pt-BR": "Caveira Morta-Viva" },
+      localizedNames: { "EN-US": "Undead Skull", "PT-BR": "Caveira Morta-Viva" },
     });
     const index = buildItemIndex([...FIXTURE, vanity]);
     const results = searchItems(index, "skull", { slot: "mainhand", locale: "en-US" });
@@ -141,8 +141,8 @@ describe("performance", () => {
             slot,
             twohanded: slot === "mainhand" && counter % 3 === 0,
             localizedNames: {
-              "en-US": `${word1} ${word2} ${slot} ${counter}`,
-              "pt-BR": `${word2} ${word1} ${slot} ${counter}`,
+              "EN-US": `${word1} ${word2} ${slot} ${counter}`,
+              "PT-BR": `${word2} ${word1} ${slot} ${counter}`,
             },
           })
         );

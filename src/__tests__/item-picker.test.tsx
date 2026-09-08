@@ -17,18 +17,18 @@ const ITEMS: AOItem[] = [
   item({
     uniquename: "T4_MAIN_SWORD",
     slot: "mainhand",
-    localizedNames: { "en-US": "Broadsword", "pt-BR": "Espadão" },
+    localizedNames: { "EN-US": "Broadsword", "PT-BR": "Espadão" },
   }),
   item({
     uniquename: "T8_2H_HAMMER",
     slot: "mainhand",
     twohanded: true,
-    localizedNames: { "en-US": "Sacred Hammer", "pt-BR": "Martelo Sagrado" },
+    localizedNames: { "EN-US": "Sacred Hammer", "PT-BR": "Martelo Sagrado" },
   }),
   item({
     uniquename: "T1_OFF_SHIELD",
     slot: "offhand",
-    localizedNames: { "en-US": "Shield", "pt-BR": "Escudo" },
+    localizedNames: { "EN-US": "Shield", "PT-BR": "Escudo" },
   }),
 ];
 

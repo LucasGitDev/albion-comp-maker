@@ -10,7 +10,7 @@ import { groupItemSpells } from "@/components/editor/spell-groups";
  * added here to exercise tooltip resolution — the ids themselves are real.
  */
 function spell(overrides: Partial<AOItemSpell> & Pick<AOItemSpell, "uniquename" | "slotGroup" | "kind">): AOItemSpell {
-  return { localizedNames: { "en-US": overrides.uniquename }, ...overrides };
+  return { localizedNames: { "EN-US": overrides.uniquename }, ...overrides };
 }
 
 describe("groupItemSpells (ACM-010 AC #1, #2, #3)", () => {
@@ -63,7 +63,7 @@ describe("groupItemSpells (ACM-010 AC #1, #2, #3)", () => {
         uniquename: "TAUNT",
         slotGroup: "1",
         kind: "active",
-        localizedNames: { "en-US": "Taunt", "pt-BR": "Provocar" },
+        localizedNames: { "EN-US": "Taunt", "PT-BR": "Provocar" },
       },
       {
         uniquename: "PASSIVE_ARMOR_MR_AR",

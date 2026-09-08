@@ -7,7 +7,7 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
     {
       uniquename: "T4_HEAD_PLATE_SET1",
       slot: "head",
-      localizedNames: { "en-US": "Soldier Helmet" },
+      localizedNames: { "EN-US": "Soldier Helmet" },
       spells: [],
       twohanded: false,
       maxEnchant: 4,

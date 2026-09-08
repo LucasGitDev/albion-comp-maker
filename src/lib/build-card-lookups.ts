@@ -7,6 +7,7 @@ import type { AOData, AOItem } from "@/data/ao-data.d";
 import { groupItemSpells } from "@/components/editor/spell-groups";
 import type { BuildCardLookups } from "@/components/build-card/types";
 import type { BuildState, SpellGroup } from "@/types/build";
+import { pickLocalizedName } from "@/lib/localized-name";
 
 const ARTIFACT_PATH = path.join(process.cwd(), "src", "data", "ao-data.json");
 
@@ -86,7 +87,7 @@ export async function buildCardLookupsFor(state: BuildState): Promise<BuildCardL
     const item = itemsByUniquename.get(itemId);
     if (!item) continue;
 
-    itemNames[itemId] = item.localizedNames[LOCALE] ?? item.uniquename;
+    itemNames[itemId] = pickLocalizedName(item.localizedNames, LOCALE) ?? item.uniquename;
 
     const grouped = groupItemSpells(item.spells, LOCALE);
     spellGroupsByItem[itemId] = Object.keys(grouped) as SpellGroup[];
