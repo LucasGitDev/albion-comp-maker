@@ -1,0 +1,141 @@
+import { ItemIcon } from "@/components/icons/ItemIcon";
+import type { BuildState, Swap } from "@/types/build";
+import { CompressedTile } from "./CompressedTile";
+import { KILLBOARD_MATRIX } from "./layout-matrix";
+import { CARD_BORDER, CARD_FG, CARD_FG_MUTED, CARD_SURFACE, resolveAccent } from "./tokens";
+import type { BuildCardLookups, BuildCardTheme } from "./types";
+
+export type BuildCardCompressedProps = {
+  state: BuildState;
+  theme: BuildCardTheme;
+  lookups: BuildCardLookups;
+};
+
+/** Fixed logical width (doc-006 §2.2): 540px, sized for Discord's inline embed preview. */
+const CARD_WIDTH = 540;
+const MATRIX_COLUMN_PX = 256;
+
+function swapItemName(swap: Swap, lookups: BuildCardLookups): string {
+  for (const item of Object.values(swap.slots)) {
+    if (item) return lookups.itemNames[item.itemId] ?? item.itemId;
+  }
+  return "";
+}
+
+/**
+ * Killboard-style paperdoll card (doc-006 §2): dense, icon-first, meant to be
+ * pasted straight into Discord. Not a parametrization of `BuildCardVertical`
+ * (doc-006 §5) — it is a fixed 3x3 positional matrix with its own meta panel,
+ * no item names, and a hard height budget (§2.6), all of which the vertical
+ * layout's flow-based structure cannot express without branching so heavily
+ * it stops being "the same component".
+ */
+export function BuildCardCompressed({ state, lookups }: BuildCardCompressedProps): React.JSX.Element {
+  const accent = resolveAccent(state.role, state.accent);
+  const mainhand = state.slots.mainhand;
+  const hasBuild = mainhand !== null;
+  const mount = state.slots.mount;
+
+  const hasAnySpell = KILLBOARD_MATRIX.flat().some((slot) => {
+    const item = state.slots[slot];
+    return item ? Object.values(item.spells).some((sprite) => sprite !== null) : false;
+  });
+
+  const hasMeta = mount !== null || state.swaps.length > 0;
+  const visibleSwaps = state.swaps.slice(0, hasMeta && state.swaps.length > 3 ? 2 : 3);
+  const remainingSwaps = state.swaps.length > 3 ? state.swaps.length - 2 : 0;
+
+  return (
+    <div
+      className="flex flex-col overflow-hidden rounded-xl border"
+      style={{ width: CARD_WIDTH, backgroundColor: CARD_SURFACE, borderColor: CARD_BORDER, color: CARD_FG }}
+    >
+      <div style={{ backgroundColor: accent, height: 4 }} />
+      <div className="flex flex-col p-4" style={{ gap: 4 }}>
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: accent }}>
+            {state.role || "Papel"}
+          </span>
+          {mainhand && mainhand.tier > 0 && (
+            <span className="text-[12px]" style={{ color: CARD_FG_MUTED }}>
+              T{mainhand.tier}
+              {mainhand.enchant > 0 ? `.${mainhand.enchant}` : ""}
+            </span>
+          )}
+        </div>
+        <h2 className="line-clamp-2 text-[20px] font-bold" style={{ letterSpacing: "-0.01em" }}>
+          {state.name || "Sem nome"}
+        </h2>
+
+        <div className="flex" style={{ gap: 16, marginTop: 12, justifyContent: hasBuild && hasMeta ? "flex-start" : "center" }}>
+          <div
+            className="grid"
+            style={{
+              width: MATRIX_COLUMN_PX,
+              gridTemplateColumns: "repeat(3, 80px)",
+              gridAutoRows: 93,
+              gap: 8,
+            }}
+          >
+            {KILLBOARD_MATRIX.flat().map((slot) => (
+              <CompressedTile key={slot} slot={slot} item={state.slots[slot]} lookups={lookups} />
+            ))}
+          </div>
+
+          {hasBuild &&
+            (hasMeta ? (
+              <div className="flex flex-1 flex-col" style={{ gap: 12, minWidth: 0 }}>
+                {hasAnySpell && (
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.06em]" style={{ color: CARD_FG_MUTED }}>
+                    Q W E P
+                  </span>
+                )}
+                {mount && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: CARD_FG_MUTED }}>
+                      Montaria
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <ItemIcon itemId={mount.itemId} alt={lookups.itemNames[mount.itemId] ?? mount.itemId} size="md" decorative />
+                      <span className="text-[11px]" style={{ color: CARD_FG }}>
+                        {lookups.itemNames[mount.itemId] ?? mount.itemId}
+                        {mount.tier > 0 ? ` T${mount.tier}` : ""}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {state.swaps.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: CARD_FG_MUTED }}>
+                      Swaps
+                    </span>
+                    <ul className="flex flex-col gap-0.5">
+                      {visibleSwaps.map((swap) => (
+                        <li key={swap.id} className="line-clamp-1 text-[11px]" style={{ color: CARD_FG_MUTED }}>
+                          • {swap.label}
+                          {swapItemName(swap, lookups) ? `: ${swapItemName(swap, lookups)}` : ""}
+                        </li>
+                      ))}
+                      {remainingSwaps > 0 && (
+                        <li className="text-[11px]" style={{ color: CARD_FG_MUTED }}>
+                          • +{remainingSwaps} swaps
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : null)}
+
+          {!hasBuild && (
+            <div className="flex flex-1 items-center" style={{ minWidth: 0 }}>
+              <p className="text-[11px]" style={{ color: CARD_FG_MUTED }}>
+                Escolha a mão principal para montar a build
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
