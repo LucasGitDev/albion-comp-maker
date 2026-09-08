@@ -65,7 +65,20 @@ export type SlotCardProps = {
 
 type SlotCategory = Exclude<IconCategory, "generic">;
 
-const SLOT_CATEGORY: Record<Slot, SlotCategory> = {
+/**
+ * Category → border color token (ACM-039). Named tokens only, never a raw
+ * hex here — see the `--color-slot-category-*` block in globals.css. Kept
+ * exported so SlotGrid can color group titles with the same source of truth
+ * instead of re-deriving the mapping.
+ */
+export const CATEGORY_COLOR_VAR: Record<SlotCategory, string> = {
+  weapon: "var(--color-slot-category-weapon)",
+  armor: "var(--color-slot-category-armor)",
+  utility: "var(--color-slot-category-utility)",
+  consumable: "var(--color-slot-category-consumable)",
+};
+
+export const SLOT_CATEGORY: Record<Slot, SlotCategory> = {
   mainhand: "weapon",
   offhand: "weapon",
   head: "armor",
@@ -139,13 +152,16 @@ export function SlotCard({
   }
 
   if (!item) {
+    const emptyCategory = SLOT_CATEGORY[slot] ?? "weapon";
     return (
       <button
         type="button"
         onClick={() => onRequestItemPick(slot)}
-        className="flex w-full md:w-[168px] flex-col gap-2 rounded-xl border border-dashed border-icon-slot-empty bg-icon-slot p-3 text-left transition-colors duration-150 ease-out hover:border-solid hover:border-[var(--color-enchant)]"
+        className="flex w-full md:w-[168px] flex-col gap-2 rounded-xl border border-dashed bg-icon-slot p-3 text-left transition-colors duration-150 ease-out hover:border-solid hover:border-[var(--color-enchant)]"
+        style={{ borderColor: `color-mix(in srgb, ${CATEGORY_COLOR_VAR[emptyCategory]} 40%, var(--color-icon-slot-empty))` }}
         data-slot={slot}
         data-slot-state="empty"
+        data-slot-category={emptyCategory}
       >
         <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
           {label}
@@ -160,11 +176,15 @@ export function SlotCard({
     );
   }
 
+  const filledCategory = SLOT_CATEGORY[slot] ?? "weapon";
+
   return (
     <div
-      className="group relative flex w-full md:w-[168px] flex-col gap-2 rounded-xl border border-icon-slot-empty bg-icon-slot p-3"
+      className="group relative flex w-full md:w-[168px] flex-col gap-2 rounded-xl border bg-icon-slot p-3"
+      style={{ borderColor: CATEGORY_COLOR_VAR[filledCategory] }}
       data-slot={slot}
       data-slot-state="filled"
+      data-slot-category={filledCategory}
     >
       {onClear && (
         <button
