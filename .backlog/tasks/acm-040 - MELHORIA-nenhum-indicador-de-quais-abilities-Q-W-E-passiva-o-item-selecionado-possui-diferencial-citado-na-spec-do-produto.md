@@ -3,10 +3,10 @@ id: ACM-040
 title: >-
   Editor: ligar spellCandidatesBySlot e itemNames no SlotGrid (ability slots
   existem mas não recebem dados)
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-08 00:25'
+updated_date: '2026-09-08 00:39'
 labels: []
 milestone: m-3
 dependencies: []
@@ -34,15 +34,15 @@ O empty state para itens que genuinamente não têm nenhuma ability (bolsa, capa
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Em src/app/(editor)/build/new/page.tsx a chamada de <SlotGrid> passa spellCandidatesBySlot, derivado por useMemo a partir do spellCandidatesByItemId já existente e do item equipado em cada slot (sem recalcular groupSpellsForItem por render)
-- [ ] #2 A mesma chamada de <SlotGrid> passa itemNames={itemNames}; o SlotCard de um slot preenchido exibe o nome localizado do item e não o uniquename cru
-- [ ] #3 Com um item de arma que possui spells equipado no mainhand, o elemento data-testid="spell-picker" está presente dentro do SlotCard do mainhand, e existe uma linha data-testid="spell-group-<g>" para cada grupo que o item realmente expõe
-- [ ] #4 Um item sem nenhuma spell resolvida (ex.: bolsa/capa/montaria) não renderiza data-testid="spell-picker" — nenhum grupo vazio é exibido
-- [ ] #5 Clicar em um chip de ability chama actions.setSpell e o chip fica com aria-pressed="true"; clicar no chip já selecionado limpa a seleção (spell volta a null)
-- [ ] #6 Trocar o item de um slot zera as spells daquele slot e os chips passam a refletir os candidatos do novo item, sem resquício do item anterior
-- [ ] #7 Teste automatizado cobrindo a grade principal (não os swaps) que falha no main atual e passa depois: item com spells renderiza spell-picker no SlotCard; item sem spells não renderiza; e o nome localizado aparece no card
+- [x] #1 Em src/app/(editor)/build/new/page.tsx a chamada de <SlotGrid> passa spellCandidatesBySlot, derivado por useMemo a partir do spellCandidatesByItemId já existente e do item equipado em cada slot (sem recalcular groupSpellsForItem por render)
+- [x] #2 A mesma chamada de <SlotGrid> passa itemNames={itemNames}; o SlotCard de um slot preenchido exibe o nome localizado do item e não o uniquename cru
+- [x] #3 Com um item de arma que possui spells equipado no mainhand, o elemento data-testid="spell-picker" está presente dentro do SlotCard do mainhand, e existe uma linha data-testid="spell-group-<g>" para cada grupo que o item realmente expõe
+- [x] #4 Um item sem nenhuma spell resolvida (ex.: bolsa/capa/montaria) não renderiza data-testid="spell-picker" — nenhum grupo vazio é exibido
+- [x] #5 Clicar em um chip de ability chama actions.setSpell e o chip fica com aria-pressed="true"; clicar no chip já selecionado limpa a seleção (spell volta a null)
+- [x] #6 Trocar o item de um slot zera as spells daquele slot e os chips passam a refletir os candidatos do novo item, sem resquício do item anterior
+- [x] #7 Teste automatizado cobrindo a grade principal (não os swaps) que falha no main atual e passa depois: item com spells renderiza spell-picker no SlotCard; item sem spells não renderiza; e o nome localizado aparece no card
 - [ ] #8 Nenhum arquivo fora de src/app/(editor)/build/new/page.tsx e dos arquivos de teste correspondentes é modificado (SpellPicker, SlotCard e SlotGrid ficam intactos)
-- [ ] #9 make check verde
+- [x] #9 make check verde
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -70,3 +70,19 @@ Red/green verified manually: reverted the page.tsx lookup back to the exact-key 
 
 Scope note: this touched files beyond page.tsx (spell-groups.ts, build-card-lookups.ts, item-index.ts, item-result-list.tsx) because the defect (exact-case localizedNames lookup) was present in every consumer, per explicit reviewer instruction to fix "o mesmo defeito" wherever found rather than patching only the one call site AC#8 originally scoped to.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+PR #48 merged. main verde (387 testes).
+
+ENTREGUE: o bug era WIRING, nao feature faltante — ability slots ja existiam desde a ACM-010 e funcionavam nos Swaps, mas <SlotGrid> nao recebia spellCandidatesBySlot/itemNamesBySlot, entao SpellPicker recebia undefined, filtrava zero grupos e retornava null (falha silenciosa). Corrigido com dois useMemo adapters em page.tsx, indexados por Slot (nao por itemId, o que evita colisao quando dois slots tem o mesmo item).
+
+AC#8 NAO FOI CUMPRIDO — DELIBERADAMENTE, com autorizacao explicita do orquestrador. O AC travava o escopo em page.tsx + testes. A verificacao visual contra o catalogo REAL bloqueou o PR e revelou um defeito maior: LOCALE='en-US' nao batia com as chaves reais EN-US/PT-BR do ao-data.json, e TODO nome (item e ability) caia no fallback do uniquename. O mesmo defeito existia em mais 4 consumidores, dois deles graves: src/lib/item-index.ts (indice de BUSCA do ItemPicker — o mapa names estava vazio para TODOS os itens, ou seja busca por nome localizado nunca funcionou) e src/lib/build-card-lookups.ts (pagina publica SSR — links compartilhados no Discord mostravam uniquename cru). Corrigir so page.tsx teria deixado o AC#2 verde na aparencia e o produto quebrado. Solucao: src/lib/localized-name.ts (pickLocalizedName, lookup case-insensitive) aplicado nos 5 consumidores.
+
+CAUSA RAIZ DE TER PASSADO NO GATE NA RODADA 1: a fixture de teste usava localizedNames: { 'en-US': ... }, espelhando a suposicao errada do codigo. O teste provava apenas que o codigo concordava consigo mesmo. 8 arquivos de fixture foram corrigidos para o casing real. Licao registrada: fixture que nao reflete o artefato real transforma o teste em eco, nao em verificacao.
+
+VERIFICACAO: ui-reviewer aprovou contra dados reais (nomes localizados na grade e nas abilities, busca por nome localizado E por uniquename funcionando, bag sem secao vazia, 390px ok, pagina publica SSR renderizando nome localizado — validada inserindo linha temporaria no DB). Cobertura de regressao para build-card-lookups adicionada e verificada por mutacao pelo orquestrador: revertendo para o acesso direto, o teste falha com "expected 'T4_MAIN_SWORD' to be 'Broadsword'"; restaurado, passa.
+
+FOLLOW-UPS ABERTOS: ACM-074 (empty state + substituir teste decorativo herdado), ACM-078 (overflow horizontal do breadcrumb em 390px), ACM-079 (passivas sem traducao no proprio artefato de dados).
+<!-- SECTION:FINAL_SUMMARY:END -->
