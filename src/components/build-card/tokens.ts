@@ -62,8 +62,33 @@ export const ROLE_ACCENTS: Readonly<Record<string, string>> = {
   support: "#a86fd4",
 };
 
-/** Resolves the card's accent color, always a hex literal, never oklch(). */
-export function resolveAccent(role: string, accent: string | undefined): string {
+/**
+ * `createEmptyBuild()`'s literal `accent` value (`src/types/build.ts`). It is
+ * never absent (the field is required, not optional), so it can't act as a
+ * "the user hasn't chosen yet" sentinel by mere presence — it needs a value
+ * comparison instead. Exported so `resolveAccent`'s precedence rule (below)
+ * and `createEmptyBuild()` never drift apart.
+ */
+export const DEFAULT_BUILD_ACCENT = "#3f8f4a";
+
+/**
+ * Resolves the card's accent color, always a hex literal, never oklch().
+ *
+ * Precedence (doc-007 §5 / PR #50 HIGH-1 review fix):
+ *  1. `accent` — `BuildState.accent` — wins whenever it is a valid hex AND
+ *     differs from `DEFAULT_BUILD_ACCENT`. That inequality is how we tell "the
+ *     user picked a color" apart from "the field just holds its factory
+ *     default"; the field itself is never `undefined`, so presence alone
+ *     can't signal intent.
+ *  2. `presetAccent` — the active theme preset's accent (`theme-presets.ts`).
+ *     Only `gold`/`blood`/`ice` define one; `dark-purple` intentionally does
+ *     not (see `theme-presets.ts` module doc), so applying the default preset
+ *     never changes a single pixel of an existing saved card.
+ *  3. Role-based fallback, same as before this task.
+ */
+export function resolveAccent(role: string, accent: string | undefined, presetAccent?: string): string {
+  if (accent && ACCENT_HEX_PATTERN.test(accent) && accent !== DEFAULT_BUILD_ACCENT) return accent;
+  if (presetAccent) return presetAccent;
   if (accent && ACCENT_HEX_PATTERN.test(accent)) return accent;
   return ROLE_ACCENTS[role.toLowerCase()] ?? ROLE_ACCENTS.tank;
 }

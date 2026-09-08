@@ -4,13 +4,15 @@ import type { Slot } from "@/data/ao-data";
 import type { EquippedItem } from "@/types/build";
 import { SpellStrip } from "./SpellStrip";
 import { SLOT_CATEGORY } from "./slot-meta";
-import { CARD_ENCHANT, CARD_SLOT_EMPTY_BORDER, CARD_SURFACE_2, TIER_BADGE_TEXT, tierColor } from "./tokens";
+import type { BuildCardTokenSet } from "./theme-presets";
+import { CARD_ENCHANT, TIER_BADGE_TEXT, tierColor } from "./tokens";
 import { ALL_SPELL_GROUPS, type BuildCardLookups } from "./types";
 
 export type CompressedTileProps = {
   slot: Slot;
   item: EquippedItem | null;
   lookups: BuildCardLookups;
+  tokens: BuildCardTokenSet;
 };
 
 /** Icon box side (doc-006 §2.2). */
@@ -34,7 +36,7 @@ const GLYPH_PX = 28;
  * paperdoll where the grid position itself is the label and must never
  * collapse (doc-006 §2.7 "Slot vazio" never disappears from the grid).
  */
-export function CompressedTile({ slot, item, lookups }: CompressedTileProps): React.JSX.Element {
+export function CompressedTile({ slot, item, lookups, tokens }: CompressedTileProps): React.JSX.Element {
   const itemName = item ? (lookups.itemNames[item.itemId] ?? item.itemId) : "";
   const spellGroups = item ? (lookups.spellGroupsByItem[item.itemId] ?? ALL_SPELL_GROUPS) : [];
 
@@ -48,7 +50,7 @@ export function CompressedTile({ slot, item, lookups }: CompressedTileProps): Re
       {item ? (
         <div
           className="relative flex items-center justify-center"
-          style={{ width: BOX_PX, height: BOX_PX, backgroundColor: CARD_SURFACE_2, borderRadius: 8 }}
+          style={{ width: BOX_PX, height: BOX_PX, backgroundColor: tokens.surface2, borderRadius: 8 }}
         >
           <ItemIcon itemId={item.itemId} alt={itemName} size={ICON_SIZE} decorative />
           {item.tier > 0 && (
@@ -74,9 +76,9 @@ export function CompressedTile({ slot, item, lookups }: CompressedTileProps): Re
           style={{
             width: BOX_PX,
             height: BOX_PX,
-            backgroundColor: CARD_SURFACE_2,
+            backgroundColor: tokens.surface2,
             borderRadius: 8,
-            border: `1px dashed ${CARD_SLOT_EMPTY_BORDER}`,
+            border: `1px dashed ${tokens.slotEmptyBorder}`,
           }}
         >
           <span style={{ opacity: 0.28 }}>

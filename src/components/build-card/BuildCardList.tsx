@@ -1,13 +1,15 @@
 import { ItemIcon } from "@/components/icons/ItemIcon";
 import { SLOT_ORDER, type BuildState, type Swap } from "@/types/build";
 import { ListRow } from "./ListRow";
-import { CARD_BORDER, CARD_FG, CARD_FG_MUTED, CARD_SURFACE, resolveAccent } from "./tokens";
+import type { BuildCardTokenSet } from "./theme-presets";
+import { resolveAccent } from "./tokens";
 import type { BuildCardLookups, BuildCardTheme } from "./types";
 
 export type BuildCardListProps = {
   state: BuildState;
   theme: BuildCardTheme;
   lookups: BuildCardLookups;
+  tokens: BuildCardTokenSet;
 };
 
 /** Fixed logical width (doc-006 §3.1): 480px, height grows with the swap list. */
@@ -27,14 +29,14 @@ function swapItemName(swap: Swap, lookups: BuildCardLookups): string {
  * (icon-only, drops empty slots), which is why it is its own component and
  * not a theme flag on an existing layout (doc-006 §5).
  */
-export function BuildCardList({ state, theme, lookups }: BuildCardListProps): React.JSX.Element {
-  const accent = resolveAccent(state.role, state.accent);
+export function BuildCardList({ state, theme, lookups, tokens }: BuildCardListProps): React.JSX.Element {
+  const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const isEmpty = SLOT_ORDER.every((slot) => state.slots[slot] === null);
 
   return (
     <div
       className="flex flex-col overflow-hidden rounded-xl border"
-      style={{ width: CARD_WIDTH, backgroundColor: CARD_SURFACE, borderColor: CARD_BORDER, color: CARD_FG }}
+      style={{ width: CARD_WIDTH, backgroundColor: tokens.surface, borderColor: tokens.border, color: tokens.fg }}
     >
       <div style={{ backgroundColor: accent, height: 4 }} />
       <div className="flex flex-col p-4" style={{ gap: 4 }}>
@@ -54,19 +56,20 @@ export function BuildCardList({ state, theme, lookups }: BuildCardListProps): Re
               lookups={lookups}
               showSpellNames={theme.showSpellNames}
               withDivider={index > 0}
+              tokens={tokens}
             />
           ))}
         </div>
 
         {isEmpty && (
-          <p className="text-[11px]" style={{ color: CARD_FG_MUTED, marginTop: 4 }}>
+          <p className="text-[11px]" style={{ color: tokens.fgMuted, marginTop: 4 }}>
             Nenhum item equipado ainda — comece pela mão principal.
           </p>
         )}
 
         {state.swaps.length > 0 && (
-          <div className="flex flex-col" style={{ borderTop: `1px solid ${CARD_BORDER}`, marginTop: 12, paddingTop: 8, gap: 8 }}>
-            <span className="text-[9px] font-bold uppercase tracking-[0.06em]" style={{ color: CARD_FG_MUTED }}>
+          <div className="flex flex-col" style={{ borderTop: `1px solid ${tokens.border}`, marginTop: 12, paddingTop: 8, gap: 8 }}>
+            <span className="text-[9px] font-bold uppercase tracking-[0.06em]" style={{ color: tokens.fgMuted }}>
               Swaps
             </span>
             {state.swaps.map((swap) => {
@@ -83,12 +86,12 @@ export function BuildCardList({ state, theme, lookups }: BuildCardListProps): Re
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span
                       className="text-[9px] font-bold uppercase tracking-[0.06em]"
-                      style={{ color: CARD_FG_MUTED }}
+                      style={{ color: tokens.fgMuted }}
                     >
                       {swap.label}
                     </span>
                     {itemName && (
-                      <p className="line-clamp-1 text-[13px] font-semibold" style={{ color: CARD_FG }}>
+                      <p className="line-clamp-1 text-[13px] font-semibold" style={{ color: tokens.fg }}>
                         {itemName}
                       </p>
                     )}

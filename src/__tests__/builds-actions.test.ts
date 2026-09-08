@@ -123,6 +123,105 @@ describe("build Server Actions (ACM-018)", () => {
     });
   });
 
+  describe("theme_json write path (ACM-014, decision-019)", () => {
+    function validTheme(overrides: Record<string, unknown> = {}): string {
+      return JSON.stringify({
+        preset: "dark-purple",
+        aspectRatio: "auto",
+        fontFamily: "sans",
+        showItemNames: false,
+        showSpellNames: true,
+        background: null,
+        ...overrides,
+      });
+    }
+
+    it("saveBuild persists a valid theme with no background", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild } = await import("@/actions/builds");
+
+      const build = await saveBuild({ name: "Themed", content: validBuildContent(), theme: validTheme() });
+      expect(JSON.parse(build.themeJson!)).toMatchObject({ preset: "dark-purple" });
+    });
+
+    it("rejects a theme referencing a background image owned by a different user", async () => {
+      const { backgroundImages } = await import("@/db/schema");
+      await db.insert(backgroundImages).values({
+        id: "img_owned_by_b_000000",
+        userId: "user-b",
+        fileName: "aaaaaaaaaaaaaaaaaaaaa.webp",
+        width: 100,
+        height: 100,
+        bytes: 1000,
+      });
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild } = await import("@/actions/builds");
+
+      await expect(
+        saveBuild({
+          name: "Themed",
+          content: validBuildContent(),
+          theme: validTheme({ background: { imageId: "img_owned_by_b_000000", blur: 0, darken: 0.4, scale: 1 } }),
+        }),
+      ).rejects.toThrow("does not belong to you");
+    });
+
+    it("accepts a theme referencing a background image owned by the caller", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { backgroundImages } = await import("@/db/schema");
+      await db.insert(backgroundImages).values({
+        id: "img_owned_by_a_000000",
+        userId: "user-a",
+        fileName: "bbbbbbbbbbbbbbbbbbbbb.webp",
+        width: 100,
+        height: 100,
+        bytes: 1000,
+      });
+
+      const { saveBuild } = await import("@/actions/builds");
+      const build = await saveBuild({
+        name: "Themed",
+        content: validBuildContent(),
+        theme: validTheme({ background: { imageId: "img_owned_by_a_000000", blur: 5, darken: 0.5, scale: 1.2 } }),
+      });
+
+      expect(JSON.parse(build.themeJson!).background).toMatchObject({ imageId: "img_owned_by_a_000000" });
+    });
+
+    it("rejects a write-side theme with an unknown key (.strict())", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild } = await import("@/actions/builds");
+
+      await expect(
+        saveBuild({ name: "Themed", content: validBuildContent(), theme: validTheme({ accent: "#ff0000" }) }),
+      ).rejects.toThrow();
+    });
+
+    it("updateBuild's theme validation also enforces background ownership", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, updateBuild } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Themed", content: validBuildContent() });
+
+      const { backgroundImages } = await import("@/db/schema");
+      await db.insert(backgroundImages).values({
+        id: "img_owned_by_b_111111",
+        userId: "user-b",
+        fileName: "ccccccccccccccccccccc.webp",
+        width: 100,
+        height: 100,
+        bytes: 1000,
+      });
+
+      await expect(
+        updateBuild({
+          id: build.id,
+          theme: validTheme({ background: { imageId: "img_owned_by_b_111111", blur: 0, darken: 0.4, scale: 1 } }),
+        }),
+      ).rejects.toThrow("does not belong to you");
+    });
+  });
+
   describe("ownership scoping (IDOR)", () => {
     it("user B cannot read user A's build via listMyBuilds", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));

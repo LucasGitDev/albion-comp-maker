@@ -1,8 +1,9 @@
 import { ItemIcon } from "@/components/icons/ItemIcon";
 import type { Slot } from "@/data/ao-data";
 import type { EquippedItem } from "@/types/build";
-import { CARD_ENCHANT, CARD_FG, CARD_FG_MUTED, CARD_PLACEHOLDER, CARD_SURFACE_2, TIER_BADGE_TEXT, tierColor } from "./tokens";
 import { SpellRow } from "./SpellRow";
+import type { BuildCardTokenSet } from "./theme-presets";
+import { CARD_ENCHANT, CARD_PLACEHOLDER, TIER_BADGE_TEXT, tierColor } from "./tokens";
 import type { BuildCardLookups } from "./types";
 import { ALL_SPELL_GROUPS } from "./types";
 
@@ -25,6 +26,7 @@ export type CardSlotTileProps = {
   lookups: BuildCardLookups;
   showItemNames: boolean;
   showSpellNames: boolean;
+  tokens: BuildCardTokenSet;
 };
 
 /**
@@ -40,6 +42,7 @@ export function CardSlotTile({
   lookups,
   showItemNames,
   showSpellNames,
+  tokens,
 }: CardSlotTileProps): React.JSX.Element {
   const label = SLOT_LABELS[slot] ?? slot;
   const itemName = lookups.itemNames[item.itemId] ?? item.itemId;
@@ -49,17 +52,17 @@ export function CardSlotTile({
     <div
       className="flex w-20 flex-col items-center gap-1"
       data-slot={slot}
-      style={{ color: CARD_FG }}
+      style={{ color: tokens.fg }}
     >
       <span
         className="text-center text-[10px] font-semibold uppercase tracking-[0.04em]"
-        style={{ color: CARD_FG_MUTED }}
+        style={{ color: tokens.fgMuted }}
       >
         {label}
       </span>
       <div
         className="relative flex size-20 items-center justify-center rounded-md"
-        style={{ backgroundColor: CARD_SURFACE_2 }}
+        style={{ backgroundColor: tokens.surface2 }}
       >
         <span
           aria-hidden="true"
@@ -97,6 +100,7 @@ export function CardSlotTile({
           lookups={lookups}
           size="sm"
           showSpellNames={showSpellNames}
+          fgMuted={tokens.fgMuted}
         />
       )}
     </div>

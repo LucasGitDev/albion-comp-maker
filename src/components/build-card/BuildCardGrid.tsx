@@ -1,13 +1,15 @@
 import { ItemIcon } from "@/components/icons/ItemIcon";
 import { SLOT_ORDER, type BuildState } from "@/types/build";
 import { CardSlotTile } from "./CardSlotTile";
-import { CARD_BORDER, CARD_FG, CARD_FG_MUTED, CARD_SURFACE, CARD_SURFACE_2, TIER_BADGE_TEXT, resolveAccent, tierColor } from "./tokens";
+import type { BuildCardTokenSet } from "./theme-presets";
+import { TIER_BADGE_TEXT, resolveAccent, tierColor } from "./tokens";
 import type { BuildCardLookups, BuildCardTheme } from "./types";
 
 export type BuildCardGridProps = {
   state: BuildState;
   theme: BuildCardTheme;
   lookups: BuildCardLookups;
+  tokens: BuildCardTokenSet;
 };
 
 /**
@@ -17,15 +19,15 @@ export type BuildCardGridProps = {
  */
 const COLUMN_WIDTH = 320;
 
-export function BuildCardGrid({ state, theme, lookups }: BuildCardGridProps): React.JSX.Element {
-  const accent = resolveAccent(state.role, state.accent);
+export function BuildCardGrid({ state, theme, lookups, tokens }: BuildCardGridProps): React.JSX.Element {
+  const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
   const equipmentSlots = SLOT_ORDER.filter((slot) => slot !== "mainhand" && state.slots[slot] !== null);
 
   return (
     <div
       className="flex flex-col gap-4 rounded-2xl border p-8"
-      style={{ width: COLUMN_WIDTH, backgroundColor: CARD_SURFACE, borderColor: CARD_BORDER, color: CARD_FG }}
+      style={{ width: COLUMN_WIDTH, backgroundColor: tokens.surface, borderColor: tokens.border, color: tokens.fg }}
     >
       <span className="text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: accent }}>
         {state.role || "Papel"}
@@ -34,7 +36,7 @@ export function BuildCardGrid({ state, theme, lookups }: BuildCardGridProps): Re
       {mainhand ? (
         <>
           <div className="flex flex-col items-center gap-2">
-            <div className="relative flex size-24 items-center justify-center rounded-md" style={{ backgroundColor: CARD_SURFACE_2 }}>
+            <div className="relative flex size-24 items-center justify-center rounded-md" style={{ backgroundColor: tokens.surface2 }}>
               <ItemIcon
                 itemId={mainhand.itemId}
                 alt={lookups.itemNames[mainhand.itemId] ?? mainhand.itemId}
@@ -66,6 +68,7 @@ export function BuildCardGrid({ state, theme, lookups }: BuildCardGridProps): Re
                     lookups={lookups}
                     showItemNames={theme.showItemNames}
                     showSpellNames={theme.showSpellNames}
+                    tokens={tokens}
                   />
                 );
               })}
@@ -73,7 +76,7 @@ export function BuildCardGrid({ state, theme, lookups }: BuildCardGridProps): Re
           )}
         </>
       ) : (
-        <p className="py-8 text-center text-[13px] italic" style={{ color: CARD_FG_MUTED }}>
+        <p className="py-8 text-center text-[13px] italic" style={{ color: tokens.fgMuted }}>
           {state.name || "Sem nome"}
         </p>
       )}

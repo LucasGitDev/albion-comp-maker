@@ -5,6 +5,8 @@ import type { Slot } from "@/data/ao-data";
 import type { AOItem } from "@/data/ao-data.d";
 import { saveBuild } from "@/actions/builds";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
+import { BuildCard } from "@/components/build-card";
+import { DEFAULT_BUILD_CARD_THEME, type BuildCardTheme } from "@/components/build-card/types";
 import { BuildHeader } from "@/components/editor/BuildHeader";
 import { EditorActionBar } from "@/components/editor/EditorActionBar";
 import { SLOT_LABELS } from "@/components/editor/SlotCard";
@@ -13,6 +15,7 @@ import { SlotGrid } from "@/components/editor/SlotGrid";
 import { SlotGroupNav } from "@/components/editor/SlotGroupNav";
 import { SlotPickerPopover } from "@/components/editor/SlotPickerPopover";
 import { SwapsSection } from "@/components/editor/SwapsSection";
+import { ThemePanel } from "@/components/editor/ThemePanel";
 import { groupSpellsForItem, type SpellCandidate } from "@/components/editor/spell-groups";
 import { pickLocalizedName } from "@/lib/localized-name";
 import { getEnchantOptions, getTierVariants, parseUniquename } from "@/components/editor/tier-enchant";
@@ -164,6 +167,28 @@ export default function NewBuildPage(): React.JSX.Element {
     return map;
   }, [build.slots, itemNames]);
 
+  /**
+   * `BuildCard`'s lookups are keyed by uniquename (ACM-014), unlike the
+   * slot-keyed maps above — derived from the same `spellCandidatesByItemId`
+   * `SlotGrid` already needs, so no extra catalogue pass is required.
+   */
+  const cardLookups = useMemo(() => {
+    const spellNames: Record<string, string> = {};
+    const spellGroupsByItem: Record<string, SpellGroup[]> = {};
+    for (const [itemId, grouped] of Object.entries(spellCandidatesByItemId)) {
+      spellGroupsByItem[itemId] = Object.keys(grouped) as SpellGroup[];
+      for (const candidates of Object.values(grouped)) {
+        for (const candidate of candidates ?? []) {
+          spellNames[candidate.uniquename] = candidate.name;
+        }
+      }
+    }
+    return { itemNames, spellNames, spellGroupsByItem };
+  }, [itemNames, spellCandidatesByItemId]);
+
+  const [theme, setTheme] = useState<BuildCardTheme>(DEFAULT_BUILD_CARD_THEME);
+  const [themePanelOpen, setThemePanelOpen] = useState(false);
+
   const spellCandidatesBySlot = useMemo(() => {
     const map: Partial<Record<Slot, Partial<Record<SpellGroup, readonly SpellCandidate[]>>>> = {};
     for (const slot of SLOT_ORDER) {
@@ -200,12 +225,10 @@ export default function NewBuildPage(): React.JSX.Element {
   );
   const totalReachableSlots = SLOT_ORDER.length - (offhandLocked ? 1 : 0);
   /**
-   * `#capture-root`/the `BuildCard` preview isn't wired into this route yet
-   * (that's ACM-018/019 territory, not ACM-037). Deliberately left
-   * unattached to any DOM node — `EditorActionBar` only ever *reads*
-   * through this ref (decision-010), and with nothing mounted, "Exportar
-   * PNG" correctly reports "Card não está pronto para exportar." instead of
-   * faking success against the interactive form tree.
+   * ACM-014 wires the `BuildCard` preview into this ref (previously left
+   * unattached — see git history). `EditorActionBar` only ever *reads*
+   * `#capture-root` through this ref (decision-010); it never renders inside
+   * it.
    */
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -218,8 +241,9 @@ export default function NewBuildPage(): React.JSX.Element {
       name: build.name,
       role: build.role.trim() === "" ? null : build.role,
       content: JSON.stringify(build),
+      theme: JSON.stringify(theme),
     });
-  }, [build]);
+  }, [build, theme]);
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex min-w-0 max-w-6xl flex-col gap-6 p-8 pb-24 md:pb-8 outline-none">
@@ -230,60 +254,78 @@ export default function NewBuildPage(): React.JSX.Element {
         totalSlots={SLOT_ORDER.length}
         captureNodeRef={previewContainerRef}
         onSave={handleSave}
+        themePanelOpen={themePanelOpen}
+        onToggleThemePanel={() => setThemePanelOpen((open) => !open)}
       />
       {/*
         Marked inert while the picker is open so background content can't be
         tabbed/clicked into or announced by AT — it reinforces (but doesn't
         replace) the popover's own focus trap (ACM-034 follow-up review).
       */}
-      <div inert={pickerOpen} className="flex min-w-0 flex-col gap-6">
-        <BuildHeader build={build} onNameChange={actions.setName} onRoleChange={actions.setRole} />
-        {/*
-          Mobile-only (`md:hidden` inside the component). Lives inside the
-          `inert` wrapper alongside the grid so the item picker's focus trap
-          still covers it (doc-005 §8, ACM-046) — an anchor strip reachable
-          behind an open modal would defeat the trap.
-        */}
-        <SlotGroupNav
-          groups={groupCounters}
-          totalFilled={filledCount}
-          totalSlots={totalReachableSlots}
-          swapsCount={build.swaps.length}
-        />
-        <SlotGrid
-          build={build}
-          itemNames={itemNamesBySlot}
-          spellCandidatesBySlot={spellCandidatesBySlot}
-          offhandLocked={offhandLocked}
-          tierOptionsBySlot={tierOptionsBySlot}
-          enchantOptionsBySlot={enchantOptionsBySlot}
-          onRequestItemPick={handleRequestItemPick}
-          onClearSlot={actions.clearSlot}
-          onTierChange={(slot, option) => actions.setTier(slot, option.tier, option.itemId)}
-          onEnchantChange={(slot, enchant) => actions.setEnchant(slot, enchant)}
-          onSpellChange={actions.setSpell}
-        />
-        {/*
-          `id`/`tabIndex`/`scroll-mt` here rather than inside `SwapsSection`
-          itself (doc-005 §9 lists it "inalterado") — the Swaps chip in
-          `SlotGroupNav` targets this wrapper, not a heading owned by the
-          component.
-        */}
-        <div id="slot-group-swaps" tabIndex={-1} className="scroll-mt-[var(--group-nav-h)] outline-none">
-          <SwapsSection
-            swaps={build.swaps}
-            buildSlots={build.slots}
-            itemNames={itemNames}
-            spellCandidatesByItemId={spellCandidatesByItemId}
-            onAddSwap={actions.addSwap}
-            onRemoveSwap={actions.removeSwap}
-            onMoveSwap={actions.moveSwap}
-            onSlotChange={actions.setSwapSlot}
-            onRequestItemPick={handleRequestSwapItemPick}
-            onLabelChange={actions.setSwapLabel}
-            onSpellChange={actions.setSwapSpell}
+      <div inert={pickerOpen} className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="flex min-w-0 flex-1 flex-col gap-6">
+          <div ref={previewContainerRef} className="flex justify-center">
+            <BuildCard
+              state={build}
+              theme={theme}
+              itemNames={cardLookups.itemNames}
+              spellNames={cardLookups.spellNames}
+              spellGroupsByItem={cardLookups.spellGroupsByItem}
+            />
+          </div>
+          <BuildHeader build={build} onNameChange={actions.setName} onRoleChange={actions.setRole} />
+          {/*
+            Mobile-only (`md:hidden` inside the component). Lives inside the
+            `inert` wrapper alongside the grid so the item picker's focus trap
+            still covers it (doc-005 §8, ACM-046) — an anchor strip reachable
+            behind an open modal would defeat the trap.
+          */}
+          <SlotGroupNav
+            groups={groupCounters}
+            totalFilled={filledCount}
+            totalSlots={totalReachableSlots}
+            swapsCount={build.swaps.length}
           />
+          <SlotGrid
+            build={build}
+            itemNames={itemNamesBySlot}
+            spellCandidatesBySlot={spellCandidatesBySlot}
+            offhandLocked={offhandLocked}
+            tierOptionsBySlot={tierOptionsBySlot}
+            enchantOptionsBySlot={enchantOptionsBySlot}
+            onRequestItemPick={handleRequestItemPick}
+            onClearSlot={actions.clearSlot}
+            onTierChange={(slot, option) => actions.setTier(slot, option.tier, option.itemId)}
+            onEnchantChange={(slot, enchant) => actions.setEnchant(slot, enchant)}
+            onSpellChange={actions.setSpell}
+          />
+          {/*
+            `id`/`tabIndex`/`scroll-mt` here rather than inside `SwapsSection`
+            itself (doc-005 §9 lists it "inalterado") — the Swaps chip in
+            `SlotGroupNav` targets this wrapper, not a heading owned by the
+            component.
+          */}
+          <div id="slot-group-swaps" tabIndex={-1} className="scroll-mt-[var(--group-nav-h)] outline-none">
+            <SwapsSection
+              swaps={build.swaps}
+              buildSlots={build.slots}
+              itemNames={itemNames}
+              spellCandidatesByItemId={spellCandidatesByItemId}
+              onAddSwap={actions.addSwap}
+              onRemoveSwap={actions.removeSwap}
+              onMoveSwap={actions.moveSwap}
+              onSlotChange={actions.setSwapSlot}
+              onRequestItemPick={handleRequestSwapItemPick}
+              onLabelChange={actions.setSwapLabel}
+              onSpellChange={actions.setSwapSpell}
+            />
+          </div>
         </div>
+        {themePanelOpen && (
+          <div id="theme-panel">
+            <ThemePanel theme={theme} onChange={setTheme} accent={build.accent} onAccentChange={actions.setAccent} />
+          </div>
+        )}
       </div>
       {pickerTarget && !offhandLockBlocksPicker && (
         <SlotPickerPopover

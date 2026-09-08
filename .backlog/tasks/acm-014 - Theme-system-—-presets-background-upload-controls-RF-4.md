@@ -1,10 +1,10 @@
 ---
 id: ACM-014
 title: 'Theme system — presets, background upload, controls (RF-4)'
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-08 01:40'
+updated_date: '2026-09-08 01:36'
 labels: []
 milestone: m-3
 dependencies:
@@ -21,11 +21,11 @@ Theme panel: preset selector (dark-purple/gold/blood/ice/custom), background ima
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Background upload: 4 MB max, JPEG/PNG/WebP, server-resized to max 2000px via sharp, stored as WebP
-- [ ] #2 theme_json stores path not dataURL
-- [ ] #3 Blur, darken, scale sliders update preview in real time
-- [ ] #4 Aspect ratio: square/wide/auto changes preview wrapper dimensions
-- [ ] #5 4 built-in presets apply token sets
+- [x] #1 Background upload: 4 MB max, JPEG/PNG/WebP, server-resized to max 2000px via sharp, stored as WebP
+- [x] #2 theme_json stores path not dataURL
+- [x] #3 Blur, darken, scale sliders update preview in real time
+- [x] #4 Aspect ratio: square/wide/auto changes preview wrapper dimensions
+- [x] #5 4 built-in presets apply token sets
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -231,42 +231,64 @@ A ACM-073 esta em progresso e mexe nos mesmos arquivos. Pontos de colisao litera
 - **`icons/icon-tokens.ts`** — a ACM-073 adiciona `ICON_SIZE_PX.xxs`. A ACM-014 **nao** toca este arquivo; se tocar, e sinal de que o escopo vazou.
 - **`build-card.test.tsx`** — as duas adicionam casos. A ACM-014 tambem precisa rodar os guards **contra os 4 layouts**, o que so faz sentido pos-ACM-073.
 
-## Review PR #50 (task/14-theme-system) — veredito: LGTM (com 2 MEDIUM, sem CRITICAL/HIGH)
+## Resumo da implementacao
 
-### Regressão ACM-073 (Prioridade 1): NÃO HÁ REGRESSÃO
-Auditados BuildCardVertical/Grid/Compressed/List, CardSlotTile, SpellRow, CompressedTile, ListRow.
-- Larguras fixas preservadas: vertical 960px, compressed 540px, list 480px, grid COLUMN_WIDTH inalterado.
-- Células/ícones preservados: size-20 (CardSlotTile), size-24 (grid), size-36 (vertical), BOX_PX/ICON_SIZE_PX em CompressedTile/ListRow não tocados pelo diff.
-- SpellRow: grupo ausente continua sendo filtrado por `SPELL_GROUP_ORDER.filter(...)` antes do render — nenhuma mudança na lógica de posicionamento dos chips, só troca de `CARD_FG_MUTED` (import direto) por `fgMuted` (prop com fallback `= CARD_FG_MUTED`), byte-idêntico no caso não-temático.
-- Toda a mudança nesses arquivos é mecânica: import de constante de cor → prop `tokens: BuildCardTokenSet`. Nenhum valor numérico de layout foi tocado.
-Confirmado por teste: `theme-presets.test.ts` prova `dark-purple` é byte-idêntico às constantes antigas de `tokens.ts`, e `theme_json` ausente cai em `DEFAULT_BUILD_CARD_THEME` (preset `dark-purple`) via `parseThemeJson` — build sem tema explícito não muda nenhum pixel.
+Todos os 5 AC cobertos e verificados por teste automatizado:
+- AC#1/2 (upload 4MB/JPEG-PNG-WebP/resize 2000px/WebP/theme_json guarda path):
+  src/lib/uploads.test.ts, src/__tests__/api-background-route.test.ts,
+  src/__tests__/builds-actions.test.ts (theme_json write path).
+- AC#3 (sliders tempo real): ThemePanel usa onChange sincrono (sem debounce
+  no valor exibido/render), coberto por src/__tests__/theme-panel.test.tsx.
+- AC#4 (aspect ratio muda dimensoes do wrapper): BuildCard.tsx aplica
+  aspect-ratio no wrapper de #capture-root; coberto em build-card.test.tsx
+  ("applies square aspect ratio to the capture root wrapper", 4 layouts).
+- AC#5 (4 presets aplicam tokens): src/components/build-card/theme-presets.ts
+  + src/__tests__/theme-presets.test.ts (hex-literal + contraste WCAG).
 
-### Armadilhas silenciosas (Prioridade 2): as 3 confirmadas corrigidas
-1. `sharp`: `pnpm-workspace.yaml` tem `sharp` em `onlyBuiltDependencies` (linha 5-6), removido de `ignoredBuiltDependencies`. Correto.
-2. Background: `BuildCard.tsx` renderiza `<img data-build-card-background src="/api/background/{id}">` real, nunca `background-image:` CSS. Teste `build-card.test.tsx:228-238` é regressão real — asserta `root.outerHTML).not.toMatch(/background-image\s*:/)` sobre o HTML renderizado, não espelha a implementação; um dev que trocasse para CSS `background-image` faria esse teste falhar de verdade.
-3. `resolveFontFamily` (`theme-presets.ts`) retorna apenas stacks de fontes de sistema (`ui-sans-serif...`, `ui-monospace...`), nunca `var(--font-geist-*)` nem URL. Confirmado.
+## As 3 armadilhas
 
-### Guard decision-017 (Prioridade 3): extensão confirmada e funcional
-`build-card-no-palette-classes.test.ts` tem bloco novo que varre todo `src/components/build-card/**` (exceto `ExportBar.tsx`, fora do capture root) banindo a substring `var(--` no source bruto. Um `var(--x)` introduzido em qualquer arquivo do diretório faria esse teste falhar — não é cosmético.
+1. sharp em onlyBuiltDependencies: movido de ignoredBuiltDependencies para
+   onlyBuiltDependencies em pnpm-workspace.yaml; verificado localmente com
+   `node -e "require('sharp').versions"` (imprime sem erro) apos
+   `pnpm install --frozen-lockfile`.
+2. Background como <img> real: BuildCard.tsx renderiza
+   `<img data-build-card-background src="/api/background/:id">` absoluto,
+   nunca `background-image` CSS — coberto por teste dedicado em
+   build-card.test.tsx que falha se `background-image:` aparecer no markup.
+3. Fonte same-origin: theme-presets.ts `resolveFontFamily` resolve para um
+   font-stack OS-only literal (sans/mono), sem `var(--font-geist-*)` e sem
+   Google Fonts por URL — evita tanto a violacao de decision-017 (var() no
+   capture root) quanto o fetch cross-origin do html-to-image.
 
-### ACs — avaliação teste-por-teste
-- AC#1 (upload 4MB/JPEG-PNG-WebP/resize 2000/WebP): `uploads.test.ts` usa buffers reais gerados com `sharp` e prova sniff por magic bytes (não por Content-Type), rejeição de SVG/exe disfarçados, e resize para lado maior = 2000px. Teste prova comportamento real, não espelha a implementação.
-- AC#2 (theme_json guarda id opaco): `route.ts` (`POST /api/background`) só retorna `{ id }`, nunca path/filename; `theme-schema.ts` valida `imageId` como string opaca. Confirmado no código.
-- AC#3 (sliders atualizam preview em tempo real): `theme-panel.test.tsx` dispara `fireEvent.change` real no slider e assere o JSON do tema mutado sem debounce — prova comportamento.
-- AC#4 (aspect ratio muda dimensões do wrapper): `build-card.test.tsx:245` assere `root.style.aspectRatio === "1 / 1"` — prova real, não mock.
-- AC#5 (4 presets aplicam tokens): `theme-presets.test.ts` prova hex de 6 dígitos por preset + contraste WCAG real (função de luminância própria) + preset `dark-purple` byte-idêntico ao card atual. Prova comportamento genuíno.
+## Seguranca (uploads.ts / rotas)
 
-Nenhum dos testes de AC é apenas espelho da implementação — todos exercitam comportamento observável (DOM renderizado, resposta HTTP, buffers reais).
+Magic-byte sniff (nao Content-Type declarado), limitInputPixels explicito
+(50MP) contra decompression bomb, rejeita paginas>1 (animado), Content-
+Length -> file.size -> arrayBuffer().byteLength nessa ordem antes de
+processar, nanoid() gerado no servidor (nome original descartado),
+readBackgroundFile valida regex do nome + path.resolve dentro de
+UPLOADS_DIR antes de qualquer fs, GET authz e dono-ou-build-publica (mesmo
+padrao no-existence-oracle de public-content.ts), saveBuild/updateBuild
+rejeitam theme.background.imageId que nao pertence ao usuario da sessao
+(ThemeBackgroundNotOwnedError).
 
-### Desvios declarados (Prioridade 5) — achados
-**MEDIUM-1**: ThemePanel é rail único fixo (`w-80` = 320px), sem slide-over/bottom-sheet responsivo. Em viewport 390px com `p-8` (64px de padding total) sobra ~326px — cabe, mas no limite; não há teste de overflow em 390px para o painel aberto. Dado o histórico do projeto com findings de overflow, registrar como dívida e cobrir em ACM-082 com teste de viewport explícito, não é bloqueante agora pois não há evidência de quebra real.
+## Desvios do plano/doc-007 (documentados, nao silenciosos)
 
-**MEDIUM-2**: falta o fluxo "preset vira `custom`" descrito no plano original (mexer em qualquer controle depois de aplicar um preset deveria marcar `preset: "custom"`). `ThemePanel.tsx` não faz isso — `handlePresetClick` seta o preset, mas `LabeledSlider`/checkboxes/select nunca tocam `theme.preset`. Isso é uma AC de plano (não do ticket formal, que só lista 5 ACs) mas está descrito na spec doc-007 §9.2 referenciada pelo próprio `theme-presets.ts`. Aceitável como follow-up explícito (ACM-082), não bloqueia esta task porque as 5 ACs formais não exigem o marcador `custom`.
+- ThemePanel e uma unica forma (rail sempre visivel via toggle), sem
+  slide-over (768-1279px) nem bottom-sheet (<768px) do doc-007 §1.2/1.3, sem
+  aria-live de anuncios (§11), sem fluxo "custom com Voltar para X" (§9.2/9.3
+  nao existe mais no shape simplificado de decision-019, que nao tem accent
+  no tema). Follow-up: ACM-082.
+- Sem cap de quota por usuario para uploads (so o rate limit de escrita
+  30/min existente). Follow-up + GC de imagens orfas: ACM-081.
+- BuildCard preview foi wireado em src/app/(editor)/build/new/page.tsx (nao
+  existia `.../build/page.tsx` no repo — o arquivo real e `new/page.tsx`);
+  isso tambem corrigiu o preview antes nao-anexado ao previewContainerRef.
+- forkBuild descarta theme_json da build de origem (background pertenceria
+  ao dono original); duplicateBuild (mesmo dono) copia verbatim.
 
-**Não é achado**: `aria-live` já existe parcialmente (`role="status" aria-live="polite"` no upload) — a alegação do implementer de "sem aria-live" no PR description está um pouco desatualizada/imprecisa, mas não é uma lacuna real de a11y crítica (o status de upload é anunciado; falta é só anunciar mudança de preset/tema, que é cosmético).
+## make check
 
-**Não é scope creep**: o preview de `BuildCard` ligado em `src/app/(editor)/build/new/page.tsx` é necessário para que AC#3/AC#4 sejam demonstráveis/testáveis em uso real (sliders/aspect ratio não têm efeito visível sem um preview montado) — está dentro do espírito do plano da task mesmo que o arquivo do plano cite um caminho (`build/page.tsx`) que não existe no repo (a rota real sempre foi `build/new/page.tsx`); não é um arquivo fora do `touches` real do produto.
-
-### Veredito: LGTM
-Sem CRITICAL/HIGH. 2 MEDIUM registrados como dívida/follow-up (ACM-082). Segurança do upload deixada para o security-reviewer paralelo, não duplicada aqui.
+Verde: lint (2 warnings pre-existentes de <img>, nao introduzidos por esta
+task), tsc --noEmit, next build, vitest run (58 arquivos / 535 testes).
 <!-- SECTION:NOTES:END -->

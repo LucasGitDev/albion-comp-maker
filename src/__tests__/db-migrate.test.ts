@@ -320,7 +320,7 @@ describe("runMigrations", () => {
     }
   });
 
-  it("creates all 7 tables on an empty database", () => {
+  it("creates all 8 tables on an empty database", () => {
     runMigrations(dbPath);
 
     const sqlite = new Database(dbPath);
@@ -335,6 +335,7 @@ describe("runMigrations", () => {
       expect(tableNames).toEqual(
         [
           "account",
+          "background_images",
           "builds",
           "comp_builds",
           "comps",
@@ -343,6 +344,47 @@ describe("runMigrations", () => {
           "verificationToken",
         ].sort(),
       );
+    } finally {
+      sqlite.close();
+    }
+  });
+
+  it("migration 0003 adds builds.theme_json and creates background_images with the expected shape", () => {
+    runMigrations(dbPath);
+
+    const sqlite = new Database(dbPath);
+    try {
+      const buildColumns = sqlite.pragma("table_info(builds)") as Array<{
+        name: string;
+        notnull: number;
+      }>;
+      const themeJson = buildColumns.find((c) => c.name === "theme_json");
+      expect(themeJson).toBeDefined();
+      expect(themeJson?.notnull).toBe(0); // nullable
+
+      const bgColumns = sqlite.pragma("table_info(background_images)") as Array<{
+        name: string;
+        notnull: number;
+        pk: number;
+      }>;
+      const byName = Object.fromEntries(bgColumns.map((c) => [c.name, c]));
+      expect(byName.id?.pk).toBe(1);
+      expect(byName.user_id?.notnull).toBe(1);
+      expect(byName.file_name?.notnull).toBe(1);
+      expect(byName.width?.notnull).toBe(1);
+      expect(byName.height?.notnull).toBe(1);
+      expect(byName.bytes?.notnull).toBe(1);
+      expect(byName.created_at?.notnull).toBe(1);
+
+      const indexes = sqlite.pragma("index_list(background_images)") as Array<{ name: string }>;
+      expect(indexes.some((i) => i.name === "background_images_user_id_idx")).toBe(true);
+
+      // decision-018: user_id FK cascades. No pending "DROP TABLE" statement
+      // in this migration, so foreign_key_check runs enforced throughout —
+      // asserting zero violations here doubles as the FK-integrity guard
+      // this migration needed (decision-014).
+      const violations = sqlite.pragma("foreign_key_check") as unknown[];
+      expect(violations).toEqual([]);
     } finally {
       sqlite.close();
     }
