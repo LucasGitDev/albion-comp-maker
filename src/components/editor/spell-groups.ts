@@ -67,3 +67,45 @@ export function groupSpellsForItem(
 ): Partial<Record<SpellGroup, SpellCandidate[]>> {
   return groupItemSpells(item.spells, locale);
 }
+
+/**
+ * Groups this auto-selection applies to (ACM-089). Scoped to `e` only —
+ * see the doc comment on `computeAutoSelections` for why.
+ */
+const AUTO_SELECT_GROUPS: readonly SpellGroup[] = ["e"];
+
+/**
+ * Computes which spell groups should be auto-filled because the equipped
+ * item exposes exactly one candidate for that group (ACM-089 AC #1-#3).
+ *
+ * Deliberately scoped to the `e` group only, not applied generally to every
+ * group with a single candidate. Two reasons:
+ * 1. Product intent: the task/AC is specifically about a weapon's E — real
+ *    weapon data always has multiple Q/W ability choices; E is the one slot
+ *    that is genuinely always a single, non-choice.
+ * 2. A general single-candidate rule would also auto-fill Q/W whenever a
+ *    (possibly synthetic/simplified) item exposes only one candidate there,
+ *    silently hiding a row a caller may still expect to render as a real
+ *    choice — the narrower, intent-matching rule avoids that surprise.
+ *
+ * Only returns entries for `e` when it has exactly one candidate AND is not
+ * already set to it, so callers can call this on every render/effect
+ * without producing redundant no-op updates or ever touching a
+ * multi-candidate group (which never satisfies the `length === 1` check
+ * regardless of scope).
+ */
+export function computeAutoSelections(
+  selected: Readonly<Record<SpellGroup, string | null>>,
+  candidatesByGroup: Partial<Record<SpellGroup, readonly SpellCandidate[]>>
+): Partial<Record<SpellGroup, string>> {
+  const updates: Partial<Record<SpellGroup, string>> = {};
+  for (const group of AUTO_SELECT_GROUPS) {
+    const candidates = candidatesByGroup[group];
+    if (!candidates || candidates.length !== 1) continue;
+    const onlyCandidate = candidates[0].uniquename;
+    if (selected[group] !== onlyCandidate) {
+      updates[group] = onlyCandidate;
+    }
+  }
+  return updates;
+}

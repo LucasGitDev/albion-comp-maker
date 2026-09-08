@@ -10,7 +10,9 @@ const Q_CANDIDATES: SpellCandidate[] = [
 ];
 const PASSIVE_CANDIDATES: SpellCandidate[] = [
   { uniquename: "PASSIVE_ARMOR_MR_AR", name: "Armor Resistance" },
+  { uniquename: "PASSIVE_PLATEARMOR_HEALTH_REDUCTION", name: "Health Reduction" },
 ];
+const SINGLE_E_CANDIDATE: SpellCandidate[] = [{ uniquename: "TRUMPET_TUNE", name: "Trumpet Tune" }];
 
 describe("SpellPicker (ACM-010)", () => {
   it("AC #2/#3: renders a row only for groups with candidates, skipping W and E entirely", () => {
@@ -26,6 +28,35 @@ describe("SpellPicker (ACM-010)", () => {
     expect(screen.getByTestId("spell-group-q")).toBeInTheDocument();
     expect(screen.getByTestId("spell-group-passive")).toBeInTheDocument();
     expect(screen.queryByTestId("spell-group-w")).toBeNull();
+    expect(screen.queryByTestId("spell-group-e")).toBeNull();
+  });
+
+  it("ACM-089: hides the picker row entirely for a group with exactly one candidate (auto-selected upstream)", () => {
+    render(
+      <SpellPicker
+        itemName="Trumpet Vanity"
+        selected={{ q: null, w: null, e: "TRUMPET_TUNE", passive: null }}
+        candidatesByGroup={{ e: SINGLE_E_CANDIDATE }}
+        onSelect={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId("spell-group-e")).toBeNull();
+    expect(screen.queryByTestId("spell-picker")).toBeNull();
+    // The item genuinely has an ability (just auto-picked) — no misleading
+    // "Sem abilities" message either.
+    expect(screen.queryByTestId("spell-picker-empty")).toBeNull();
+  });
+
+  it("ACM-089: still renders the picker row for other groups when only one group has a single candidate", () => {
+    render(
+      <SpellPicker
+        itemName="Guardian Armor"
+        selected={{ q: null, w: null, e: "TRUMPET_TUNE", passive: null }}
+        candidatesByGroup={{ q: Q_CANDIDATES, e: SINGLE_E_CANDIDATE }}
+        onSelect={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId("spell-group-q")).toBeInTheDocument();
     expect(screen.queryByTestId("spell-group-e")).toBeNull();
   });
 

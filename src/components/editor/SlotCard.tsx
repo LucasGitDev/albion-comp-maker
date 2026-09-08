@@ -1,10 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import type { Slot } from "@/data/ao-data";
 import { ItemIcon } from "@/components/icons/ItemIcon";
 import { CategorySilhouette, type IconCategory } from "@/components/icons/category-glyphs";
 import type { EquippedItem, SpellGroup } from "@/types/build";
-import type { SpellCandidate } from "./spell-groups";
+import { computeAutoSelections, type SpellCandidate } from "./spell-groups";
 import { SpellPicker } from "./SpellPicker";
 import { EnchantSelect, TierSelect } from "./TierEnchantSelectors";
 import type { EnchantOption, TierOption } from "./tier-enchant";
@@ -122,6 +123,25 @@ export function SlotCard({
 }: SlotCardProps): React.JSX.Element {
   const label = SLOT_LABELS[slot] ?? slot;
   const tierColor = item && item.tier > 0 ? (TIER_COLOR_VAR[item.tier] ?? "var(--color-tier-low)") : undefined;
+
+  // ACM-089: auto-fill any spell group that has exactly one candidate for
+  // the currently equipped item, through the same `onSpellChange` path a
+  // manual pick uses (identical shape, same round-trip through build
+  // state/schema — see decision recorded in the task notes). Re-runs
+  // whenever the equipped item (and therefore its candidate spells) or the
+  // current selection changes, so switching items re-derives auto-picks
+  // instead of leaving a stale selection from the previous item behind.
+  // `computeAutoSelections` never touches a group with 2+ candidates, so an
+  // explicit user choice there is never overwritten.
+  const itemSpells = item?.spells;
+  useEffect(() => {
+    if (!item || !onSpellChange) return;
+    const updates = computeAutoSelections(item.spells, spellCandidatesByGroup);
+    for (const group of Object.keys(updates) as SpellGroup[]) {
+      onSpellChange(slot, group, updates[group] ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot, item?.itemId, itemSpells, spellCandidatesByGroup, onSpellChange]);
 
   if (locked) {
     return (
