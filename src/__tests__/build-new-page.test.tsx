@@ -236,13 +236,28 @@ describe("/build/new — main slot grid shows ability slots and item names (ACM-
     expect(mainhandCard.querySelector('[data-testid="spell-group-e"]')).not.toBeInTheDocument();
   });
 
-  it("does not render the spell picker for an item with no resolved spells", () => {
+  it("renders the spell picker only for the slot whose item has spells, and the empty state for the one that doesn't", () => {
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+      4,
+      0
+    );
     useBuildStore.getState().actions.setItem("bag", { uniquename: "T4_BAG", twohanded: false, maxEnchant: 0 }, 4, 0);
 
     render(<NewBuildPage />);
 
-    const bagCard = document.querySelector('[data-slot="bag"]')!;
+    // Scoped to `[data-slot-state]` (only the editable SlotCard sets it) so
+    // this doesn't accidentally match the read-only build-card preview tile,
+    // which shares the same `data-slot` attribute but never renders a spell
+    // picker of any kind.
+    const mainhandCard = document.querySelector('[data-slot="mainhand"][data-slot-state]')!;
+    expect(mainhandCard.querySelector('[data-testid="spell-picker"]')).toBeInTheDocument();
+    expect(mainhandCard.querySelector('[data-testid="spell-picker-empty"]')).not.toBeInTheDocument();
+
+    const bagCard = document.querySelector('[data-slot="bag"][data-slot-state]')!;
     expect(bagCard.querySelector('[data-testid="spell-picker"]')).not.toBeInTheDocument();
+    expect(bagCard.querySelector('[data-testid="spell-picker-empty"]')).toBeInTheDocument();
   });
 
   it("shows the localized item name on the slot card instead of the raw uniquename", () => {
