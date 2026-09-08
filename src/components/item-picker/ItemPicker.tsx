@@ -150,7 +150,7 @@ export function ItemPicker({
   }
 
   return (
-    <div className={className ?? "w-full rounded-md border border-[#2a2e37] bg-[#14171d] p-2"}>
+    <div className={className ?? "w-full rounded-md border border-icon-placeholder bg-surface p-2"}>
       <label htmlFor={inputId} className="sr-only">
         {listboxLabel}
       </label>

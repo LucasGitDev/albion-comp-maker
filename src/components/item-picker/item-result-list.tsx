@@ -41,7 +41,7 @@ function tierOf(uniquename: string): number {
 function renderSegments(segments: NameSegment[], keyPrefix: string): JSX.Element[] {
   return segments.map((segment, i) =>
     segment.marked ? (
-      <mark key={`${keyPrefix}-${i}`} className="rounded-sm bg-transparent text-[#f5d98a]">
+      <mark key={`${keyPrefix}-${i}`} className="rounded-sm bg-transparent text-item-highlight">
         {segment.text}
       </mark>
     ) : (
@@ -152,8 +152,8 @@ export function ItemResultList({
             onMouseEnter={() => onHover(index)}
             onClick={() => onSelect(item)}
             className={`relative flex h-11 cursor-pointer items-center gap-2 px-2 text-sm text-white ${
-              isActive ? "bg-[#232833]" : "hover:bg-[#1c1f26]"
-            } ${isEquipped ? "before:absolute before:left-0 before:top-0 before:h-full before:w-[3px] before:bg-[#c8a24a]" : ""}`}
+              isActive ? "bg-item-row-active" : "hover:bg-icon-slot"
+            } ${isEquipped ? "before:absolute before:left-0 before:top-0 before:h-full before:w-[3px] before:bg-item-accent" : ""}`}
           >
             <ItemIcon itemId={item.uniquename} alt={activeName} size="sm" decorative />
             <span className="flex-1 truncate">
@@ -165,13 +165,13 @@ export function ItemResultList({
               )}
             </span>
             {tier > 0 && (
-              <span className="text-xs font-medium tabular-nums text-[#c8a24a]">{`T${tier}`}</span>
+              <span className="text-xs font-medium tabular-nums text-item-accent">{`T${tier}`}</span>
             )}
             {item.twohanded && (
               <span className="text-xs font-medium tabular-nums text-icon-muted">2H</span>
             )}
             {isEquipped && (
-              <span aria-hidden="true" className="text-xs text-[#c8a24a]">
+              <span aria-hidden="true" className="text-xs text-item-accent">
                 ✓
               </span>
             )}
