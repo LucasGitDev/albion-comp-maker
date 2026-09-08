@@ -65,8 +65,15 @@ export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompres
             </span>
           )}
         </div>
-        <h2 className="line-clamp-2 text-[20px] font-bold" style={{ letterSpacing: "-0.01em" }}>
-          {state.name || "Sem nome"}
+        <h2
+          className="line-clamp-2 text-[20px] font-bold"
+          style={{
+            letterSpacing: "-0.01em",
+            fontStyle: hasBuild ? "normal" : "italic",
+            color: hasBuild ? tokens.fg : tokens.fgMuted,
+          }}
+        >
+          {hasBuild ? state.name || "Sem nome" : "Sem nome"}
         </h2>
 
         <div className="flex" style={{ gap: 16, marginTop: 12, justifyContent: hasBuild && hasMeta ? "flex-start" : "center" }}>
