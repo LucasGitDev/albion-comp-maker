@@ -3,7 +3,7 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import { nanoid } from "nanoid";
-import sharp from "sharp";
+import sharp, { type Metadata } from "sharp";
 
 import { BG_ALLOWED_MIME, BG_MAX_DIMENSION_PX, BG_MAX_INPUT_PIXELS } from "@/lib/validation-constants";
 
@@ -96,7 +96,7 @@ export async function processBackgroundUpload(buffer: Buffer): Promise<Processed
 
   const image = sharp(buffer, { limitInputPixels: BG_MAX_INPUT_PIXELS, failOn: "error" });
 
-  let metadata: sharp.Metadata;
+  let metadata: Metadata;
   try {
     metadata = await image.metadata();
   } catch {
