@@ -7,10 +7,29 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
     {
       uniquename: "T4_HEAD_PLATE_SET1",
       slot: "head",
-      localizedNames: { "en-US": "Soldier Helmet" },
+      localizedNames: { "EN-US": "Soldier Helmet" },
       spells: [],
       twohanded: false,
       maxEnchant: 4,
+    },
+    {
+      uniquename: "T4_MAIN_SWORD",
+      slot: "mainhand",
+      localizedNames: { "EN-US": "Broadsword" },
+      spells: [
+        { uniquename: "SWORD_Q", slotGroup: "1", kind: "active", localizedNames: { "EN-US": "Slash" } },
+        { uniquename: "SWORD_W", slotGroup: "2", kind: "active", localizedNames: { "EN-US": "Guard" } },
+      ],
+      twohanded: false,
+      maxEnchant: 4,
+    },
+    {
+      uniquename: "T4_BAG",
+      slot: "bag",
+      localizedNames: { "EN-US": "Bag" },
+      spells: [],
+      twohanded: false,
+      maxEnchant: 0,
     },
   ];
   return { useItemCatalogue: () => ({ items, loading: false }) };
@@ -196,6 +215,49 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("Não deu para salvar.")).toBeInTheDocument();
     expect(screen.queryByText("Build salva.")).not.toBeInTheDocument();
+  });
+});
+
+describe("/build/new — main slot grid shows ability slots and item names (ACM-040)", () => {
+  it("renders the spell picker with a row per group for a weapon equipped in the mainhand slot", () => {
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+      4,
+      0
+    );
+
+    render(<NewBuildPage />);
+
+    const mainhandCard = document.querySelector('[data-slot="mainhand"]')!;
+    expect(mainhandCard.querySelector('[data-testid="spell-picker"]')).toBeInTheDocument();
+    expect(mainhandCard.querySelector('[data-testid="spell-group-q"]')).toBeInTheDocument();
+    expect(mainhandCard.querySelector('[data-testid="spell-group-w"]')).toBeInTheDocument();
+    expect(mainhandCard.querySelector('[data-testid="spell-group-e"]')).not.toBeInTheDocument();
+  });
+
+  it("does not render the spell picker for an item with no resolved spells", () => {
+    useBuildStore.getState().actions.setItem("bag", { uniquename: "T4_BAG", twohanded: false, maxEnchant: 0 }, 4, 0);
+
+    render(<NewBuildPage />);
+
+    const bagCard = document.querySelector('[data-slot="bag"]')!;
+    expect(bagCard.querySelector('[data-testid="spell-picker"]')).not.toBeInTheDocument();
+  });
+
+  it("shows the localized item name on the slot card instead of the raw uniquename", () => {
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+      4,
+      0
+    );
+
+    render(<NewBuildPage />);
+
+    const mainhandCard = document.querySelector('[data-slot="mainhand"]')!;
+    expect(mainhandCard).toHaveTextContent("Broadsword");
+    expect(mainhandCard).not.toHaveTextContent("T4_MAIN_SWORD");
   });
 });
 
