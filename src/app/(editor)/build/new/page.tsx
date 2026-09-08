@@ -138,6 +138,36 @@ export default function NewBuildPage(): React.JSX.Element {
     return map;
   }, [items]);
 
+  /**
+   * `SlotGrid` (and the `SlotCard`s it renders) index item name and spell
+   * candidates by `Slot`, not by uniquename — unlike `SwapsSection`, which
+   * indexes by uniquename because a swap's item isn't one of the 10 fixed
+   * slots. This adapts the uniquename-keyed lookups built above to the
+   * slot-keyed shape `SlotGrid` expects, without recomputing
+   * `groupSpellsForItem` per render (ACM-040).
+   */
+  const itemNamesBySlot = useMemo(() => {
+    const map: Partial<Record<Slot, string>> = {};
+    for (const slot of SLOT_ORDER) {
+      const equipped = build.slots[slot];
+      if (!equipped) continue;
+      const name = itemNames[equipped.itemId];
+      if (name !== undefined) map[slot] = name;
+    }
+    return map;
+  }, [build.slots, itemNames]);
+
+  const spellCandidatesBySlot = useMemo(() => {
+    const map: Partial<Record<Slot, Partial<Record<SpellGroup, readonly SpellCandidate[]>>>> = {};
+    for (const slot of SLOT_ORDER) {
+      const equipped = build.slots[slot];
+      if (!equipped) continue;
+      const candidates = spellCandidatesByItemId[equipped.itemId];
+      if (candidates !== undefined) map[slot] = candidates;
+    }
+    return map;
+  }, [build.slots, spellCandidatesByItemId]);
+
   const offhandLockBlocksPicker =
     pickerTarget?.origin === "main" && pickerTarget.slot === "offhand" && offhandLocked;
   const pickerOpen = Boolean(pickerTarget) && !offhandLockBlocksPicker;
@@ -215,6 +245,8 @@ export default function NewBuildPage(): React.JSX.Element {
         />
         <SlotGrid
           build={build}
+          itemNames={itemNamesBySlot}
+          spellCandidatesBySlot={spellCandidatesBySlot}
           offhandLocked={offhandLocked}
           tierOptionsBySlot={tierOptionsBySlot}
           enchantOptionsBySlot={enchantOptionsBySlot}
