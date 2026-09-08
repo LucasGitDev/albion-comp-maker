@@ -81,7 +81,10 @@ export function BuildCardList({ state, theme, lookups, tokens }: BuildCardListPr
                     className="flex size-8 shrink-0 items-center justify-center rounded-md"
                     style={{ backgroundColor: "transparent" }}
                   >
-                    {firstItem && <ItemIcon itemId={firstItem.itemId} alt={itemName} size="xs" decorative />}
+                    {/* `sm` (32px) matches the `size-8` (32px) wrapper — `xs` (24px) left visible
+                        padding inside the wrapper that no other icon+wrapper pairing in this
+                        file has (ACM-080 finding). */}
+                    {firstItem && <ItemIcon itemId={firstItem.itemId} alt={itemName} size="sm" decorative />}
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span
