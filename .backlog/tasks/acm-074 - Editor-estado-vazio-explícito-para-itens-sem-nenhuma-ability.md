@@ -4,7 +4,7 @@ title: 'Editor: estado vazio explícito para itens sem nenhuma ability'
 status: To Do
 assignee: []
 created_date: '2026-09-08 00:08'
-updated_date: '2026-09-08 00:08'
+updated_date: '2026-09-08 00:15'
 labels: []
 milestone: m-3
 dependencies:
@@ -40,4 +40,6 @@ Depende da ACM-040: enquanto a grade não receber spellCandidatesBySlot, todo sl
 1. Em /build/new equipar uma Bolsa (slot Bolsa) — item sem abilities. Esperado: mensagem discreta indicando que o item não tem habilidades, no lugar de área em branco.
 2. Equipar uma arma com abilities no mainhand. Esperado: fileiras Q/W/E aparecem e a mensagem de vazio NÃO aparece.
 3. Limpar o slot da Bolsa. Esperado: nem os chips nem a mensagem de vazio são exibidos.
+
+DIVIDA DE TESTE HERDADA DA ACM-040 (review do PR #48, MEDIUM): o teste 'does not render the spell picker for an item with no resolved spells' em src/__tests__/build-new-page.test.tsx:225-232 e DECORATIVO. Antes do fix de wiring da ACM-040, SlotGrid nao recebia spellCandidatesBySlot/itemNames para NENHUM slot, entao spell-picker nao aparecia em lugar nenhum — inclusive na bag. O teste passava identico antes e depois do fix (foi justamente o unico dos 3 novos que NAO falhou na verificacao red-then-green). Ele nao prova que a ausencia e especifica do item sem spells; so reafirma um estado trivialmente verdadeiro. Ao implementar esta task, SUBSTITUA esse teste por um cenario que preencha simultaneamente um slot COM spells e a bag SEM spells, e asserte que o picker aparece no primeiro e nao no segundo — isso prova especificidade em vez de efeito colateral de wiring quebrado.
 <!-- SECTION:NOTES:END -->
