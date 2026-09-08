@@ -1,10 +1,10 @@
 ---
 id: ACM-091
 title: 'Bug: seleção de food e potion não funciona no editor'
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-08 22:11'
+updated_date: '2026-09-08 22:17'
 labels: []
 milestone: m-2
 dependencies: []
@@ -67,4 +67,18 @@ Spells: nenhum dos 103 tem craftingspelllist (0/103), logo resolveSpells retorna
 touches: scripts/sync-ao-data.ts, scripts/sync-ao-data.test.ts, src/data/ao-data.json, src/__tests__/fixtures/ao-corpus.json, src/__tests__/acceptance.test.ts
 
 ATENCAO orquestrador: esta task reescreve os schemas/artefatos de saida do pipeline (ao-data.json + ao-corpus.json). Serializar contra qualquer outra task que toque o pipeline de dados ou os fixtures.
+
+Implementado conforme plano/decision-022. scripts/sync-ao-data.ts: EQUIPPABLE_CATEGORIES -> EMITTED_CATEGORIES + "consumableitem", predicado isEmittedConsumable (shopcategory=consumables, shopsubcategory1 in {food, potions}) exportado e aplicado so a essa categoria; guard-rail novo falha [fatal] se slot food ou potion emitir 0. Nenhum codigo novo para spells (resolveSpells ja retorna [] para os 103 itens, nenhum tem craftingspelllist).
+
+Artefatos regenerados e commitados: pnpm sync:ao --force && pnpm build:fixture. Contagem real: food 58, potion 45 (bateu exatamente com a estimativa da decision-022). Total emitido 2142 itens (2036 -> 2142), withSpells total 1455.
+
+src/__tests__/acceptance.test.ts: SLOT_FLOORS atualizado com contagens reais (shoes 257/180, head 281/191, armor 265/181 tambem tiveram drift upstream de +1, ja incorporado), food: {total:58, withSpells:0}, potion: {total:45, withSpells:0}. Total pinado 2142/1455.
+
+scripts/sync-ao-data.test.ts: describe("isEmittedConsumable") com os 4 casos do plano (food/potions -> true, crafting fish -> false, vanity fireworks -> false).
+
+Nota: src/data/ao-data.json esta em .gitignore ("committed only after full pipeline") mas nunca havia sido commitado antes; forcei o add (git add -f) para cumprir a instrucao explicita da task de commitar o artefato regenerado, ja que o app le esse arquivo via fs em runtime (src/app/api/items/route.ts, src/lib/build-card-lookups.ts).
+
+make check: 1 flake nao relacionado na primeira rodada (item-index.test.ts perf test, 65ms vs budget 50ms, fora do escopo desta task) — reproduzido isoladamente como flaky, segunda rodada completa passou 589/589 verde.
+
+PR #59: https://github.com/LucasGitDev/albion-comp-maker/pull/59
 <!-- SECTION:NOTES:END -->
