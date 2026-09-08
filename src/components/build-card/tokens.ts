@@ -14,6 +14,8 @@
  * new `@theme` tokens.
  */
 
+import { ACCENT_HEX_RENDER_PATTERN } from "@/lib/validation-constants";
+
 export const CARD_SURFACE = "#12141a";
 export const CARD_SURFACE_2 = "#171a21";
 export const CARD_BORDER = "#2a2e37";
@@ -45,11 +47,9 @@ export const ROLE_ACCENTS: Readonly<Record<string, string>> = {
   support: "#a86fd4",
 };
 
-const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{3,8}$/;
-
 /** Resolves the card's accent color, always a hex literal, never oklch(). */
 export function resolveAccent(role: string, accent: string | undefined): string {
-  if (accent && HEX_COLOR_PATTERN.test(accent)) return accent;
+  if (accent && ACCENT_HEX_RENDER_PATTERN.test(accent)) return accent;
   return ROLE_ACCENTS[role.toLowerCase()] ?? ROLE_ACCENTS.tank;
 }
 
