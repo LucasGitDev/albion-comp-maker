@@ -34,8 +34,12 @@ export function SpellPicker({
   const rows = GROUP_ORDER.filter(({ group }) => (candidatesByGroup[group]?.length ?? 0) > 0);
   if (rows.length === 0) {
     return (
-      <p className="text-[12px] text-icon-muted" data-testid="spell-picker-empty">
-        Este item não possui abilities.
+      <p
+        className="truncate whitespace-nowrap text-[12px] text-icon-muted"
+        title="Este item não possui abilities."
+        data-testid="spell-picker-empty"
+      >
+        Sem abilities
       </p>
     );
   }
