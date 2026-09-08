@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import { PRESET_TOKENS, THEME_PRESET_NAMES, resolvePresetTokens } from "@/components/build-card/theme-presets";
-import { CARD_BORDER, CARD_FG, CARD_FG_MUTED, CARD_ROW_DIVIDER, CARD_SLOT_EMPTY_BORDER, CARD_SURFACE, CARD_SURFACE_2 } from "@/components/build-card/tokens";
+import {
+  CARD_BORDER,
+  CARD_FG,
+  CARD_FG_MUTED,
+  CARD_ROW_DIVIDER,
+  CARD_SLOT_EMPTY_BORDER,
+  CARD_SURFACE,
+  CARD_SURFACE_2,
+  DEFAULT_BUILD_ACCENT,
+  resolveAccent,
+} from "@/components/build-card/tokens";
 
 const HEX_6_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
@@ -63,5 +73,37 @@ describe("theme-presets", () => {
 
   it.each(THEME_PRESET_NAMES)("resolvePresetTokens(%s) matches PRESET_TOKENS", (preset) => {
     expect(resolvePresetTokens(preset)).toEqual(PRESET_TOKENS[preset]);
+  });
+
+  /**
+   * PR #50 HIGH-1 review fix: the 4 presets used to be visually
+   * indistinguishable because `resolveAccent` never looked at the theme.
+   * `dark-purple` deliberately keeps the pre-existing role-based/explicit
+   * accent (no regression for existing cards); `gold`/`blood`/`ice` must
+   * each produce a different, non-default accent.
+   */
+  describe("accent varies per preset (PR #50 HIGH-1)", () => {
+    it("gold, blood and ice each define their own accent, distinct from one another", () => {
+      const accents = new Set(["gold", "blood", "ice"].map((preset) => PRESET_TOKENS[preset as "gold" | "blood" | "ice"].accent));
+      expect(accents.size).toBe(3);
+    });
+
+    it("dark-purple does not define a preset accent (preserves the pre-existing default look)", () => {
+      expect(PRESET_TOKENS["dark-purple"].accent).toBeUndefined();
+    });
+
+    it.each(["gold", "blood", "ice"] as const)(
+      "resolveAccent applies the %s preset's accent when BuildState.accent is still the factory default",
+      (preset) => {
+        const resolved = resolveAccent("tank", DEFAULT_BUILD_ACCENT, PRESET_TOKENS[preset].accent);
+        expect(resolved).toBe(PRESET_TOKENS[preset].accent);
+        expect(resolved).not.toBe(DEFAULT_BUILD_ACCENT);
+      }
+    );
+
+    it("an explicit, non-default BuildState.accent still wins over the preset accent", () => {
+      const resolved = resolveAccent("tank", "#123456", PRESET_TOKENS.gold.accent);
+      expect(resolved).toBe("#123456");
+    });
   });
 });

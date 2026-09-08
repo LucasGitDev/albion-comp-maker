@@ -245,3 +245,71 @@ describe("BuildCard export-safety guards with a full non-default theme (ACM-014)
     expect(root.style.aspectRatio).toBe("1 / 1");
   });
 });
+
+/**
+ * PR #50 CRITICAL review fix (doc-007 §8's protection rule): the capture
+ * root must never crop the build in `square`/`wide`. Before this fix,
+ * `overflow: hidden` on the aspect-ratio wrapper silently clipped any build
+ * taller than the requested ratio — invisible in the DOM tree, only visible
+ * as missing pixels in the exported PNG.
+ */
+describe("BuildCard never crops content in square/wide (PR #50 CRITICAL fix, doc-007 §8)", () => {
+  const layouts = ["vertical", "grid", "compressed", "list"] as const;
+
+  it.each(layouts)("%s: the capture root wrapper never sets overflow: hidden", (layout) => {
+    const state = buildWithMainhand();
+    const { container } = render(
+      <BuildCard state={state} layout={layout} theme={{ aspectRatio: "wide" }} />
+    );
+    const root = container.querySelector("#capture-root") as HTMLElement;
+    expect(root.style.overflow).not.toBe("hidden");
+  });
+
+  it.each(["square", "wide"] as const)(
+    "%s: shows the doc-007 overflow warning when content is taller than the requested ratio",
+    (aspectRatio) => {
+      const originalResizeObserver = globalThis.ResizeObserver;
+      const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+      // Simulates a build tall enough that the box grew past the requested
+      // ratio: width stays whatever the content's intrinsic width is, height
+      // ends up much larger than aspect-ratio would have proposed.
+      HTMLElement.prototype.getBoundingClientRect = function stubbedRect(this: HTMLElement) {
+        if (this.id === "capture-root") {
+          return { width: 960, height: 3000, top: 0, left: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+        }
+        return originalGetBoundingClientRect.call(this);
+      };
+
+      let observedCallback: ResizeObserverCallback | null = null;
+      class StubResizeObserver {
+        constructor(callback: ResizeObserverCallback) {
+          observedCallback = callback;
+        }
+        observe(): void {
+          observedCallback?.([], this as unknown as ResizeObserver);
+        }
+        unobserve(): void {}
+        disconnect(): void {}
+      }
+      globalThis.ResizeObserver = StubResizeObserver as unknown as typeof ResizeObserver;
+
+      try {
+        const state = buildWithMainhand();
+        const { container } = render(<BuildCard state={state} layout="vertical" theme={{ aspectRatio }} />);
+        expect(container.querySelector("[data-build-card-overflow-warning]")?.textContent).toContain(
+          "A build é alta demais para esse formato"
+        );
+      } finally {
+        globalThis.ResizeObserver = originalResizeObserver;
+        HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      }
+    }
+  );
+
+  it("does not show the overflow warning when aspectRatio is auto", () => {
+    const state = buildWithMainhand();
+    const { container } = render(<BuildCard state={state} layout="vertical" theme={{ aspectRatio: "auto" }} />);
+    expect(container.querySelector("[data-build-card-overflow-warning]")).toBeNull();
+  });
+});

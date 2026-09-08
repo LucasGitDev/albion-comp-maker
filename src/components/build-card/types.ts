@@ -25,8 +25,17 @@ export type BuildCardBackground = {
 export type BuildCardTheme = {
   preset: "dark-purple" | "gold" | "blood" | "ice" | "custom";
   aspectRatio: "square" | "wide" | "auto";
-  /** Same-origin font stacks only (`next/font` Geist) — see decision-017/doc-007 D4. */
-  fontFamily: "sans" | "mono";
+  /**
+   * Same-origin font stacks only — see decision-017/doc-007 D4. `"serif"` is
+   * an OS-provided serif stack, not the doc-007 §10 `"cinzel"` webfont: a real
+   * Cinzel via `next/font/google` was tried and rejected for this fix cycle
+   * (see `theme-presets.ts` `resolveFontFamily` doc) because `next/font`'s
+   * loader function only works inside Next's own SWC build — it throws when
+   * the same module is imported under Vitest, which would turn "add a font"
+   * into "break every test file that imports `theme-presets.ts`". Tracked
+   * as a declared follow-up, not silently dropped.
+   */
+  fontFamily: "sans" | "mono" | "serif";
   /** Show item names under each icon. Default: false (icon is the identifier). */
   showItemNames: boolean;
   /** Show spell names under each spell chip. Default: true. */

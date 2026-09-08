@@ -30,7 +30,7 @@ function swapItemName(swap: Swap, lookups: BuildCardLookups): string {
  * not a theme flag on an existing layout (doc-006 §5).
  */
 export function BuildCardList({ state, theme, lookups, tokens }: BuildCardListProps): React.JSX.Element {
-  const accent = resolveAccent(state.role, state.accent);
+  const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const isEmpty = SLOT_ORDER.every((slot) => state.slots[slot] === null);
 
   return (

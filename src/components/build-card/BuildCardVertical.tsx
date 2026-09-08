@@ -17,7 +17,7 @@ export type BuildCardVerticalProps = {
 const CARD_WIDTH = 960;
 
 export function BuildCardVertical({ state, theme, lookups, tokens }: BuildCardVerticalProps): React.JSX.Element {
-  const accent = resolveAccent(state.role, state.accent);
+  const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
   const equipmentSlots = SLOT_ORDER.filter((slot) => slot !== "mainhand" && state.slots[slot] !== null);
   const hasBuild = mainhand !== null;
