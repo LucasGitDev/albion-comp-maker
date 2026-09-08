@@ -1,10 +1,10 @@
 ---
 id: ACM-063
 title: Rate limiting nas paginas publicas anonimas (primeira superficie sem throttle)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 20:30'
-updated_date: '2026-09-08 00:03'
+updated_date: '2026-09-08 00:13'
 labels: []
 dependencies: []
 priority: high
@@ -19,11 +19,11 @@ Achado MEDIUM da auditoria de seguranca da ACM-021 (PR #41). O rate limiter em s
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Rate limiting aplicado as rotas publicas de leitura, keyed por IP ou equivalente (nao por user id)
-- [ ] #2 Limite nao quebra uso legitimo: um link compartilhado no Discord pode receber muitos acessos distintos e legitimos em pouco tempo — dimensionar com isso em mente e documentar o racional
-- [ ] #3 Resposta de throttle nao vaza se o slug existe ou nao (sem oraculo de existencia)
-- [ ] #4 Testes cobrindo o limite e o comportamento apos exceder
-- [ ] #5 make check verde
+- [x] #1 Rate limiting aplicado as rotas publicas de leitura, keyed por IP ou equivalente (nao por user id)
+- [x] #2 Limite nao quebra uso legitimo: um link compartilhado no Discord pode receber muitos acessos distintos e legitimos em pouco tempo — dimensionar com isso em mente e documentar o racional
+- [x] #3 Resposta de throttle nao vaza se o slug existe ou nao (sem oraculo de existencia)
+- [x] #4 Testes cobrindo o limite e o comportamento apos exceder
+- [x] #5 make check verde
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -100,3 +100,9 @@ touches (globs para paralelizacao — errando pra mais):
 
 Serializar contra qualquer task que toque src/proxy.ts, src/lib/rate-limit.ts ou src/app/(build|comp)/[slug].
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+PR #47 merged. Throttle por IP (120 req/60s, janela fixa) nas rotas publicas de leitura via camada de proxy, conforme decision-016. Motor extraido para src/lib/fixed-window-limiter.ts (rate-limit.test.ts passou SEM edicao, provando equivalencia do refactor). IP lido do X-Forwarded-For da DIREITA via RATE_LIMIT_TRUSTED_HOPS (default 1), nunca a entrada mais a esquerda (spoofavel); sem XFF confiavel cai em bucket __untrusted__ com orcamento proprio de 600/60s. Sem oraculo de existencia: 429 constante retornado no proxy, que nao conhece o slug nem importa o modulo de dados. Review de corretude LGTM; auditoria de seguranca APROVADA sem finding CRITICAL/HIGH. Follow-ups: ACM-072 (throttle de /api/items e /api/icon), ACM-076 (assercao decorativa), ACM-077 (assimetria /build/new vs /comp/new). make check verde na main pos-merge (382 testes).
+<!-- SECTION:FINAL_SUMMARY:END -->
