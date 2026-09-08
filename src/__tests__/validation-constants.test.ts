@@ -11,6 +11,7 @@ import {
   MAX_SWAPS,
   SWAP_LABEL_MAX_LENGTH,
 } from "@/lib/validation-constants";
+import { resolveAccent } from "@/components/build-card/tokens";
 import { MAX_SWAPS as storeMaxSwaps, useBuildStore } from "@/store/build-store";
 
 /**
@@ -121,6 +122,24 @@ describe("validation-constants (ACM-059 anti-drift)", () => {
       validateBuildContentForWrite(JSON.stringify(validBuild({ accent: "#abc" })))
     ).toThrow();
     expect(ACCENT_HEX_PATTERN.test("#abc")).toBe(false);
+  });
+
+  it("ACM-054: write and render accent patterns come from the same single module constant", () => {
+    const validPersistedAccents = ["#abcdef", "#000000", "#FFFFFF", "#4a8fd4"];
+    for (const accent of validPersistedAccents) {
+      // Every accent that can pass the write-side schema must also be
+      // accepted verbatim by resolveAccent() — both share ACCENT_HEX_PATTERN.
+      expect(() =>
+        validateBuildContentForWrite(JSON.stringify(validBuild({ accent })))
+      ).not.toThrow();
+      expect(ACCENT_HEX_PATTERN.test(accent)).toBe(true);
+      expect(resolveAccent("dps", accent)).toBe(accent);
+    }
+
+    // Shorthand hex is rejected on both sides — no production path ever
+    // generates a 3/4/8-digit accent, so there is a single strict pattern.
+    expect(ACCENT_HEX_PATTERN.test("#abc")).toBe(false);
+    expect(resolveAccent("dps", "#abc")).not.toBe("#abc");
   });
 
   it("compNameSchema enforces COMP_NAME_MAX_LENGTH", () => {
