@@ -46,7 +46,7 @@ export function ItemSearchInput({
       onKeyDown={onKeyDown}
       className={
         className ??
-        "w-full rounded-md border border-[#2a2e37] bg-[#14171d] px-3 py-2 text-sm text-white outline-none focus:border-[#c8a24a]"
+        "w-full rounded-md border border-icon-placeholder bg-surface px-3 py-2 text-sm text-white outline-none focus:border-item-accent"
       }
     />
   );
