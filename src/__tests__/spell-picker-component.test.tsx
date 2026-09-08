@@ -29,8 +29,8 @@ describe("SpellPicker (ACM-010)", () => {
     expect(screen.queryByTestId("spell-group-e")).toBeNull();
   });
 
-  it("renders nothing when the item exposes no spells at all (e.g. an offhand, decision-005)", () => {
-    const { container } = render(
+  it("ACM-074 AC#1/#3: renders an explicit empty state (not nothing) when the item exposes no spells at all", () => {
+    render(
       <SpellPicker
         itemName="Any Offhand"
         selected={{ q: null, w: null, e: null, passive: null }}
@@ -38,7 +38,26 @@ describe("SpellPicker (ACM-010)", () => {
         onSelect={vi.fn()}
       />
     );
-    expect(container).toBeEmptyDOMElement();
+    const empty = screen.getByTestId("spell-picker-empty");
+    expect(empty).toBeInTheDocument();
+    expect(empty).toHaveTextContent("não possui abilities");
+    expect(empty).toHaveClass("text-icon-muted");
+    expect(screen.queryByTestId("spell-picker")).not.toBeInTheDocument();
+  });
+
+  it("ACM-074 AC#4: the empty state is not interactive — no button role and not focusable by Tab", () => {
+    render(
+      <SpellPicker
+        itemName="Any Offhand"
+        selected={{ q: null, w: null, e: null, passive: null }}
+        candidatesByGroup={{}}
+        onSelect={vi.fn()}
+      />
+    );
+    const empty = screen.getByTestId("spell-picker-empty");
+    expect(empty.tagName).not.toBe("BUTTON");
+    expect(empty).not.toHaveAttribute("role", "button");
+    expect(empty).not.toHaveAttribute("tabIndex");
   });
 
   it("AC #4: tooltip (title) shows the spell name in the active locale", () => {
