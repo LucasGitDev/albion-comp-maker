@@ -78,6 +78,26 @@ html {
   --color-slot-category-armor: #6ea8f7;
   --color-slot-category-utility: #4fd3a8;
   --color-slot-category-consumable: #f2c14e;
+
+  /*
+   * item-picker tokens (ACM-048). `#2a2e37`, `#14171d` and `#1c1f26` already
+   * have exact semantic equivalents above (`--color-icon-placeholder`,
+   * `--color-surface`, `--color-icon-slot`) and are reused directly at the
+   * call sites — no new token needed for those three. The remaining three
+   * hexes have no existing equivalent (`--color-accent` is a different,
+   * unrelated orange used by the export bar's CTA), so they get named
+   * tokens here instead of a bare arbitrary-value hex:
+   */
+  /* Active/keyboard-highlighted row background (item-result-list). Contrast-checked: text-white on this bg is 15.9:1 (AA). */
+  --color-item-row-active: #232833;
+  /*
+   * Gold accent shared by the equipped-row indicator bar, tier badge and
+   * search-input focus border. Contrast >= 4.5:1 verified against both
+   * `--color-surface` (7.46:1) and `--color-item-row-active` (6.13:1).
+   */
+  --color-item-accent: #c8a24a;
+  /* Search-match `<mark>` text color. Contrast >= 4.5:1 verified against both row backgrounds (12.97:1 / 10.67:1). */
+  --color-item-highlight: #f5d98a;
 }
 
 body {
