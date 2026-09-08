@@ -159,4 +159,31 @@ describe("GET /api/items (ACM-034/043)", () => {
     }
     expect(readFile).toHaveBeenCalledTimes(1);
   });
+
+  it("throttles a single IP past its own /api/items budget (ACM-072), independent of the public-read bucket", async () => {
+    readFile.mockResolvedValue(
+      JSON.stringify({
+        version: "2026-01-01",
+        items: [{ uniquename: "T4_HEAD_PLATE_SET1", slot: "head" }],
+        spells: {},
+      })
+    );
+
+    const { GET } = await import("@/app/api/items/route");
+    const { ITEMS_MAX_PER_IP } = await import("@/lib/editor-api-rate-limit");
+    const request = () =>
+      new Request("http://localhost/api/items", {
+        headers: { "x-forwarded-for": "5.5.5.5" },
+      }) as never;
+
+    for (let i = 0; i < ITEMS_MAX_PER_IP; i++) {
+      const response = await GET(request());
+      expect(response.status).not.toBe(429);
+    }
+
+    const throttled = await GET(request());
+    expect(throttled.status).toBe(429);
+    expect(throttled.headers.get("Cache-Control")).toBe("no-store");
+    expect(throttled.headers.get("Retry-After")).toBe("60");
+  });
 });
