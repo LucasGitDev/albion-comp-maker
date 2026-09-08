@@ -1,7 +1,13 @@
 export { BuildCard, type BuildCardLayout, type BuildCardProps } from "./BuildCard";
 export { BuildCardVertical } from "./BuildCardVertical";
 export { BuildCardGrid } from "./BuildCardGrid";
+export { BuildCardCompressed } from "./BuildCardCompressed";
+export { BuildCardList } from "./BuildCardList";
 export { CardSlotTile } from "./CardSlotTile";
+export { CompressedTile } from "./CompressedTile";
+export { ListRow } from "./ListRow";
+export { SpellStrip } from "./SpellStrip";
+export { KILLBOARD_MATRIX } from "./layout-matrix";
 export { ExportBar, type ExportBarProps } from "./ExportBar";
 export type { BuildCardLookups, BuildCardTheme } from "./types";
 export * from "./tokens";
