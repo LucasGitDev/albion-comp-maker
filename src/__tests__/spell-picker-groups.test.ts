@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AOItemSpell } from "@/data/ao-data";
-import { groupItemSpells } from "@/components/editor/spell-groups";
+import { computeAutoSelections, groupItemSpells, type SpellCandidate } from "@/components/editor/spell-groups";
+import type { SpellGroup } from "@/types/build";
 
 /**
  * Real item/spell ids from src/__tests__/fixtures/ao-corpus.json
@@ -84,5 +85,56 @@ describe("groupItemSpells (ACM-010 AC #1, #2, #3)", () => {
       spell({ uniquename: "TAUNT", slotGroup: "1", kind: "active" }),
     ];
     expect(groupItemSpells(spells, "en-US").q).toHaveLength(1);
+  });
+});
+
+const NO_SELECTION: Record<SpellGroup, string | null> = { q: null, w: null, e: null, passive: null };
+const SINGLE_E: SpellCandidate[] = [{ uniquename: "VANITY_TRUMPET_TUNE_C", name: "Tune C" }];
+const MULTI_Q: SpellCandidate[] = [
+  { uniquename: "OUTOFCOMBATHEAL", name: "Out of Combat Heal" },
+  { uniquename: "TAUNT", name: "Taunt" },
+];
+
+describe("computeAutoSelections (ACM-089)", () => {
+  it("auto-fills a group with exactly one candidate", () => {
+    const updates = computeAutoSelections(NO_SELECTION, { e: SINGLE_E });
+    expect(updates).toEqual({ e: "VANITY_TRUMPET_TUNE_C" });
+  });
+
+  it("is scoped to E only — a single-candidate Q or passive is left for the picker (decision: real weapon Q/W always have multiple options; E never does)", () => {
+    const singleQ: SpellCandidate[] = [{ uniquename: "TAUNT", name: "Taunt" }];
+    const singlePassive: SpellCandidate[] = [{ uniquename: "PASSIVE_ARMOR_MR_AR", name: "Armor Resistance" }];
+    expect(computeAutoSelections(NO_SELECTION, { q: singleQ })).toEqual({});
+    expect(computeAutoSelections(NO_SELECTION, { passive: singlePassive })).toEqual({});
+  });
+
+  it("does not propose an update for a group with two or more candidates", () => {
+    const updates = computeAutoSelections(NO_SELECTION, { q: MULTI_Q });
+    expect(updates).toEqual({});
+  });
+
+  it("does not clobber an existing explicit selection in a multi-candidate group", () => {
+    const selected: Record<SpellGroup, string | null> = { ...NO_SELECTION, q: "TAUNT" };
+    const updates = computeAutoSelections(selected, { q: MULTI_Q });
+    expect(updates).toEqual({});
+  });
+
+  it("is a no-op once the single candidate is already selected (idempotent across re-renders)", () => {
+    const selected: Record<SpellGroup, string | null> = { ...NO_SELECTION, e: "VANITY_TRUMPET_TUNE_C" };
+    const updates = computeAutoSelections(selected, { e: SINGLE_E });
+    expect(updates).toEqual({});
+  });
+
+  it("re-derives the auto-selection when the equipped item (and its candidates) changes", () => {
+    // Item A's E has one candidate, auto-selected.
+    const afterItemA = computeAutoSelections(NO_SELECTION, { e: SINGLE_E });
+    const selected: Record<SpellGroup, string | null> = { ...NO_SELECTION, e: afterItemA.e ?? null };
+    expect(selected.e).toBe("VANITY_TRUMPET_TUNE_C");
+
+    // Equip item B: different single E candidate — the stale selection from
+    // item A no longer matches, so a fresh update is proposed.
+    const itemBCandidate: SpellCandidate[] = [{ uniquename: "OTHER_WEAPON_E", name: "Other E" }];
+    const afterItemB = computeAutoSelections(selected, { e: itemBCandidate });
+    expect(afterItemB).toEqual({ e: "OTHER_WEAPON_E" });
   });
 });
