@@ -54,6 +54,13 @@ export const TIER_COLOR_LOW = "#6b7280";
 /** Badge text color for tier pills — kept dark so light tiers (7/8) stay legible. */
 export const TIER_BADGE_TEXT = "#0b0d11";
 
+/**
+ * Badge text color for the enchant pill (ACM-080). `CARD_ENCHANT` (`#3f8f4a`)
+ * is dark enough that white text stays legible, unlike the tier pills above
+ * which span light and dark hues and need a fixed dark text color instead.
+ */
+export const CARD_ENCHANT_BADGE_TEXT = "#ffffff";
+
 /** Default per-role accents, used only when `BuildState.accent` is absent/invalid. */
 export const ROLE_ACCENTS: Readonly<Record<string, string>> = {
   tank: "#4a8fd4",

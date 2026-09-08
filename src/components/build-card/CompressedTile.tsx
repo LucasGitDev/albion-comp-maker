@@ -5,7 +5,7 @@ import type { EquippedItem } from "@/types/build";
 import { SpellStrip } from "./SpellStrip";
 import { SLOT_CATEGORY } from "./slot-meta";
 import type { BuildCardTokenSet } from "./theme-presets";
-import { CARD_ENCHANT, TIER_BADGE_TEXT, tierColor } from "./tokens";
+import { CARD_ENCHANT, CARD_ENCHANT_BADGE_TEXT, TIER_BADGE_TEXT, tierColor } from "./tokens";
 import { ALL_SPELL_GROUPS, type BuildCardLookups } from "./types";
 
 export type CompressedTileProps = {
@@ -64,7 +64,7 @@ export function CompressedTile({ slot, item, lookups, tokens }: CompressedTilePr
           {item.enchant > 0 && (
             <span
               className="absolute right-0 bottom-0 rounded px-1 text-[10px] font-bold"
-              style={{ backgroundColor: CARD_ENCHANT, color: "#ffffff", lineHeight: "14px", borderRadius: 3 }}
+              style={{ backgroundColor: CARD_ENCHANT, color: CARD_ENCHANT_BADGE_TEXT, lineHeight: "14px", borderRadius: 3 }}
             >
               .{item.enchant}
             </span>
