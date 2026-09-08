@@ -48,6 +48,26 @@ describe("SlotCard spell picker wiring (ACM-010)", () => {
     expect(screen.queryByTestId("spell-picker")).toBeNull();
   });
 
+  it("ACM-074 AC#2: renders the explicit empty state for an item with no candidates", () => {
+    render(
+      <SlotCard
+        slot="offhand"
+        item={equipped({ itemId: "T4_OFF_TOWERSHIELD" })}
+        spellCandidatesByGroup={{}}
+        onRequestItemPick={vi.fn()}
+        onSpellChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId("spell-picker")).toBeNull();
+    expect(screen.getByTestId("spell-picker-empty")).toBeInTheDocument();
+  });
+
+  it("ACM-074 AC#2/#5: an empty slot renders neither the spell picker nor its empty state", () => {
+    render(<SlotCard slot="offhand" item={null} onRequestItemPick={vi.fn()} onSpellChange={vi.fn()} />);
+    expect(screen.queryByTestId("spell-picker")).toBeNull();
+    expect(screen.queryByTestId("spell-picker-empty")).toBeNull();
+  });
+
   it("selecting a chip forwards slot, group and spell id to onSpellChange", () => {
     const onSpellChange = vi.fn();
     render(
