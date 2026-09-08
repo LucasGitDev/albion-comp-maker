@@ -1,9 +1,11 @@
 import type { BuildState } from "@/types/build";
+import { BuildCardCompressed } from "./BuildCardCompressed";
 import { BuildCardGrid } from "./BuildCardGrid";
+import { BuildCardList } from "./BuildCardList";
 import { BuildCardVertical } from "./BuildCardVertical";
 import { DEFAULT_BUILD_CARD_THEME, EMPTY_LOOKUPS, type BuildCardLookups, type BuildCardTheme } from "./types";
 
-export type BuildCardLayout = "vertical" | "grid";
+export type BuildCardLayout = "vertical" | "grid" | "compressed" | "list";
 
 export type BuildCardProps = {
   /** The build to render. BuildCard reads only this prop — no store, no context. */
@@ -64,6 +66,10 @@ export function BuildCard({
     <div id={captureId} data-build-card data-layout={layout} style={{ display: "inline-flex" }}>
       {layout === "grid" ? (
         <BuildCardGrid state={state} theme={resolvedTheme} lookups={lookups} />
+      ) : layout === "compressed" ? (
+        <BuildCardCompressed state={state} theme={resolvedTheme} lookups={lookups} />
+      ) : layout === "list" ? (
+        <BuildCardList state={state} theme={resolvedTheme} lookups={lookups} />
       ) : (
         <BuildCardVertical state={state} theme={resolvedTheme} lookups={lookups} />
       )}
