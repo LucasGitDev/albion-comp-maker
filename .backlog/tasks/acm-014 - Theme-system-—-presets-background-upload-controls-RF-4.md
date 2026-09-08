@@ -1,10 +1,10 @@
 ---
 id: ACM-014
 title: 'Theme system — presets, background upload, controls (RF-4)'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 13:33'
-updated_date: '2026-09-08 01:36'
+updated_date: '2026-09-08 14:42'
 labels: []
 milestone: m-3
 dependencies:

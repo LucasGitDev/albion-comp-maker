@@ -1,10 +1,10 @@
 ---
 id: ACM-074
 title: 'Editor: estado vazio explícito para itens sem nenhuma ability'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-08 00:08'
-updated_date: '2026-09-08 00:15'
+updated_date: '2026-09-08 14:44'
 labels: []
 milestone: m-3
 dependencies:
