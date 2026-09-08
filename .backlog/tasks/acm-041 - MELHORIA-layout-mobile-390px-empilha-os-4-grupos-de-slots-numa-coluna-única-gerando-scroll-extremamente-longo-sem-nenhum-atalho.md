@@ -6,7 +6,7 @@ title: >-
 status: Done
 assignee: []
 created_date: '2026-09-07 17:36'
-updated_date: '2026-09-08 00:02'
+updated_date: '2026-09-08 00:05'
 labels: []
 milestone: m-2
 dependencies: []
@@ -19,6 +19,11 @@ ordinal: 41000
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Em 390px, /build/new empilha Armas, Armadura, Utilidade e Consumíveis verticalmente em uma única coluna com 9 cards grandes, resultando em uma página de ~2200px de altura para rolar. Não há nenhum sumário fixo, tabs, ou accordion para navegar entre grupos, nem indicação de progresso (quantos slots já preenchidos). Ação: considerar tabs horizontais fixas por grupo em mobile, ou accordion colapsável, reduzindo a rolagem necessária para montar uma comp completa no celular.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [x] #1 Em 390px a grade de slots usa layout 2-up fluido em vez de coluna unica,Existe atalho de navegacao entre os 4 grupos de slots que elimina o scroll longo,A strip de navegacao de grupo nao conflita com o header sticky nem com a EditorActionBar (z-index/offset),Navegacao por grupo e acessivel por teclado com foco movido ao grupo alvo e aria-current,make check verde com testes cobrindo largura fluida e navegacao entre grupos
+<!-- AC:END -->
 
 ## Implementation Notes
 
