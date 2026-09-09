@@ -78,6 +78,7 @@ describe("comp Server Actions (ACM-019)", () => {
         "Unauthorized",
       );
       await expect(actions.reorderCompBuilds("x", [])).rejects.toThrow("Unauthorized");
+      await expect(actions.listCompBuildsDetailed("x")).rejects.toThrow("Unauthorized");
     });
   });
 
@@ -270,7 +271,43 @@ describe("comp Server Actions (ACM-019)", () => {
     });
   });
 
-  describe("count and label edits", () => {
+  describe("listCompBuildsDetailed (ACM-098)", () => {
+  it("returns entries ordered by position, joined with the referenced build's display fields", async () => {
+    mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+    const [b1, b2] = await db
+      .insert(builds)
+      .values([
+        { userId: "user-a", name: "Tank Build", role: "Tank", slug: "tank-detailed-slug", content: "{}" },
+        { userId: "user-a", name: "Healer Build", role: "Healer", slug: "healer-detailed-slug", content: "{}" },
+      ])
+      .returning();
+
+    const { createComp, addBuildToComp, listCompBuildsDetailed } = await import("@/actions/comps");
+    const comp = await createComp({ name: "Detailed Comp" });
+    await addBuildToComp({ compId: comp.id, buildId: b1.id, label: "Main tank" });
+    await addBuildToComp({ compId: comp.id, buildId: b2.id, count: 2 });
+
+    const detailed = await listCompBuildsDetailed(comp.id);
+
+    expect(detailed).toHaveLength(2);
+    expect(detailed[0].build.name).toBe("Tank Build");
+    expect(detailed[0].build.role).toBe("Tank");
+    expect(detailed[0].label).toBe("Main tank");
+    expect(detailed[1].build.name).toBe("Healer Build");
+    expect(detailed[1].count).toBe(2);
+  });
+
+  it("throws Comp not found for a comp the caller does not own", async () => {
+    mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+    const { createComp, listCompBuildsDetailed } = await import("@/actions/comps");
+    const comp = await createComp({ name: "User A Comp" });
+
+    mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+    await expect(listCompBuildsDetailed(comp.id)).rejects.toThrow("Comp not found");
+  });
+});
+
+describe("count and label edits", () => {
     it("updates count and label independently", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const [aBuild] = await db
