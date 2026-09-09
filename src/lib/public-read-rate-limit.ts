@@ -1,36 +1,21 @@
 /**
  * Per-IP rate limiter for the anonymous public read routes (`/build/:slug`,
- * `/comp/:slug`) — ACM-063 / decision-016. Built on the same shared engine
- * as the write limiter (`src/lib/fixed-window-limiter.ts`). Deliberately
- * has no `server-only` import: this module runs in `src/proxy.ts`, which
- * executes before any route handler and thus before any database access.
+ * `/comp/:slug`) — ACM-063 / decision-016. Built on the shared policy table
+ * (`rate-limit-policy.ts`, ACM-084 / decision-029). Deliberately has no
+ * `server-only` import: this module runs in `src/proxy.ts`, which executes
+ * before any route handler and thus before any database access.
  */
 
-import { createFixedWindowLimiter } from "@/lib/fixed-window-limiter";
+import { createSurfaceLimiter, RATE_LIMIT_POLICY, UNTRUSTED_KEY } from "@/lib/rate-limit-policy";
+import { recordClientKeyOutcome } from "@/lib/untrusted-traffic-monitor";
 
-export const PUBLIC_READ_WINDOW_MS = 60_000;
-export const PUBLIC_READ_MAX_PER_IP = 120;
-export const UNTRUSTED_KEY = "__untrusted__";
-export const UNTRUSTED_MAX = 600;
+export { UNTRUSTED_KEY };
 
-const SWEEP_INTERVAL_MS = 5 * 60_000;
-const MAX_BUCKETS = 10_000;
+export const PUBLIC_READ_WINDOW_MS = RATE_LIMIT_POLICY.publicRead.windowMs;
+export const PUBLIC_READ_MAX_PER_IP = RATE_LIMIT_POLICY.publicRead.perIpMax;
+export const UNTRUSTED_MAX = RATE_LIMIT_POLICY.publicRead.untrustedMax;
 
-const perIpLimiter = createFixedWindowLimiter({
-  windowMs: PUBLIC_READ_WINDOW_MS,
-  max: PUBLIC_READ_MAX_PER_IP,
-  maxBuckets: MAX_BUCKETS,
-  sweepIntervalMs: SWEEP_INTERVAL_MS,
-});
-
-const untrustedLimiter = createFixedWindowLimiter({
-  windowMs: PUBLIC_READ_WINDOW_MS,
-  max: UNTRUSTED_MAX,
-  // A single shared key never needs LRU eviction, but the cap is kept for
-  // consistency with the engine's contract.
-  maxBuckets: 1,
-  sweepIntervalMs: SWEEP_INTERVAL_MS,
-});
+const publicReadLimiter = createSurfaceLimiter("publicRead");
 
 /**
  * Derives the rate-limit bucket key from `X-Forwarded-For`.
@@ -51,9 +36,16 @@ const untrustedLimiter = createFixedWindowLimiter({
  *   IP, so ALL traffic shares one bucket and legitimate users get 429s.
  *
  * When XFF is absent or has fewer entries than `hops` (no identifiable
- * trusted client IP), the fallback is a shared `UNTRUSTED_KEY` bucket with
- * its own, more generous budget — this is neither fail-open (still capped)
- * nor a global fail-closed (identifiable traffic keeps its own buckets).
+ * trusted client IP), the fallback is a shared `UNTRUSTED_KEY` bucket whose
+ * budget is capped at parity with the per-IP budget, never above it
+ * (decision-029) — this is neither fail-open nor a global fail-closed
+ * (identifiable traffic keeps its own buckets).
+ *
+ * Every outcome is also recorded by `untrusted-traffic-monitor.ts`: this is
+ * the single call-through point for every throttled surface, so it is the
+ * one place a misconfigured `RATE_LIMIT_TRUSTED_HOPS` (which pushes ALL
+ * traffic into the untrusted bucket) can be made observable without
+ * instrumenting every call site individually.
  */
 export function clientKeyFromHeaders(headers: Headers): string {
   const xff = headers.get("x-forwarded-for");
@@ -66,27 +58,27 @@ export function clientKeyFromHeaders(headers: Headers): string {
   const hops = Number.isNaN(rawHops) || rawHops < 1 ? 1 : rawHops;
 
   if (parts.length >= hops) {
-    return parts[parts.length - hops];
+    const key = parts[parts.length - hops];
+    recordClientKeyOutcome(false);
+    return key;
   }
 
+  recordClientKeyOutcome(true);
   return UNTRUSTED_KEY;
 }
 
 /**
  * Returns `true` if `key` is allowed one more public-read request in the
- * current 60s window. `UNTRUSTED_KEY` is checked against its own, larger
- * budget so a misconfigured/proxy-less deployment degrades instead of
- * collapsing all traffic into the per-IP budget.
+ * current 60s window. `UNTRUSTED_KEY` is checked against its own shared
+ * budget, capped at parity with the per-IP budget (decision-029) so
+ * omitting XFF never grants more quota than being individually
+ * identifiable.
  */
 export function checkPublicReadRateLimit(key: string, now?: number): boolean {
-  if (key === UNTRUSTED_KEY) {
-    return untrustedLimiter.check(key, now);
-  }
-  return perIpLimiter.check(key, now);
+  return publicReadLimiter.check(key, now);
 }
 
 /** Test-only helper to reset all state between specs. */
 export function __resetPublicReadRateLimitState(): void {
-  perIpLimiter.reset();
-  untrustedLimiter.reset();
+  publicReadLimiter.reset();
 }

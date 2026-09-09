@@ -3,7 +3,9 @@ import {
   checkIconRateLimit,
   checkItemsRateLimit,
   ICON_MAX_PER_IP,
+  ICON_UNTRUSTED_MAX,
   ITEMS_MAX_PER_IP,
+  ITEMS_UNTRUSTED_MAX,
   UNTRUSTED_KEY,
   __resetEditorApiRateLimitState,
 } from "@/lib/editor-api-rate-limit";
@@ -74,10 +76,13 @@ describe("editor-api-rate-limit", () => {
     const t0 = Date.now();
 
     for (let i = 0; i < ITEMS_MAX_PER_IP; i++) {
-      checkItemsRateLimit(UNTRUSTED_KEY, t0 + i);
+      expect(checkItemsRateLimit(UNTRUSTED_KEY, t0 + i)).toBe(true);
     }
-    // Untrusted budget for /api/items is larger than the per-IP one, so it
-    // must still be allowing requests past ITEMS_MAX_PER_IP.
-    expect(checkItemsRateLimit(UNTRUSTED_KEY, t0 + ITEMS_MAX_PER_IP)).toBe(true);
+    expect(checkItemsRateLimit(UNTRUSTED_KEY, t0 + ITEMS_MAX_PER_IP)).toBe(false);
+  });
+
+  it("never grants the untrusted bucket more quota than the per-IP one (ACM-084 AC#1)", () => {
+    expect(ITEMS_UNTRUSTED_MAX).toBeLessThanOrEqual(ITEMS_MAX_PER_IP);
+    expect(ICON_UNTRUSTED_MAX).toBeLessThanOrEqual(ICON_MAX_PER_IP);
   });
 });
