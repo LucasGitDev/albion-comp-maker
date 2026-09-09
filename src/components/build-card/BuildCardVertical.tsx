@@ -22,19 +22,6 @@ export function BuildCardVertical({ state, theme, lookups, tokens }: BuildCardVe
   const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
   const equipmentSlots = SLOT_ORDER.filter((slot) => slot !== "mainhand");
-  /**
-   * `BuildCard` is the single source for both the editor preview AND the
-   * exported PNG (see module doc on `BuildCard.tsx`) — there is no separate
-   * "export mode". That means any text rendered here ends up baked into the
-   * artifact the user posts to Discord, so it must never read like an
-   * editor hint (ACM-092 review, HIGH finding). Zero slots filled is a
-   * normal, exportable state (AC#1 explicitly requires supporting it): the
-   * full equipment grid always renders with per-slot dashed placeholders,
-   * exactly like the ≥1-item case. The only concession to "this build is
-   * brand new" is the same discreet, non-instructional footer note used by
-   * `BuildCardList` — no giant centered message, no icon, no CTA.
-   */
-  const isEmpty = SLOT_ORDER.every((slot) => state.slots[slot] === null);
 
   return (
     <div
@@ -150,12 +137,6 @@ export function BuildCardVertical({ state, theme, lookups, tokens }: BuildCardVe
               ))}
             </ul>
           </div>
-        )}
-
-        {isEmpty && (
-          <p className="text-[13px]" style={{ color: tokens.fgMuted }}>
-            Nenhum item equipado ainda — comece pela mão principal.
-          </p>
         )}
 
         <div className="flex justify-end pt-2">

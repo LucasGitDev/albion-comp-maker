@@ -206,6 +206,22 @@ export default function NewBuildPage(): React.JSX.Element {
 
   const filledCount = SLOT_ORDER.filter((slot) => build.slots[slot] !== null).length;
   /**
+   * ACM-092 (revised spec): Salvar/Exportar require ≥1 equipped item that has
+   * at least one selectable spell slot (per `groupSpellsForItem`'s ACM-090
+   * exclusion, already reflected in `spellCandidatesBySlot`'s keys) AND has
+   * every one of those selectable slots filled. Cape/bag/mount/food/potion
+   * never contribute a selectable group, so equipping only those slots never
+   * satisfies this on their own — a weapon in mainhand does, since ACM-089
+   * auto-fills its single-candidate E.
+   */
+  const hasReadyItem = SLOT_ORDER.some((slot) => {
+    const equipped = build.slots[slot];
+    if (!equipped) return false;
+    const selectableGroups = Object.keys(spellCandidatesBySlot[slot] ?? {}) as SpellGroup[];
+    if (selectableGroups.length === 0) return false;
+    return selectableGroups.every((group) => equipped.spells[group] !== null);
+  });
+  /**
    * Denominator for the mobile group-nav strip (ACM-041, doc-005 §7): a
    * locked offhand (two-handed mainhand) is excluded from both its group's
    * and the global total, not counted as pending. `EditorActionBar` still
@@ -252,6 +268,7 @@ export default function NewBuildPage(): React.JSX.Element {
         buildName={build.name}
         filledCount={filledCount}
         totalSlots={SLOT_ORDER.length}
+        hasReadyItem={hasReadyItem}
         captureNodeRef={previewContainerRef}
         onSave={handleSave}
         themePanelOpen={themePanelOpen}

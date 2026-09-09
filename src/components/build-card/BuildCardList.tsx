@@ -31,7 +31,6 @@ function swapItemName(swap: Swap, lookups: BuildCardLookups): string {
  */
 export function BuildCardList({ state, theme, lookups, tokens }: BuildCardListProps): React.JSX.Element {
   const accent = resolveAccent(state.role, state.accent, tokens.accent);
-  const isEmpty = SLOT_ORDER.every((slot) => state.slots[slot] === null);
 
   return (
     <div
@@ -60,12 +59,6 @@ export function BuildCardList({ state, theme, lookups, tokens }: BuildCardListPr
             />
           ))}
         </div>
-
-        {isEmpty && (
-          <p className="text-[11px]" style={{ color: tokens.fgMuted, marginTop: 4 }}>
-            Nenhum item equipado ainda — comece pela mão principal.
-          </p>
-        )}
 
         {state.swaps.length > 0 && (
           <div className="flex flex-col" style={{ borderTop: `1px solid ${tokens.border}`, marginTop: 12, paddingTop: 8, gap: 8 }}>

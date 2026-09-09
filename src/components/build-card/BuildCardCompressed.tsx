@@ -36,7 +36,6 @@ export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompres
   const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
   const mount = state.slots.mount;
-  const isEmpty = KILLBOARD_MATRIX.flat().every((slot) => state.slots[slot] === null) && mount === null;
 
   const hasAnySpell = KILLBOARD_MATRIX.flat().some((slot) => {
     const item = state.slots[slot];
@@ -135,12 +134,6 @@ export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompres
               </div>
           )}
         </div>
-
-        {isEmpty && (
-          <p className="text-[11px]" style={{ color: tokens.fgMuted, marginTop: 4 }}>
-            Nenhum item equipado ainda — comece pela mão principal.
-          </p>
-        )}
       </div>
     </div>
   );
