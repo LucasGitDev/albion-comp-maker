@@ -3,10 +3,10 @@ id: ACM-077
 title: >-
   Assimetria no proxy: /comp/new vai para o ramo auth mas /build/new cai no ramo
   publico
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-08 00:13'
-updated_date: '2026-09-09 03:10'
+updated_date: '2026-09-09 03:17'
 labels: []
 dependencies:
   - ACM-063
