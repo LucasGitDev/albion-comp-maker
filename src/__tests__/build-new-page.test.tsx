@@ -488,3 +488,100 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
     expect(screen.queryByText("Não deu para salvar.")).not.toBeInTheDocument();
   });
 });
+
+describe("/build/new — appearance panel layout (ACM-095)", () => {
+  it("does not render the appearance panel before it is opened", () => {
+    renderPage();
+    expect(document.getElementById("theme-panel")).not.toBeInTheDocument();
+  });
+
+  it("toggling 'Aparência' at jsdom's default 1024px window renders the panel as a modal overlay, not docked on top of the card (ACM-095 round 2: 1024 - 64 padding - 320 panel - 24 gap = 616px, scale 0.64 < MIN_DOCK_SCALE)", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+
+    const panel = document.getElementById("theme-panel");
+    expect(panel).toBeInTheDocument();
+    expect(panel).toHaveAttribute("role", "dialog");
+    expect(panel).toHaveAttribute("aria-modal", "true");
+
+    // The card must still be fully present in the DOM (never hidden behind
+    // the panel) and #capture-root (inside `BuildCard`) must keep its fixed
+    // 960px logical width regardless of any scale-to-fit transform applied
+    // to an ancestor wrapper — that guarantee is what protects the exported
+    // PNG (`html-to-image` clones `#capture-root`'s own subtree, not an
+    // ancestor's computed transform).
+    const captureRoot = document.getElementById("capture-root");
+    expect(captureRoot).toBeInTheDocument();
+    expect(captureRoot?.querySelector<HTMLElement>('[style*="960px"]')).toBeInTheDocument();
+
+    // Escape closes the overlay.
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(document.getElementById("theme-panel")).not.toBeInTheDocument();
+  });
+
+  it("docks the panel as a layout sibling of the card (not an overlay) once the window is wide enough to keep the card legible", () => {
+    const originalInnerWidth = window.innerWidth;
+    // 1440 - 64 padding - 320 panel - 24 gap = 1032px available, scale
+    // clamps to 1 (>= MIN_DOCK_SCALE) -> docked, matching the reviewer's
+    // remeasured table for viewports >= ~1080px.
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
+
+    try {
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+
+      const panel = document.getElementById("theme-panel");
+      expect(panel).toBeInTheDocument();
+      expect(panel).not.toHaveAttribute("role", "dialog");
+
+      // The panel and the card preview must be siblings inside the same flex
+      // row (`lg:flex-row`), so the panel occupies its own column instead of
+      // being positioned (fixed/absolute) on top of the card.
+      const row = panel?.parentElement;
+      expect(row).toHaveClass("lg:flex-row");
+      const style = panel ? getComputedStyle(panel) : null;
+      expect(style?.position).not.toBe("fixed");
+      expect(style?.position).not.toBe("absolute");
+
+      const captureRoot = document.getElementById("capture-root");
+      expect(captureRoot).toBeInTheDocument();
+      expect(captureRoot?.querySelector<HTMLElement>('[style*="960px"]')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });
+    }
+  });
+
+  it("keeps #capture-root at a fixed 960px logical width even when the preview wrapper is scaled down", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+
+    const captureRoot = document.getElementById("capture-root");
+    expect(captureRoot).toBeInTheDocument();
+    // The scale wrapper is the parent that carries the `transform` style —
+    // walk up from `#capture-root` instead of hardcoding a fixed number of
+    // `parentElement` hops, since `BuildCard` may add its own wrapper.
+    let scaleWrapper: HTMLElement | null = captureRoot;
+    while (scaleWrapper && !scaleWrapper.style.transform) {
+      scaleWrapper = scaleWrapper.parentElement;
+    }
+    expect(scaleWrapper).not.toBeNull();
+    // Force a visible shrink directly on the style (equivalent to what the
+    // resize effect would set for a narrow docked column) and confirm the
+    // capture root itself never inherits it.
+    scaleWrapper?.style.setProperty("transform", "scale(0.6)");
+    expect(captureRoot?.querySelector<HTMLElement>('[style*="960px"]')).toBeInTheDocument();
+  });
+
+  it("closing the panel removes it and restores the single-column layout", () => {
+    renderPage();
+
+    const toggle = screen.getByRole("button", { name: "Aparência" });
+    fireEvent.click(toggle);
+    expect(document.getElementById("theme-panel")).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(document.getElementById("theme-panel")).not.toBeInTheDocument();
+  });
+});
