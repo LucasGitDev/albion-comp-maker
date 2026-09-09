@@ -3,10 +3,10 @@ id: ACM-104
 title: >-
   Quality Gate: coverage, duplication, async-safety, audit, dead-code e
   diff-coverage
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-09 14:17'
-updated_date: '2026-09-09 14:54'
+updated_date: '2026-09-09 15:42'
 labels:
   - ci
   - quality

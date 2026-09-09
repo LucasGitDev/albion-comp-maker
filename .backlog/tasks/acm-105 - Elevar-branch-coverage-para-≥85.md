@@ -1,10 +1,10 @@
 ---
 id: ACM-105
 title: Elevar branch coverage para ≥85%
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-09 14:55'
-updated_date: '2026-09-09 14:55'
+updated_date: '2026-09-09 15:42'
 labels:
   - quality
   - testing
@@ -45,3 +45,9 @@ Verificar com: pnpm exec vitest run --coverage 2>&1 | grep -E 'All files|branche
 - [ ] #3 nenhum teste novo usa mock vazio sem comportamento real
 - [ ] #4 nenhum código de produção modificado — apenas arquivos de teste
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+PR opened: #83 (branch task/acm-105-coverage-85). Branch coverage raised from ~81% to 85.2% via test-only additions. Note: relative-time.ts line 28 is unreachable dead code (last DIVISIONS entry has amount=Infinity, so the loop always returns inside itself) — not tested, documented here per task instructions. make check passes (exit 0) on the branch.
+<!-- SECTION:NOTES:END -->

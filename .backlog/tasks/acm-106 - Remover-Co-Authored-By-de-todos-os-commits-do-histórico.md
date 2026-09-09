@@ -1,9 +1,10 @@
 ---
 id: ACM-106
 title: Remover Co-Authored-By de todos os commits do histórico
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-09 14:59'
+updated_date: '2026-09-09 16:02'
 labels: []
 dependencies: []
 priority: medium
