@@ -3,10 +3,10 @@ id: ACM-086
 title: >-
   Melhorar humanizeSpellName: ~8 nomes ficam com palavras compostas nao
   segmentadas
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-08 13:42'
-updated_date: '2026-09-09 03:25'
+updated_date: '2026-09-09 14:11'
 labels: []
 dependencies: []
 priority: low
@@ -41,3 +41,11 @@ Como sao apenas ~8 casos e um conjunto fechado, a solucao provavelmente e um dic
 - [ ] #3 Nenhuma regressao nos demais 18 casos de humanizeSpellName nem nos ramos exact/weapon-strip/tier da chain
 - [ ] #4 make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+PR opened: #74
+
+Review PR #74: LGTM. Diff escopo restrito a scripts/sync-ao-data.ts + .test.ts (55 linhas). Override HUMANIZE_OVERRIDES aplicado apos prefix-strip e antes do split generico, sem tocar nos ramos exact/weapon-strip/tier (esses vivem em resolveSpellLocalizedNames, humanizeSpellName so eh o fallback final). Os 8 casos do AC1 tem teste it.each cobrindo diretamente + 2 casos com prefixo PASSIVE_/ACTIVE_ para validar o keying pos-strip. Regressao coberta por describe dedicado com 6 casos que devem continuar no split generico (incl. edge case AE<=2 chars maiusculo). npx vitest run scripts/sync-ao-data.test.ts: 34/34 passed. tsc --noEmit: sem erros. Nenhum finding bloqueante.
+<!-- SECTION:NOTES:END -->
