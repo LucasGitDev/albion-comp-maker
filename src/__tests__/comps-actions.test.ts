@@ -94,6 +94,53 @@ describe("comp Server Actions (ACM-019)", () => {
     });
   });
 
+  describe("createCompAction (ACM-097)", () => {
+    it("returns { ok: true, compId } for a valid name, mirroring createComp", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createCompAction } = await import("@/actions/comps");
+
+      const result = await createCompAction({ name: "ZvZ Terça" });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.compId).toBeTruthy();
+      }
+    });
+
+    it("returns { ok: false } instead of throwing for an empty name (zod)", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createCompAction } = await import("@/actions/comps");
+
+      const result = await createCompAction({ name: "   " });
+
+      expect(result).toEqual({ ok: false, error: expect.any(String) });
+    });
+
+    it("returns { ok: false } instead of throwing when the write rate limit is exceeded", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createCompAction } = await import("@/actions/comps");
+      const { checkWriteRateLimit } = await import("@/lib/rate-limit");
+
+      // Exhaust the limiter directly rather than looping createCompAction
+      // calls, so this test only depends on the limiter's own threshold,
+      // not on how many comps createCompAction itself is allowed to make.
+      for (let i = 0; i < 1000; i++) {
+        try {
+          checkWriteRateLimit("user-a");
+        } catch {
+          break;
+        }
+      }
+
+      const result = await createCompAction({ name: "One Too Many" });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toMatch(/comps demais/);
+      }
+    });
+  });
+
   describe("ownership scoping (IDOR)", () => {
     it("user B cannot see user A's comp via listMyComps", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));

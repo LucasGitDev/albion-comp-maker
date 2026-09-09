@@ -22,6 +22,12 @@ export default async function CompsPage(): Promise<React.JSX.Element> {
     <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8 outline-none">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-foreground">Minhas comps</h1>
+        <Link
+          href="/comp/new"
+          className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
+        >
+          Nova comp
+        </Link>
       </div>
 
       {items.length === 0 ? (
@@ -30,6 +36,12 @@ export default async function CompsPage(): Promise<React.JSX.Element> {
           <p className="max-w-sm text-sm text-foreground/60">
             Crie sua primeira comp para começar.
           </p>
+          <Link
+            href="/comp/new"
+            className="mt-2 rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
+          >
+            Criar primeira comp
+          </Link>
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
