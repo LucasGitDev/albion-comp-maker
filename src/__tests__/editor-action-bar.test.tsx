@@ -38,6 +38,7 @@ function renderBar(overrides: Partial<React.ComponentProps<typeof EditorActionBa
         buildName="Bruiser de Frontline"
         filledCount={3}
         totalSlots={9}
+        hasReadyItem={true}
         captureNodeRef={ref}
         onSave={onSave}
         {...overrides}
@@ -57,19 +58,50 @@ describe("EditorActionBar (ACM-037 AC#2, AC#5, AC#6)", () => {
     vi.useRealTimers();
   });
 
-  it("disables Salvar with a reason when the build has no name/items", () => {
+  it("disables Salvar with a reason when the build has no name", () => {
     mockSession(true);
     render(
       <EditorActionBar
         buildName=""
         filledCount={0}
         totalSlots={9}
+        hasReadyItem={false}
         captureNodeRef={createRef()}
         onSave={vi.fn()}
       />
     );
     expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByText("Dê um nome e escolha ao menos 1 item")).toBeInTheDocument();
+    expect(screen.getByText("Dê um nome pra build")).toBeInTheDocument();
+  });
+
+  it("disables Salvar and Exportar with a zero-slots build (ACM-092 revised spec)", () => {
+    mockSession(true);
+    renderBar({ filledCount: 0, totalSlots: 9, hasReadyItem: false });
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Exportar PNG" })).toBeDisabled();
+    expect(screen.getByText("Equipe pelo menos um item com as habilidades preenchidas")).toBeInTheDocument();
+  });
+
+  it("disables Salvar and Exportar when only non-selectable items (cape/bag/mount/food/potion) are equipped", () => {
+    mockSession(true);
+    renderBar({ filledCount: 5, totalSlots: 9, hasReadyItem: false });
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Exportar PNG" })).toBeDisabled();
+  });
+
+  it("enables Salvar and Exportar once a mainhand weapon has its spells filled", async () => {
+    mockSession(true);
+    exportNodeToPngMock.mockResolvedValue("data:image/png;base64,AAAA");
+    const { onSave } = renderBar({ filledCount: 1, totalSlots: 9, hasReadyItem: true });
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "false");
+    expect(screen.getByRole("button", { name: "Exportar PNG" })).not.toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Build salva.")).toBeInTheDocument();
   });
 
   it("calls onSave when authenticated and shows the saved state", async () => {
@@ -121,7 +153,7 @@ describe("EditorActionBar (ACM-037 AC#2, AC#5, AC#6)", () => {
   it("hides the decorative slot counter on narrow screens so the status text isn't squeezed (390px review finding)", () => {
     mockSession(true);
     renderBar({ buildName: "", filledCount: 0, totalSlots: 9 });
-    const status = screen.getByText("Dê um nome e escolha ao menos 1 item");
+    const status = screen.getByText("Dê um nome pra build");
     expect(status.className).not.toMatch(/truncate/);
     expect(screen.getByTestId("slot-count").className).toMatch(/hidden/);
   });

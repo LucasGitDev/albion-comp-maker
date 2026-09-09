@@ -8,6 +8,16 @@ export type EditorActionBarProps = {
   filledCount: number;
   totalSlots: number;
   /**
+   * ACM-092 (revised spec): Salvar and Exportar PNG both require at least one
+   * equipped item that (a) has ≥1 selectable spell slot AND (b) has every one
+   * of those selectable slots filled. Cape/bag/mount/food/potion never expose
+   * a selectable slot post-ACM-090, so equipping only those never satisfies
+   * this — the caller (the page owning `spellCandidatesBySlot`, the same
+   * per-item selectable-group source `SlotCard` already reads) computes this,
+   * `EditorActionBar` only gates on the resulting boolean.
+   */
+  hasReadyItem: boolean;
+  /**
    * Sibling of the (future) preview wrapper — this component only *reads*
    * `#capture-root` through the ref, it never renders inside it (decision-010,
    * ACM-029). Resolution mirrors `ExportBar.resolveCaptureNode`.
@@ -66,6 +76,7 @@ export function EditorActionBar({
   buildName,
   filledCount,
   totalSlots,
+  hasReadyItem,
   captureNodeRef,
   onSave,
   themePanelOpen,
@@ -84,7 +95,15 @@ export function EditorActionBar({
     []
   );
 
-  const canSave = buildName.trim() !== "" && filledCount > 0;
+  /**
+   * ACM-092 (revised spec): the "salvar/exportar funciona com qualquer
+   * quantidade de slots, inclusive zero" reading was revoked. A build must
+   * have at least one item equipped with its selectable spells filled before
+   * either action is available — see `hasReadyItem` doc comment above for
+   * exactly what that means per-item. `filledCount` still feeds the
+   * "N/total slots" status readout below, it does not gate the buttons.
+   */
+  const canSave = buildName.trim() !== "" && hasReadyItem;
 
   const scheduleSavedReset = useCallback(() => {
     if (resetTimer.current !== null) clearTimeout(resetTimer.current);
@@ -112,6 +131,7 @@ export function EditorActionBar({
   }, [canSave, onSave, saveStatus.kind, scheduleSavedReset]);
 
   const handleExportClick = useCallback(async () => {
+    if (!hasReadyItem) return;
     const node = resolveCaptureNode(captureNodeRef.current);
     if (node === null) {
       setExportStatus({ kind: "error", message: "Card não está pronto para exportar." });
@@ -128,12 +148,12 @@ export function EditorActionBar({
         message: error instanceof Error ? error.message : "Falha ao exportar PNG.",
       });
     }
-  }, [buildName, captureNodeRef]);
+  }, [buildName, captureNodeRef, hasReadyItem]);
 
   const saving = saveStatus.kind === "saving";
   const exporting = exportStatus.kind === "busy";
   const saveDisabled = !canSave || saving;
-  const exportDisabled = saving || exporting;
+  const exportDisabled = !hasReadyItem || saving || exporting;
 
   let statusMessage: string;
   let statusIsError = false;
@@ -147,8 +167,10 @@ export function EditorActionBar({
     statusMessage = "Salvando…";
   } else if (saveStatus.kind === "saved") {
     statusMessage = "Build salva.";
-  } else if (!canSave) {
-    statusMessage = "Dê um nome e escolha ao menos 1 item";
+  } else if (buildName.trim() === "") {
+    statusMessage = "Dê um nome pra build";
+  } else if (!hasReadyItem) {
+    statusMessage = "Equipe pelo menos um item com as habilidades preenchidas";
   } else {
     statusMessage = saveStatus.dirty ? "não salvo" : "";
   }

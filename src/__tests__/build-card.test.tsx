@@ -126,19 +126,20 @@ describe("BuildCard", () => {
     expect(root.querySelectorAll("button, input, select, textarea, a[href]").length).toBe(0);
   });
 
-  it("does not render empty equipment slots in the exported card", () => {
+  it("renders empty equipment slots as placeholders instead of dropping them (ACM-092 AC#3)", () => {
     const state = buildWithMainhand();
     const { container } = render(<BuildCard state={state} />);
-    // Only mainhand + head were populated; offhand/shoes/etc. must not appear as tiles.
-    expect(container.querySelector('[data-slot="offhand"]')).toBeNull();
-    expect(container.querySelector('[data-slot="shoes"]')).toBeNull();
-    expect(container.querySelector('[data-slot="head"]')).toBeTruthy();
+    // Only mainhand + head were populated; the rest still render, as placeholders.
+    expect(container.querySelector('[data-slot="offhand"][data-slot-state="empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-slot="shoes"][data-slot-state="empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-slot="head"][data-slot-state="filled"]')).toBeTruthy();
   });
 
-  it("renders the empty-build placeholder copy when there is no mainhand", () => {
+  it("renders the full equipment placeholder grid, never an editor-only hint, when there is no mainhand", () => {
     const state = createEmptyBuild();
     const { container } = render(<BuildCard state={state} />);
-    expect(container.textContent).toContain("Escolha a mão principal para ver o card");
+    expect(container.querySelector('[data-slot="mainhand"][data-slot-state="empty"]')).toBeTruthy();
+    expect(container.textContent).not.toContain("Escolha a mão principal");
   });
 
   it("renders swaps when present", () => {
@@ -160,6 +161,53 @@ describe("BuildCard", () => {
     const root = container.querySelector("#capture-root");
     expect(root?.getAttribute("data-layout")).toBe("grid");
     expect(container.textContent).toContain("Bruiser de Frontline");
+  });
+});
+
+/**
+ * ACM-092 (revised spec): a zero-slots build never reaches the exported card
+ * at all anymore — `EditorActionBar` gates Save/Export until at least one
+ * item with its selectable spells filled is equipped. This block still
+ * exercises the empty-build render path directly (bypassing the gate,
+ * exactly like a future caller could) because `BuildCard` itself must never
+ * depend on the gate to stay instruction-free: it is the single source for
+ * both the editor preview and the exported PNG, so any text it renders ships
+ * inside the artifact.
+ *
+ * The previous version of this guard asserted against a hardcoded list of
+ * literal strings that were already known to have leaked ("Escolha a mão
+ * principal", etc). That is a false sense of safety — it passed even after a
+ * *new* editor-style instruction ("Nenhum item equipado ainda — comece pela
+ * mão principal.") was introduced under the same review round, because the
+ * new sentence didn't match any of the old snippets. This rewrite asserts
+ * the actual intent instead: the exported card must never contain
+ * imperative, second-person-directed copy (the grammatical signature of an
+ * editor CTA/hint) anywhere in its rendered text, regardless of wording.
+ */
+describe("BuildCard zero-slots render never leaks an editor instruction (ACM-092)", () => {
+  const layouts = ["vertical", "grid", "compressed", "list"] as const;
+
+  /**
+   * Portuguese imperative verbs used across this codebase's editor CTAs/hints
+   * (SlotCard, SlotPickerPopover, EditorActionBar, and the two prior leaks
+   * fixed under ACM-092: "Escolha..." and "...comece pela mão principal.").
+   * Matches the verb regardless of what follows it, so a differently-worded
+   * future instruction built from the same imperative mood still trips it.
+   */
+  const IMPERATIVE_INSTRUCTION_PATTERN =
+    /\b(escolha|comece|monte|selecione|clique|arraste|adicione|preencha|equipe|configure)\b/i;
+
+  it.each(layouts)("%s: renders no imperative instructional copy for a zero-slots build", (layout) => {
+    const state = createEmptyBuild();
+    const { container } = render(<BuildCard state={state} layout={layout} />);
+    expect(container.textContent ?? "").not.toMatch(IMPERATIVE_INSTRUCTION_PATTERN);
+  });
+
+  it.each(layouts)("%s: renders the full 10-slot placeholder grid for a zero-slots build", (layout) => {
+    const state = createEmptyBuild();
+    const { container } = render(<BuildCard state={state} layout={layout} />);
+    const emptySlotCells = container.querySelectorAll('[data-slot-state="empty"]');
+    expect(emptySlotCells.length).toBeGreaterThan(0);
   });
 });
 
