@@ -72,7 +72,7 @@ export default async function CompDetailPage({ params }: PageProps): Promise<Rea
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 p-8 outline-none">
       <h1 className="text-xl font-semibold text-foreground">{name}</h1>
-      <CompBuildsManager compId={id} initialEntries={entries} myBuilds={buildOptions} />
+      <CompBuildsManager compId={id} compName={name} initialEntries={entries} myBuilds={buildOptions} />
       <div className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-foreground">Compartilhar comp</h2>
         <CompShareStatus compId={id} slug={slug} publicOrigin={publicOrigin} initialState={state} />
