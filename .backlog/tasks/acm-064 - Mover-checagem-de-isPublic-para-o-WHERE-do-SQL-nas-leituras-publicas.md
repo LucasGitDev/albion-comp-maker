@@ -1,11 +1,13 @@
 ---
 id: ACM-064
 title: Mover checagem de isPublic para o WHERE do SQL nas leituras publicas
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 20:30'
+updated_date: '2026-09-09 03:10'
 labels: []
 dependencies: []
+priority: high
 ordinal: 64000
 ---
 
