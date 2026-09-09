@@ -3,9 +3,10 @@ id: ACM-096
 title: >-
   Home autenticada lista comps reais (listMyComps) em vez de estado vazio
   hardcoded
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-09 02:41'
+updated_date: '2026-09-09 03:06'
 labels: []
 milestone: m-6
 dependencies: []

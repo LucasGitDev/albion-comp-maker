@@ -1,9 +1,10 @@
 ---
 id: ACM-095
 title: 'Bug: painel Aparência sobrepõe o build card ao abrir'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-09 02:31'
+updated_date: '2026-09-09 03:06'
 labels: []
 milestone: m-3
 dependencies: []
