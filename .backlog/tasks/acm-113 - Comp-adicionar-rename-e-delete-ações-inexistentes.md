@@ -1,9 +1,10 @@
 ---
 id: ACM-113
 title: 'Comp: adicionar rename e delete (ações inexistentes)'
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-09-09 17:38'
+updated_date: '2026-09-09 18:25'
 labels:
   - comp
   - crud
@@ -28,3 +29,9 @@ Não existe server action updateComp (rename) nem deleteComp. Uma vez criada, co
 - [ ] #5 Botão Excluir em /comps (lista) disponível por linha
 - [ ] #6 make check passa
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+PR opened: #88 (https://github.com/LucasGitDev/albion-comp-maker/pull/88). updateComp/deleteComp server actions already existed in src/actions/comps.ts (requireSession + ownership + cascade); this task added the missing UI: CompHeader (inline rename + delete on /comps/[id]), DeleteCompDialog (confirmation), CompsListManager (per-row delete on /comps list).
+<!-- SECTION:NOTES:END -->

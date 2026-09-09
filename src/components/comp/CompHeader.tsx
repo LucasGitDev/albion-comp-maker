@@ -97,14 +97,20 @@ export function CompHeader({ compId, initialName }: CompHeaderProps): React.JSX.
           className="w-full max-w-md rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xl font-semibold text-foreground outline-none focus-visible:border-[var(--color-accent)]"
         />
       ) : (
-        <button
-          type="button"
+        <h1
+          tabIndex={0}
           onClick={startEditing}
-          className="rounded-sm text-left text-xl font-semibold text-foreground transition-colors hover:text-[var(--color-accent)] focus-visible:transition-none"
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              startEditing();
+            }
+          }}
+          className="cursor-pointer rounded-sm text-xl font-semibold text-foreground transition-colors hover:text-[var(--color-accent)] focus-visible:transition-none"
           title="Clique para renomear"
         >
           {name}
-        </button>
+        </h1>
       )}
 
       <button
