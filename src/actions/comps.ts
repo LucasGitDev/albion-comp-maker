@@ -167,6 +167,48 @@ export async function listCompBuilds(compId: string): Promise<CompBuildRow[]> {
   return db.select().from(compBuilds).where(eq(compBuilds.compId, compId)).orderBy(compBuilds.position);
 }
 
+/** Minimal build info needed to render a comp_builds row (ACM-098) — never the full `content`/`themeJson` blob. */
+export type CompBuildRefBuild = {
+  id: string;
+  name: string;
+  role: string | null;
+  slug: string;
+  isPublic: boolean;
+};
+
+export type CompBuildWithBuild = CompBuildRow & { build: CompBuildRefBuild };
+
+/**
+ * Same rows as `listCompBuilds`, joined with the minimal display fields of
+ * the referenced build (ACM-098's management UI needs a name/role per
+ * entry; `listCompBuilds` alone only carries `buildId`). Deliberately
+ * selects only `id`/`name`/`role`/`slug`/`isPublic` from `builds` — never
+ * `content`/`themeJson`, which this list view has no reason to load.
+ */
+export async function listCompBuildsDetailed(compId: string): Promise<CompBuildWithBuild[]> {
+  const session = await requireSession();
+  await loadOwnedComp(session.user.id, compId);
+
+  const db = getDb();
+  const rows = await db
+    .select({
+      compBuild: compBuilds,
+      build: {
+        id: builds.id,
+        name: builds.name,
+        role: builds.role,
+        slug: builds.slug,
+        isPublic: builds.isPublic,
+      },
+    })
+    .from(compBuilds)
+    .innerJoin(builds, eq(builds.id, compBuilds.buildId))
+    .where(eq(compBuilds.compId, compId))
+    .orderBy(compBuilds.position);
+
+  return rows.map((row) => ({ ...row.compBuild, build: row.build }));
+}
+
 export type CreateCompInput = {
   name: string;
   contentType?: string | null;
