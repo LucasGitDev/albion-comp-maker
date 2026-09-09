@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
 const { mockAddBuildToComp, mockRemoveBuildFromComp, mockReorderCompBuilds, mockUpdateCompBuild } = vi.hoisted(() => ({
   mockAddBuildToComp: vi.fn(),
   mockRemoveBuildFromComp: vi.fn(),
