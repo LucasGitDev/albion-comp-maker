@@ -1,10 +1,10 @@
 ---
 id: ACM-093
 title: 'i18n: toggle de idioma EN/PT-BR para nomes de itens e UI'
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-09 02:30'
+updated_date: '2026-09-09 02:43'
 labels: []
 milestone: m-7
 dependencies: []
@@ -236,4 +236,26 @@ src/__tests__/**
    ja chegam em PT-BR no HTML.
 4. Selecionar um item cujo spell so tem EN-US (ex. `PASSIVE_AA_STACK`) em PT:
    o nome do spell aparece em EN, nunca o uniquename cru (AC #4).
+
+Implemented per plano (10 passos) e decision-026. PR #64: https://github.com/LucasGitDev/albion-comp-maker/pull/64
+
+Resumo:
+- src/lib/i18n/locales.ts: SUPPORTED_LOCALES/Locale/normalizeLocale/LOCALE_COOKIE, dedupe de SEARCHED_LOCALES (item-index.ts, highlight.ts)
+- src/lib/localized-name.ts: resolveLocalizedName() com cadeia locale -> en-US -> undefined
+- src/lib/i18n/server-locale.ts: getRequestLocale() (server-only, cookies())
+- src/components/i18n/LocaleProvider.tsx + LocaleToggle.tsx: contexto seedado pelo servidor, setLocale grava cookie + router.refresh()
+- src/lib/i18n/messages.ts: dicionario minimo (nav, conta, skip link, toggle) — resto do app fica PT-BR hardcoded, fora de escopo
+- Call-sites atualizados: build-card-lookups.ts, spell-groups.ts, item-result-list.tsx, ItemPicker.tsx (locale opcional sobrepondo o context via useOptionalLocale), build/new/page.tsx (useMemo com locale nas deps — bug sinalizado pelo architect), build/[slug] e comp/[slug] pages
+- Header.tsx: alteracao cirurgica (useLocale, LocaleToggle, strings via t()) — sem tocar em NAV_LINKS alem de tornar dinamico
+
+make check: verde (lint 0 erros/2 warnings pre-existentes de <img>, tsc limpo, build ok, 655 testes passando).
+
+Verificacao manual executada (pnpm dev, porta 3001 pois 3000 estava ocupada por outro worktree):
+1. curl sem cookie -> lang=\"en-US\", \"My comps\"/\"Skip to content\" (chrome em EN, corpo do editor em PT-BR conforme escopo)
+2. curl com Cookie: acm_locale=pt-BR -> lang=\"pt-BR\", \"Minhas comps\"/\"Nova build\"
+3. Teste automatizado public-pages-locale.test.tsx prova que o cookie pt-BR resolve o nome do item no HTML do servidor (AC#2 caminho SSR)
+4. Confirmado no ao-data.json real: spell PASSIVE_AA_STACK so tem EN-US; resolveLocalizedName cai para EN-US em vez do uniquename cru (AC#4), coberto por teste unitario e pelo teste de integracao build-card-lookups.test.ts
+
+Nao tocado: editor body, SLOT_LABELS, ThemePanel, metadata (fora de escopo, decision-026).
+Conflito ACM-066 (Header.tsx): alteracao cirurgica, sem tocar em NAV_LINKS/rotas alem de renomear para navLinks e tornar dinamico com t().
 <!-- SECTION:NOTES:END -->

@@ -1,10 +1,10 @@
 ---
 id: ACM-066
 title: Adicionar comps.is_public e UX de porque o link publico da comp esta morto
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 20:32'
-updated_date: '2026-09-09 02:27'
+updated_date: '2026-09-09 02:44'
 labels: []
 dependencies: []
 ordinal: 66000
@@ -243,4 +243,63 @@ src/__tests__/server-only-boundary.test.ts
 
 <!-- SECTION:NOTES:BEGIN -->
 Plano e decisao registrados por architect (2026-09-08). decision-025 define comps.is_public como AND-gate sobre a regra derivada de decision-015. Ver campo Implementation Plan.
+
+Auditoria de seguranca (security-reviewer, read-only) — SHA auditado: aebae86 (origin/task/66-comp-is-public, HEAD no momento da auditoria).
+
+Veredito: LGTM (nao bloqueia merge). Nenhum finding CRITICAL ou HIGH.
+
+1. Nao-ampliacao (src/lib/public-content.ts): getPublicCompBySlug exige comp.isPublic AND every referenced build.isPublic AND parseBuildContent ok para cada build, AND rows.length>0. Nao ha caminho onde is_public=1 sozinho sirva conteudo privado. Confirmado correto.
+
+2. Oraculo de existencia (src/app/comp/[slug]/page.tsx): getPublicCompBySlug retorna null uniformemente para slug inexistente, comp privada, comp sem builds, e comp com qualquer build privada/invalida. Pagina so tem um notFound(). Sem oraculo.
+
+3. Authz/IDOR (src/actions/comps.ts): toda leitura (getComp, listMyComps, listMyCompsWithStatus, getCompPublishState) chama requireSession() e filtra por userId antes de qualquer leitura de detalhe. loadOwnedComp lanca o mesmo CompNotFoundError tanto para id inexistente quanto para id de outro usuario (sem distincao). addBuildToComp verifica ownership do build referenciado (own OR public) antes do insert.
+
+4. toggleCompPublic: chama loadOwnedComp antes do UPDATE, e o proprio UPDATE tambem filtra por userId (defesa contra TOCTOU). CSRF: protegido pelo mecanismo padrao de Server Actions do Next (POST com Origin check do framework); nao aceita userId do caller.
+
+5. Blocker list (src/lib/comp-publish-status.ts): reason "private-foreign" revela buildName + buildId de build de outro usuario ao dono da comp. Risco residual BAIXO/informativo: addBuildToComp so permite adicionar builds publicas ou proprias, entao o dono ja conhecia esse buildName no momento em que adicionou; o unico dado "novo" e o nome atual (caso o dono estrangeiro tenha renomeado apos tornar a build privada). Nao expoe content/theme_json. Recomendacao nao bloqueante: considerar omitir buildName quando reason=private-foreign, exibindo so a posicao, para minimizar exposicao ainda mais.
+
+6. src/proxy.ts: PUBLIC_READ_PATHS regex (/^\/(build|comp)\/[^/]+\/?$/) NAO casa com /comps ou /comps/:id (plural), entao essas rotas caem no branch autenticado (authProxy) via matcher. Confirmado que /comps nao esta exposto anonimamente. (Nota: middleware e so UX segundo comentario do proprio codigo; as actions sao a boundary real, o que foi confirmado no item 3.)
+
+7. drizzle/0004_add_comp_is_public.sql: ALTER TABLE ADD COLUMN com DEFAULT constante — sem DROP TABLE/rebuild, sem acionar caminho FK-off. Backfill so marca is_public=1 para comps que ja tinham >=1 build e nenhum build privado (regra derivada de decision-015) — nao amplia reachability pre-existente.
+
+Nenhum finding bloqueante. Um item informativo (LOW) no ponto 5 acima, nao bloqueia merge.
+
+Review de código (não-segurança) do PR #63 — SHA auditado: aebae86 (origin/task/66-comp-is-public, confirmado como HEAD real via git fetch, CI green em statusCheckRollup do PR).
+
+Achados:
+
+1. [INFO/OK] AC#4 migração: src/__tests__/db-migrate.test.ts cobre exatamente os 4 casos do plano (all-public, mista, sem builds, de outro usuário) contra schema 0003 não-vazio, aplica 0004, assere zero perda de linhas (pré/pós COUNT), foreign_key_check vazio, backfill correto por comp (comp-all-public=1, comp-mixed=0, comp-empty=0, comp-other-user=1) e guard textual contra DROP TABLE/__new_comps (com strip de comentários, não dá falso-positivo no próprio comentário explicativo). Nenhuma fraqueza encontrada — teste testa comportamento, não implementação.
+
+2. [INFO/OK] Backfill SQL (0004): EXISTS build AND NOT EXISTS build privada — lido de perto, semântica bate exatamente com decision-025 e com o comportamento asserido pelo teste. Sem off-by-one.
+
+3. [INFO/OK] AC#2 UX: CompShareStatus.tsx renderiza os 3 estados de blocker (private-own com botão "Tornar pública", private-foreign sem botão, invalid-content com texto explicativo) e esconde o link+botão copiar quando isPublic && !isReachable, substituindo por painel de alerta. Confere com decision-025 e com o plano.
+
+4. [INFO/OK] src/types/comp-publish-status.ts fora de `touches`: justificativa procede. server-only-boundary.test.ts é um scanner genérico de grafo de imports (não precisou ser editado — diff vazio nesse arquivo) que already cobriria a violação se CompShareStatus.tsx importasse comp-publish-status.ts diretamente (que tem `import "server-only"`). Extrair os tipos para um módulo plano é o padrão correto e mínimo necessário.
+
+5. [INFO/OK] Header.tsx: diff é exatamente 1 linha adicionada (novo item em NAV_LINKS apontando /comps). Nada mais tocado — confirmado via `git diff origin/main...origin/task/66-comp-is-public -- src/components/layout/Header.tsx`. Conflito com ACM-093 deve ser trivial (single-line insert).
+
+6. [LOW] src/__tests__/auth-middleware.test.ts foi modificado (não está em `touches`) para cobrir o novo matcher `/comps/:path*` caindo no ramo autenticado. É a extensão natural/esperada de tocar `src/proxy.ts` (que está em touches) e não há teste dedicado a proxy.ts fora desse arquivo — considero desvio de escopo aceitável e não bloqueante, mas o implementer deveria ter declarado essa adição na nota de desvio junto com a de comp-publish-status.ts, não deixar implícita.
+
+7. [LOW] src/app/comps/[id]/page.tsx chama getComp(id) e getCompPublishState(id) em paralelo (Promise.all), cada uma rodando seu próprio requireSession()+loadOwnedComp — 2x round-trips de auth/ownership redundantes por render. Não é bug (ambas as chamadas são owner-scoped e consistentes), é só uma duplicação de trabalho; dívida técnica menor, não bloqueia.
+
+Não avaliei: aspectos de segurança (não-ampliação, oráculo, IDOR) — delegado ao security-reviewer em paralelo, conforme instrução.
+
+Veredito: LGTM (nenhum finding CRITICAL ou HIGH). Achados 6 e 7 são LOW, registrados como dívida, não bloqueiam merge.
+
+ORCHESTRATOR - fechamento.
+
+Duas revisoes independentes, ambas com SHA FIXADO em aebae86 (pratica adotada depois do falso positivo da ACM-092):
+- security-reviewer: LGTM, zero CRITICAL/HIGH/MEDIUM. Confirmou nao-ampliacao (getPublicCompBySlug exige isPublic AND todas as builds publicas AND conteudo valido AND >=1 build), nao-oraculo (notFound() unico; slug inexistente, comp privada, build privada e conteudo invalido colapsam no mesmo null), e authz (loadOwnedComp lanca o MESMO CompNotFoundError para inexistente e para comp de outro dono; toggleCompPublic reforca userId no WHERE do UPDATE como defesa TOCTOU).
+- reviewer: LGTM, zero CRITICAL/HIGH. Teste de migracao cobre os 4 casos exigidos pelo AC#4 contra schema 0003 nao-vazio com pre/pos COUNT, foreign_key_check vazio e guard anti-DROP TABLE (com strip de comentarios evitando falso-positivo no proprio comentario explicativo).
+
+Verificacao independente minha (nao por relato de agent): migracao e ALTER TABLE ADD COLUMN com default constante, sem rebuild; backfill EXISTS build AND NOT EXISTS build privada; Header.tsx alterado em exatamente 1 linha.
+
+MERGE: PR #63 mergeado (commit 4800e47). make check verde na main pos-merge.
+
+LOWs NAO resolvidos, promovidos a follow-up em vez de travar o merge:
+1. private-foreign expoe buildName/buildId de build de outro usuario ao dono da comp. Mitigado na pratica (addBuildToComp so aceita build publica ou propria, entao o dono ja conhecia o nome ao anexar); dado novo possivel e so um rename posterior. Nao expoe content nem theme_json.
+2. /comps/[id] roda requireSession()+loadOwnedComp duas vezes (getComp + getCompPublishState) — divida tecnica, nao bug.
+3. auth-middleware.test.ts foi tocado fora da lista touches sem nota de desvio (extensao natural de tocar proxy.ts, mas deveria ter sido declarada).
+
+Desvio aceito e justificado: src/types/comp-publish-status.ts criado fora do touches original porque server-only-boundary.test.ts bloqueia Client Component de importar ate 'import type' de modulo server-only. Justificativa conferida pelo reviewer contra o proprio teste de fronteira.
 <!-- SECTION:NOTES:END -->
