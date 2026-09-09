@@ -237,6 +237,33 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     expect(mockRouterPush).toHaveBeenCalledWith("/build/b1/edit");
   });
 
+  it("forwards comp/compName query params on redirect so the breadcrumb's back-to-comp link survives (review fix)", async () => {
+    window.history.pushState({}, "", "/build/new?comp=c1&compName=Frontline");
+    mockSession(true);
+    mockSaveBuild.mockResolvedValue({ id: "b1" });
+    renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setName("Bruiser de Frontline");
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+      useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+      useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockRouterPush).toHaveBeenCalledWith("/build/b1/edit?comp=c1&compName=Frontline")
+    );
+
+    window.history.pushState({}, "", "/build/new");
+  });
+
   it("surfaces the real saveBuild failure instead of always reporting success", async () => {
     mockSession(true);
     mockSaveBuild.mockRejectedValue(new Error("boom"));

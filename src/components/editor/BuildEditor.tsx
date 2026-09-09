@@ -417,14 +417,16 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
     // ACM-112: redirect to the newly created build's edit route so a second
     // click on Save (or any re-save) hits the `updateBuild` branch above
     // instead of `saveBuild` again, which would otherwise create a duplicate
-    // row silently.
+    // row silently. Forward the current search params (`comp`/`compName`,
+    // read in the lazy `compTrail` initializer above) so the "back to comp"
+    // breadcrumb link survives the redirect.
     const row = await saveBuild({
       name: build.name,
       role: build.role.trim() === "" ? null : build.role,
       content: JSON.stringify(build),
       theme: JSON.stringify(theme),
     });
-    router.push(`/build/${row.id}/edit`);
+    router.push(`/build/${row.id}/edit${window.location.search}`);
   }, [build, theme, props, router]);
 
   return (
