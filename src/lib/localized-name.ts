@@ -1,3 +1,5 @@
+import { FALLBACK_NAME_LOCALE, type Locale } from "@/lib/i18n/locales";
+
 /**
  * Case-insensitive lookup into a `localizedNames`-shaped record.
  *
@@ -23,4 +25,24 @@ export function pickLocalizedName(
     if (key.toLowerCase() === target) return names[key];
   }
   return undefined;
+}
+
+/**
+ * Centralized fallback chain (ACM-093 / decision-026): requested locale ->
+ * `FALLBACK_NAME_LOCALE` (always `"en-US"`, independent of the UI's
+ * `DEFAULT_LOCALE`) -> `undefined` (never the uniquename — callers own that
+ * last step, since a spell's "no name at all" case and an item's are
+ * handled slightly differently in a couple of call sites).
+ *
+ * Real gaps exist in the catalogue (e.g. the spell `PASSIVE_AA_STACK` only
+ * has an `EN-US` name), so this fallback is load-bearing, not defensive.
+ */
+export function resolveLocalizedName(
+  names: Record<string, string> | undefined,
+  locale: Locale
+): string | undefined {
+  const direct = pickLocalizedName(names, locale);
+  if (direct !== undefined) return direct;
+  if (locale === FALLBACK_NAME_LOCALE) return undefined;
+  return pickLocalizedName(names, FALLBACK_NAME_LOCALE);
 }

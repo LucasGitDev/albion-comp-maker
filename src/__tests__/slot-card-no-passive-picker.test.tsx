@@ -56,7 +56,7 @@ describe("SlotCard passive exclusion for non-selectable categories (ACM-090)", (
         <SlotCard
           slot={slot}
           item={equipped({})}
-          spellCandidatesByGroup={groupSpellsForItem(item, "EN-US")}
+          spellCandidatesByGroup={groupSpellsForItem(item, "en-US")}
           onRequestItemPick={vi.fn()}
           onSpellChange={vi.fn()}
         />
@@ -76,7 +76,7 @@ describe("SlotCard passive exclusion for non-selectable categories (ACM-090)", (
       <SlotCard
         slot="armor"
         item={equipped({ itemId: "T4_ARMOR_PLATE_SET3" })}
-        spellCandidatesByGroup={groupSpellsForItem(item, "EN-US")}
+        spellCandidatesByGroup={groupSpellsForItem(item, "en-US")}
         onRequestItemPick={vi.fn()}
         onSpellChange={vi.fn()}
       />
@@ -92,7 +92,7 @@ describe("SlotCard passive exclusion for non-selectable categories (ACM-090)", (
       <SlotCard
         slot="cape"
         item={equipped({})}
-        spellCandidatesByGroup={groupSpellsForItem(item, "EN-US")}
+        spellCandidatesByGroup={groupSpellsForItem(item, "en-US")}
         onRequestItemPick={vi.fn()}
         onSpellChange={onSpellChange}
       />

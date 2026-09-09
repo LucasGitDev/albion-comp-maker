@@ -1,6 +1,7 @@
 import type { AOItem, AOItemSpell, Slot } from "@/data/ao-data";
 import type { SpellGroup } from "@/types/build";
-import { pickLocalizedName } from "@/lib/localized-name";
+import { resolveLocalizedName } from "@/lib/localized-name";
+import type { Locale } from "@/lib/i18n/locales";
 
 /** Q/W/E map to an item's own `slotGroup` ("1"/"2"/"3"); passives/toggles collect into a single group regardless of slotGroup. */
 const ACTIVE_SLOT_GROUP_TO_SPELL_GROUP: Record<string, SpellGroup> = {
@@ -32,7 +33,7 @@ export type SpellCandidate = {
  */
 export function groupItemSpells(
   spells: readonly AOItemSpell[],
-  locale: string
+  locale: Locale
 ): Partial<Record<SpellGroup, SpellCandidate[]>> {
   const groups: Partial<Record<SpellGroup, SpellCandidate[]>> = {};
 
@@ -52,7 +53,7 @@ export function groupItemSpells(
 
     const candidate: SpellCandidate = {
       uniquename: spell.uniquename,
-      name: pickLocalizedName(spell.localizedNames, locale) ?? spell.uniquename,
+      name: resolveLocalizedName(spell.localizedNames, locale) ?? spell.uniquename,
     };
     (groups[group] ??= []).push(candidate);
   }
@@ -93,7 +94,7 @@ export const NON_SELECTABLE_PASSIVE_SLOTS: ReadonlySet<Slot> = new Set([
 /** Convenience wrapper reading straight off an `AOItem`, applying the ACM-090 exclusion for its slot. */
 export function groupSpellsForItem(
   item: Pick<AOItem, "spells" | "slot">,
-  locale: string
+  locale: Locale
 ): Partial<Record<SpellGroup, SpellCandidate[]>> {
   const groups = groupItemSpells(item.spells, locale);
   if (!NON_SELECTABLE_PASSIVE_SLOTS.has(item.slot)) return groups;

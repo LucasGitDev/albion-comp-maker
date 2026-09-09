@@ -15,6 +15,12 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
 import Home from "@/app/page";
 import BuildsPage from "@/app/builds/page";
 import NewBuildPage from "@/app/(editor)/build/new/page";
+import { LocaleProvider } from "@/components/i18n/LocaleProvider";
+
+vi.mock("next/navigation", async () => {
+  const actual = await vi.importActual<typeof import("next/navigation")>("next/navigation");
+  return { ...actual, useRouter: vi.fn(() => ({ refresh: vi.fn() })) };
+});
 
 /**
  * The global skip link in `src/app/layout.tsx` always points at
@@ -31,7 +37,11 @@ describe("global skip link target (ACM-037 review fix)", () => {
   });
 
   it("renders a focusable #main-content landmark on /build/new", () => {
-    render(<NewBuildPage />);
+    render(
+    <LocaleProvider initialLocale="pt-BR">
+      <NewBuildPage />
+    </LocaleProvider>
+  );
     const main = document.getElementById("main-content");
     expect(main).toBeInTheDocument();
     expect(main?.tagName).toBe("MAIN");
@@ -47,7 +57,11 @@ describe("global skip link target (ACM-037 review fix)", () => {
   });
 
   it("does not steal initial focus away from the skip link on /build/new", () => {
-    render(<NewBuildPage />);
+    render(
+    <LocaleProvider initialLocale="pt-BR">
+      <NewBuildPage />
+    </LocaleProvider>
+  );
     expect(screen.queryByLabelText("Nome do build")).not.toHaveFocus();
   });
 });
