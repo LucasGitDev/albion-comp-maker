@@ -1,13 +1,14 @@
 "use server";
 
 import { and, eq, max, sql, sum } from "drizzle-orm";
+import { z } from "zod";
 
 import { requireSession } from "@/auth/session";
 import { getDb } from "@/db/client";
 import { builds, compBuilds, comps } from "@/db/schema";
 import { getCompPublishStatus } from "@/lib/comp-publish-status";
 import { compBuildLabelSchema, compNameSchema } from "@/lib/comp-schema";
-import { checkWriteRateLimit } from "@/lib/rate-limit";
+import { checkWriteRateLimit, RateLimitError } from "@/lib/rate-limit";
 import type { CompPublishState } from "@/types/comp-publish-status";
 import { generateSlug } from "@/lib/slug";
 import { CompBuildReorderInvalidError, CompBuildRefNotFoundError, CompNotFoundError } from "./comp-errors";
@@ -190,6 +191,41 @@ export async function createComp(input: CreateCompInput): Promise<CompRow> {
     .returning();
 
   return row;
+}
+
+export type CreateCompActionResult = { ok: true; compId: string } | { ok: false; error: string };
+
+/**
+ * Serializable wrapper around `createComp` for the `/comp/new` form
+ * (ACM-097). `createComp` throws on every failure path (`RateLimitError`,
+ * `compNameSchema` via `z.ZodError`), which is fine for existing callers
+ * that only ever call it from other Server Actions/tests, but a Client
+ * Component driving a form needs a plain, serializable value to render an
+ * inline error under the field instead of an unhandled rejection.
+ *
+ * Returns only `{ compId }`, not the full `CompRow` — the caller
+ * (`NewCompForm`) only needs the id to navigate, and there is no reason to
+ * serialize `Date`/other fields the UI never reads across the Server
+ * Action boundary.
+ *
+ * Deliberately does NOT call `redirect()` here (decision-027): `redirect()`
+ * works by throwing `NEXT_REDIRECT`, which the `catch` below would swallow
+ * as a generic failure. Navigation on success is done client-side by the
+ * caller via `router.push` instead.
+ */
+export async function createCompAction(input: { name: string }): Promise<CreateCompActionResult> {
+  try {
+    const row = await createComp(input);
+    return { ok: true, compId: row.id };
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return { ok: false, error: "Você criou comps demais em pouco tempo. Tente de novo em instantes." };
+    }
+    if (error instanceof z.ZodError) {
+      return { ok: false, error: error.issues[0]?.message ?? "Nome inválido." };
+    }
+    return { ok: false, error: "Não foi possível criar a comp." };
+  }
 }
 
 export type UpdateCompInput = {
