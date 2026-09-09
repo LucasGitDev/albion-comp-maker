@@ -114,10 +114,17 @@ describe("CompressedTile.tsx (ACM-080 AC#2)", () => {
 });
 
 describe("src/app/globals.css (decision-017)", () => {
-  it("never contains oklch()/oklab() — the raster export cannot parse either", () => {
+  // shadcn/ui uses oklch tokens in :root — that is fine because those CSS custom
+  // properties are never resolved by html-to-image (the rasterizer only sees
+  // build-card/**).  The invariant that matters is that the @theme inline block
+  // (which feeds Tailwind utility classes used inside the capture root) does NOT
+  // contain oklch/oklab.  build-card/** guard above already blocks var() refs.
+  it("@theme inline block never contains oklch()/oklab() — raster export cannot parse either", () => {
     const globalsCssPath = path.join(process.cwd(), "src", "app", "globals.css");
     const source = readFileSync(globalsCssPath, "utf-8");
-    expect(/oklch\(/i.test(source)).toBe(false);
-    expect(/oklab\(/i.test(source)).toBe(false);
+    const themeMatch = source.match(/@theme\s+inline\s*\{([^}]*)\}/s);
+    const themeBlock = themeMatch ? themeMatch[1] : "";
+    expect(/oklch\(/i.test(themeBlock)).toBe(false);
+    expect(/oklab\(/i.test(themeBlock)).toBe(false);
   });
 });
