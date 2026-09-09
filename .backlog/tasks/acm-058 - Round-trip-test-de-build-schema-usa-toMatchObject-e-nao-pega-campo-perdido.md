@@ -1,10 +1,10 @@
 ---
 id: ACM-058
 title: Round-trip test de build-schema usa toMatchObject e nao pega campo perdido
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 19:48'
-updated_date: '2026-09-09 03:07'
+updated_date: '2026-09-09 03:25'
 labels: []
 dependencies: []
 priority: low
