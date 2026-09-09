@@ -122,7 +122,7 @@ describe("src/app/globals.css (decision-017)", () => {
   it("@theme inline block never contains oklch()/oklab() — raster export cannot parse either", () => {
     const globalsCssPath = path.join(process.cwd(), "src", "app", "globals.css");
     const source = readFileSync(globalsCssPath, "utf-8");
-    const themeMatch = source.match(/@theme\s+inline\s*\{([^}]*)\}/s);
+    const themeMatch = source.match(/@theme\s+inline\s*\{([\s\S]*?)\}/);
     const themeBlock = themeMatch ? themeMatch[1] : "";
     expect(/oklch\(/i.test(themeBlock)).toBe(false);
     expect(/oklab\(/i.test(themeBlock)).toBe(false);
