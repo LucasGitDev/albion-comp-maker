@@ -138,6 +138,13 @@ describe("build-schema (ACM-049 / decision-013)", () => {
       expect(() => validateBuildContentForWrite(raw)).toThrow();
     });
 
+    it("ACM-092 AC#1: accepts a build with all 10 slots null (zero items equipped is a valid, saveable build)", () => {
+      const raw = JSON.stringify(validBuild());
+      const result = validateBuildContentForWrite(raw);
+      const parsed = JSON.parse(result);
+      expect(Object.values(parsed.slots)).toEqual(Array(10).fill(null));
+    });
+
     it("rejects more than 20 swaps", () => {
       const swap = {
         id: "swap-1",

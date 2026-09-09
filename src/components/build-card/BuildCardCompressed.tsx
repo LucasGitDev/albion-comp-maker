@@ -35,7 +35,6 @@ function swapItemName(swap: Swap, lookups: BuildCardLookups): string {
 export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompressedProps): React.JSX.Element {
   const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
-  const hasBuild = mainhand !== null;
   const mount = state.slots.mount;
 
   const hasAnySpell = KILLBOARD_MATRIX.flat().some((slot) => {
@@ -44,7 +43,7 @@ export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompres
   });
 
   const hasMeta = mount !== null || state.swaps.length > 0;
-  const visibleSwaps = state.swaps.slice(0, hasMeta && state.swaps.length > 3 ? 2 : 3);
+  const visibleSwaps = state.swaps.slice(0, state.swaps.length > 3 ? 2 : 3);
   const remainingSwaps = state.swaps.length > 3 ? state.swaps.length - 2 : 0;
 
   return (
@@ -69,14 +68,14 @@ export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompres
           className="line-clamp-2 text-[20px] font-bold"
           style={{
             letterSpacing: "-0.01em",
-            fontStyle: hasBuild ? "normal" : "italic",
-            color: hasBuild ? tokens.fg : tokens.fgMuted,
+            fontStyle: state.name ? "normal" : "italic",
+            color: state.name ? tokens.fg : tokens.fgMuted,
           }}
         >
-          {hasBuild ? state.name || "Sem nome" : "Sem nome"}
+          {state.name || "Sem nome"}
         </h2>
 
-        <div className="flex" style={{ gap: 16, marginTop: 12, justifyContent: hasBuild && hasMeta ? "flex-start" : "center" }}>
+        <div className="flex" style={{ gap: 16, marginTop: 12, justifyContent: hasMeta ? "flex-start" : "center" }}>
           <div
             className="grid"
             style={{
@@ -91,8 +90,7 @@ export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompres
             ))}
           </div>
 
-          {hasBuild &&
-            (hasMeta ? (
+          {hasMeta && (
               <div className="flex flex-1 flex-col" style={{ gap: 12, minWidth: 0 }}>
                 {hasAnySpell && (
                   <span className="text-[9px] font-semibold uppercase tracking-[0.06em]" style={{ color: tokens.fgMuted }}>
@@ -134,14 +132,6 @@ export function BuildCardCompressed({ state, lookups, tokens }: BuildCardCompres
                   </div>
                 )}
               </div>
-            ) : null)}
-
-          {!hasBuild && (
-            <div className="flex flex-1 items-center" style={{ minWidth: 0 }}>
-              <p className="text-[11px]" style={{ color: tokens.fgMuted }}>
-                Escolha a mão principal para montar a build
-              </p>
-            </div>
           )}
         </div>
       </div>
