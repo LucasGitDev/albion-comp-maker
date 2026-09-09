@@ -53,7 +53,18 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - uses: actions/cache@v4
+        with:
+          path: .cache
+          key: ao-cdn-cache-${{ github.run_id }}
+          restore-keys: |
+            ao-cdn-cache-
+
       - run: pnpm install --frozen-lockfile
+
+      - name: Sync AO catalogue
+        run: pnpm sync:ao
+
       - run: pnpm exec vitest run --coverage
 
       - uses: codecov/codecov-action@v4
