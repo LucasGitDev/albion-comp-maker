@@ -93,6 +93,28 @@ export const SLOT_CATEGORY: Record<Slot, SlotCategory> = {
 };
 
 /**
+ * ACM-090: slots whose passive is never a selectable ability in-game. Cape,
+ * bag and mount items resolve a real `kind: "passive"` spell in ao-data.json
+ * (e.g. a cape's set bonus, a bag's carry-weight bonus, a mount's speed
+ * perk) — the catalogue data is correct, but that passive is a fixed,
+ * always-on property of the item, never a chip the player picks among
+ * alternatives the way a weapon's Q/W/E/passive rows work. Food and potion
+ * never resolve any spell at all today, so they're already excluded by the
+ * data-driven `spellCandidatesByGroup` path; they're listed here too so the
+ * UI stays correct even if a future catalogue update attaches a spell to
+ * one. Explicit exclusion by category (not purely data-driven) because the
+ * resolver has no signal distinguishing "always-on passive" from
+ * "selectable passive" — see task notes for ACM-090.
+ */
+const NON_SELECTABLE_PASSIVE_SLOTS: ReadonlySet<Slot> = new Set([
+  "cape",
+  "bag",
+  "mount",
+  "food",
+  "potion",
+]);
+
+/**
  * Neutral per-category silhouette for empty slots (ACM-035), reusing the
  * same glyph set `ItemIcon` falls back to for a 1x1 CDN miss (ACM-044) so
  * the two placeholder states never drift visually. Deliberately never
@@ -124,6 +146,16 @@ export function SlotCard({
   const label = SLOT_LABELS[slot] ?? slot;
   const tierColor = item && item.tier > 0 ? (TIER_COLOR_VAR[item.tier] ?? "var(--color-tier-low)") : undefined;
 
+  // ACM-090: drop the passive candidates for slots whose passive is never a
+  // selectable ability (see NON_SELECTABLE_PASSIVE_SLOTS above). Applied
+  // once here so both the auto-select effect and the picker below share the
+  // same filtered view — the auto-select effect never touches `passive`
+  // today anyway (AUTO_SELECT_GROUPS is `e`-only), but filtering upstream
+  // keeps this the single place that decides what the item "offers".
+  const selectableSpellCandidatesByGroup = NON_SELECTABLE_PASSIVE_SLOTS.has(slot)
+    ? { ...spellCandidatesByGroup, passive: undefined }
+    : spellCandidatesByGroup;
+
   // ACM-089: auto-fill any spell group that has exactly one candidate for
   // the currently equipped item, through the same `onSpellChange` path a
   // manual pick uses (identical shape, same round-trip through build
@@ -136,12 +168,12 @@ export function SlotCard({
   const itemSpells = item?.spells;
   useEffect(() => {
     if (!item || !onSpellChange) return;
-    const updates = computeAutoSelections(item.spells, spellCandidatesByGroup);
+    const updates = computeAutoSelections(item.spells, selectableSpellCandidatesByGroup);
     for (const group of Object.keys(updates) as SpellGroup[]) {
       onSpellChange(slot, group, updates[group] ?? null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, item?.itemId, itemSpells, spellCandidatesByGroup, onSpellChange]);
+  }, [slot, item?.itemId, itemSpells, selectableSpellCandidatesByGroup, onSpellChange]);
 
   if (locked) {
     return (
@@ -292,7 +324,7 @@ export function SlotCard({
         <SpellPicker
           itemName={itemName ?? item.itemId}
           selected={item.spells}
-          candidatesByGroup={spellCandidatesByGroup}
+          candidatesByGroup={selectableSpellCandidatesByGroup}
           onSelect={(group, spellId) => onSpellChange(slot, group, spellId)}
         />
       )}
