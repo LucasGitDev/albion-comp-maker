@@ -1,4 +1,4 @@
-import type { AOItem, AOItemSpell } from "@/data/ao-data";
+import type { AOItem, AOItemSpell, Slot } from "@/data/ao-data";
 import type { SpellGroup } from "@/types/build";
 import { pickLocalizedName } from "@/lib/localized-name";
 
@@ -60,12 +60,46 @@ export function groupItemSpells(
   return groups;
 }
 
-/** Convenience wrapper reading straight off an `AOItem`. */
+/**
+ * ACM-090: slots whose passive is never a selectable ability in-game. Cape,
+ * bag and mount items resolve a real `kind: "passive"` spell in ao-data.json
+ * (e.g. a cape's set bonus, a bag's carry-weight bonus, a mount's speed
+ * perk) — the catalogue data is correct, but that passive is a fixed,
+ * always-on property of the item, never a chip the player picks among
+ * alternatives the way a weapon's Q/W/E/passive rows work. Food and potion
+ * never resolve any spell at all today, so they're already excluded by the
+ * data-driven `spellCandidatesByGroup` path; they're listed here too so the
+ * result stays correct even if a future catalogue update attaches a spell
+ * to one. Explicit exclusion by category (not purely data-driven) because
+ * the resolver has no signal distinguishing "always-on passive" from
+ * "selectable passive" — see task notes for ACM-090.
+ *
+ * This is the single source of truth for the exclusion: `groupSpellsForItem`
+ * (used by both the editor's picker and the exported build-card lookups)
+ * applies it, so no consumer of `groupItemSpells`/`spellCandidatesByGroup`
+ * needs to reapply the rule manually. A `BuildState` with a stale/orphaned
+ * `spells.passive` value for one of these slots (set before this exclusion
+ * existed) is unaffected in behavior: since the "passive" group never
+ * appears in `spellGroupsByItem`, no consumer ever renders a chip for it.
+ */
+export const NON_SELECTABLE_PASSIVE_SLOTS: ReadonlySet<Slot> = new Set([
+  "cape",
+  "bag",
+  "mount",
+  "food",
+  "potion",
+]);
+
+/** Convenience wrapper reading straight off an `AOItem`, applying the ACM-090 exclusion for its slot. */
 export function groupSpellsForItem(
-  item: Pick<AOItem, "spells">,
+  item: Pick<AOItem, "spells" | "slot">,
   locale: string
 ): Partial<Record<SpellGroup, SpellCandidate[]>> {
-  return groupItemSpells(item.spells, locale);
+  const groups = groupItemSpells(item.spells, locale);
+  if (!NON_SELECTABLE_PASSIVE_SLOTS.has(item.slot)) return groups;
+  const rest = { ...groups };
+  delete rest.passive;
+  return rest;
 }
 
 /**
