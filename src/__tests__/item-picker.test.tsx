@@ -126,6 +126,73 @@ describe("ItemPicker", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("jumps the active option with PageDown/PageUp", () => {
+    render(<ItemPicker slot="mainhand" items={ITEMS} onSelect={vi.fn()} onClose={vi.fn()} />);
+    const input = screen.getByRole("combobox");
+
+    fireEvent.keyDown(input, { key: "PageDown" });
+    expect(input).toHaveAttribute("aria-activedescendant", "ip-opt-T4_MAIN_SWORD");
+
+    fireEvent.keyDown(input, { key: "PageUp" });
+    expect(input).toHaveAttribute("aria-activedescendant", "ip-opt-T8_2H_HAMMER");
+  });
+
+  it("Home/End jump to the first/last option only when the query is empty", () => {
+    render(<ItemPicker slot="mainhand" items={ITEMS} onSelect={vi.fn()} onClose={vi.fn()} />);
+    const input = screen.getByRole("combobox");
+
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(input).toHaveAttribute("aria-activedescendant", "ip-opt-T4_MAIN_SWORD");
+
+    fireEvent.keyDown(input, { key: "Home" });
+    expect(input).toHaveAttribute("aria-activedescendant", "ip-opt-T8_2H_HAMMER");
+
+    fireEvent.keyDown(input, { key: "End" });
+    expect(input).toHaveAttribute("aria-activedescendant", "ip-opt-T4_MAIN_SWORD");
+  });
+
+  it("Home/End are no-ops while the query is non-empty (native text-cursor behavior wins)", () => {
+    render(<ItemPicker slot="mainhand" items={ITEMS} onSelect={vi.fn()} onClose={vi.fn()} />);
+    const input = screen.getByRole("combobox") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "hammer" } });
+
+    const homeEvent = fireEvent.keyDown(input, { key: "Home" });
+    const endEvent = fireEvent.keyDown(input, { key: "End" });
+
+    expect(homeEvent).toBe(true);
+    expect(endEvent).toBe(true);
+  });
+
+  it("closes on Backspace when the query is already empty", () => {
+    const onClose = vi.fn();
+    render(<ItemPicker slot="mainhand" items={ITEMS} onSelect={vi.fn()} onClose={onClose} />);
+    const input = screen.getByRole("combobox");
+
+    fireEvent.keyDown(input, { key: "Backspace" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not close on Backspace while the query is non-empty", () => {
+    const onClose = vi.fn();
+    render(<ItemPicker slot="mainhand" items={ITEMS} onSelect={vi.fn()} onClose={onClose} />);
+    const input = screen.getByRole("combobox") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "hammer" } });
+
+    fireEvent.keyDown(input, { key: "Backspace" });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("ignores keys with no dedicated handler", () => {
+    const onClose = vi.fn();
+    const onSelect = vi.fn();
+    render(<ItemPicker slot="mainhand" items={ITEMS} onSelect={onSelect} onClose={onClose} />);
+    const input = screen.getByRole("combobox");
+
+    fireEvent.keyDown(input, { key: "a" });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it("debounces the query before filtering results", async () => {
     render(<ItemPicker slot="mainhand" items={ITEMS} onSelect={vi.fn()} onClose={vi.fn()} />);
     const input = screen.getByRole("combobox");

@@ -82,6 +82,76 @@ describe("comp Server Actions (ACM-019)", () => {
     });
   });
 
+  describe("listMyCompsWithStatus (ACM-066)", () => {
+    it("reports buildCount 0 and isReachable false for a comp with no builds", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, listMyCompsWithStatus } = await import("@/actions/comps");
+      await createComp({ name: "Empty Comp" });
+
+      const [status] = await listMyCompsWithStatus();
+
+      expect(status.buildCount).toBe(0);
+      expect(status.privateBuildCount).toBe(0);
+      expect(status.isReachable).toBe(false);
+    });
+
+    it("reports isReachable true only once the comp is public and every build is public", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const [publicBuild] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Public Build",
+          slug: "status-public-build",
+          content: "{}",
+          isPublic: true,
+        })
+        .returning();
+
+      const { createComp, addBuildToComp, toggleCompPublic, listMyCompsWithStatus } = await import(
+        "@/actions/comps"
+      );
+      const comp = await createComp({ name: "Reachable Comp" });
+      await addBuildToComp({ compId: comp.id, buildId: publicBuild.id });
+
+      const beforePublish = (await listMyCompsWithStatus()).find((s) => s.comp.id === comp.id);
+      expect(beforePublish?.buildCount).toBe(1);
+      expect(beforePublish?.privateBuildCount).toBe(0);
+      expect(beforePublish?.isReachable).toBe(false); // comp itself is still private
+
+      await toggleCompPublic(comp.id);
+      const afterPublish = (await listMyCompsWithStatus()).find((s) => s.comp.id === comp.id);
+      expect(afterPublish?.isReachable).toBe(true);
+    });
+
+    it("reports isReachable false and a nonzero privateBuildCount when a referenced build is private", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const [privateBuild] = await db
+        .insert(builds)
+        .values({ userId: "user-a", name: "Private Build", slug: "status-private-build", content: "{}" })
+        .returning();
+
+      const { createComp, addBuildToComp, toggleCompPublic, listMyCompsWithStatus } = await import(
+        "@/actions/comps"
+      );
+      const comp = await createComp({ name: "Unreachable Comp" });
+      await addBuildToComp({ compId: comp.id, buildId: privateBuild.id });
+      await toggleCompPublic(comp.id);
+
+      const status = (await listMyCompsWithStatus()).find((s) => s.comp.id === comp.id);
+
+      expect(status?.privateBuildCount).toBe(1);
+      expect(status?.isReachable).toBe(false);
+    });
+
+    it("rejects without a session", async () => {
+      mockRequireSession.mockRejectedValue(new Error("Unauthorized"));
+      const { listMyCompsWithStatus } = await import("@/actions/comps");
+
+      await expect(listMyCompsWithStatus()).rejects.toThrow("Unauthorized");
+    });
+  });
+
   describe("createComp", () => {
     it("creates a row with a nanoid id and an immutable slug derived from the name", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
@@ -139,6 +209,21 @@ describe("comp Server Actions (ACM-019)", () => {
       if (!result.ok) {
         expect(result.error).toMatch(/comps demais/);
       }
+    });
+
+    it("returns a generic { ok: false } message for an error that is neither RateLimitError nor ZodError", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { getDb } = await import("@/db/client");
+      const originalGetDb = vi.mocked(getDb).getMockImplementation();
+      vi.mocked(getDb).mockImplementationOnce(() => {
+        throw new Error("boom: unexpected db failure");
+      });
+
+      const { createCompAction } = await import("@/actions/comps");
+      const result = await createCompAction({ name: "Doomed" });
+
+      expect(result).toEqual({ ok: false, error: "Não foi possível criar a comp." });
+      if (originalGetDb) vi.mocked(getDb).mockImplementation(originalGetDb);
     });
   });
 
@@ -307,7 +392,48 @@ describe("comp Server Actions (ACM-019)", () => {
   });
 });
 
-describe("count and label edits", () => {
+describe("loadOwnedCompBuild not-found (owned comp, wrong compBuild id)", () => {
+    it("removeBuildFromComp throws Comp not found when compBuildId doesn't belong to the (owned) comp", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, removeBuildFromComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "User A Comp" });
+
+      await expect(removeBuildFromComp(comp.id, "nonexistent-comp-build-id")).rejects.toThrow("Comp not found");
+    });
+
+    it("updateCompBuild throws Comp not found when compBuildId doesn't belong to the (owned) comp", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, updateCompBuild } = await import("@/actions/comps");
+      const comp = await createComp({ name: "User A Comp" });
+
+      await expect(
+        updateCompBuild({ compId: comp.id, compBuildId: "nonexistent-comp-build-id", label: "x" }),
+      ).rejects.toThrow("Comp not found");
+    });
+  });
+
+  describe("getComp", () => {
+    it("returns the comp owned by the current user", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, getComp } = await import("@/actions/comps");
+      const created = await createComp({ name: "User A Comp" });
+
+      const loaded = await getComp(created.id);
+      expect(loaded.id).toBe(created.id);
+      expect(loaded.name).toBe("User A Comp");
+    });
+
+    it("throws Comp not found for another user's comp", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, getComp } = await import("@/actions/comps");
+      const created = await createComp({ name: "User A Comp" });
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+      await expect(getComp(created.id)).rejects.toThrow("Comp not found");
+    });
+  });
+
+  describe("count and label edits", () => {
     it("updates count and label independently", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const [aBuild] = await db
@@ -424,6 +550,28 @@ describe("count and label edits", () => {
       await expect(updateComp({ id: comp.id, name: "a".repeat(101) })).rejects.toThrow(/at most 100 characters/);
     });
 
+    it("updateComp updates only contentType, leaving name untouched, when name is omitted", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, updateComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Keep My Name" });
+
+      const updated = await updateComp({ id: comp.id, contentType: "zvz" });
+
+      expect(updated.name).toBe("Keep My Name");
+      expect(updated.contentType).toBe("zvz");
+    });
+
+    it("updateComp updates only name, leaving contentType untouched, when contentType is omitted", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, updateComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Original Name", contentType: "small-scale" });
+
+      const updated = await updateComp({ id: comp.id, name: "Renamed" });
+
+      expect(updated.name).toBe("Renamed");
+      expect(updated.contentType).toBe("small-scale");
+    });
+
     it("addBuildToComp rejects a label over the limit", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const [aBuild] = await db
@@ -466,6 +614,95 @@ describe("count and label edits", () => {
 
       const comp = await createComp({ name: "  Padded Name  " });
       expect(comp.name).toBe("Padded Name");
+    });
+  });
+
+  describe("TOCTOU races between ownership check and mutation", () => {
+    // Same rationale as `builds-actions.test.ts`: delete the row from the
+    // real underlying connection right as the mutating query builder is
+    // invoked, simulating a row vanishing between the ownership read and
+    // the mutation statement — exercising the defensive "second query found
+    // nothing" branch the ownership pre-check alone cannot reach.
+    it("updateComp throws CompNotFoundError when the row disappears before the update statement runs", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, updateComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Racy Comp" });
+
+      const originalUpdate = db.update.bind(db);
+      vi.spyOn(db, "update").mockImplementationOnce((table: Parameters<typeof db.update>[0]) => {
+        sqlite.prepare("DELETE FROM comps WHERE id = ?").run(comp.id);
+        return originalUpdate(table);
+      });
+
+      await expect(updateComp({ id: comp.id, name: "Renamed" })).rejects.toThrow("Comp not found");
+    });
+
+    it("toggleCompPublic throws CompNotFoundError when the row disappears before the update statement runs", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, toggleCompPublic } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Racy Comp" });
+
+      const originalUpdate = db.update.bind(db);
+      vi.spyOn(db, "update").mockImplementationOnce((table: Parameters<typeof db.update>[0]) => {
+        sqlite.prepare("DELETE FROM comps WHERE id = ?").run(comp.id);
+        return originalUpdate(table);
+      });
+
+      await expect(toggleCompPublic(comp.id)).rejects.toThrow("Comp not found");
+    });
+
+    it("deleteComp throws CompNotFoundError when the row disappears before the delete statement runs", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, deleteComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Racy Comp" });
+
+      const originalDelete = db.delete.bind(db);
+      vi.spyOn(db, "delete").mockImplementationOnce((table: Parameters<typeof db.delete>[0]) => {
+        sqlite.prepare("DELETE FROM comps WHERE id = ?").run(comp.id);
+        return originalDelete(table);
+      });
+
+      await expect(deleteComp(comp.id)).rejects.toThrow("Comp not found");
+    });
+
+    it("removeBuildFromComp throws CompNotFoundError when the row disappears before the delete statement runs", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const [aBuild] = await db
+        .insert(builds)
+        .values({ userId: "user-a", name: "Racy Build", slug: "racy-remove-build", content: "{}" })
+        .returning();
+      const { createComp, addBuildToComp, removeBuildFromComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Racy Comp" });
+      const compBuild = await addBuildToComp({ compId: comp.id, buildId: aBuild.id });
+
+      const originalDelete = db.delete.bind(db);
+      vi.spyOn(db, "delete").mockImplementationOnce((table: Parameters<typeof db.delete>[0]) => {
+        sqlite.prepare("DELETE FROM comp_builds WHERE id = ?").run(compBuild.id);
+        return originalDelete(table);
+      });
+
+      await expect(removeBuildFromComp(comp.id, compBuild.id)).rejects.toThrow("Comp not found");
+    });
+
+    it("updateCompBuild throws CompNotFoundError when the row disappears before the update statement runs", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const [aBuild] = await db
+        .insert(builds)
+        .values({ userId: "user-a", name: "Racy Build", slug: "racy-update-cb", content: "{}" })
+        .returning();
+      const { createComp, addBuildToComp, updateCompBuild } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Racy Comp" });
+      const compBuild = await addBuildToComp({ compId: comp.id, buildId: aBuild.id });
+
+      const originalUpdate = db.update.bind(db);
+      vi.spyOn(db, "update").mockImplementationOnce((table: Parameters<typeof db.update>[0]) => {
+        sqlite.prepare("DELETE FROM comp_builds WHERE id = ?").run(compBuild.id);
+        return originalUpdate(table);
+      });
+
+      await expect(updateCompBuild({ compId: comp.id, compBuildId: compBuild.id, count: 3 })).rejects.toThrow(
+        "Comp not found",
+      );
     });
   });
 

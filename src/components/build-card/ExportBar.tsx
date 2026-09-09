@@ -109,7 +109,7 @@ export function ExportBar({ captureNodeRef, buildName }: ExportBarProps): React.
     <div className="flex flex-wrap items-center gap-3">
       <button
         type="button"
-        onClick={handleDownload}
+        onClick={() => void handleDownload()}
         disabled={isBusy}
         className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors duration-150 ease-out hover:bg-[var(--color-icon-slot)] disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:none)]:hover:bg-transparent"
       >
@@ -117,7 +117,7 @@ export function ExportBar({ captureNodeRef, buildName }: ExportBarProps): React.
       </button>
       <button
         type="button"
-        onClick={handleCopy}
+        onClick={() => void handleCopy()}
         disabled={isBusy}
         title={clipboardSupported ? undefined : "Não suportado neste navegador — vai baixar o arquivo"}
         className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors duration-150 ease-out hover:bg-[var(--color-icon-slot)] disabled:cursor-not-allowed disabled:opacity-60 [@media(hover:none)]:hover:bg-transparent"

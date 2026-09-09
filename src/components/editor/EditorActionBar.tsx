@@ -235,7 +235,7 @@ export function EditorActionBar({
         {saveStatus.kind === "error" && (
           <button
             type="button"
-            onClick={handleSaveClick}
+            onClick={() => void handleSaveClick()}
             className="shrink-0 text-sm font-medium text-foreground underline underline-offset-2 transition-colors hover:text-foreground/80 focus-visible:transition-none"
           >
             Tentar de novo
@@ -247,7 +247,7 @@ export function EditorActionBar({
         <button
           ref={saveButtonRef}
           type="button"
-          onClick={handleSaveClick}
+          onClick={() => void handleSaveClick()}
           aria-disabled={saveDisabled}
           aria-describedby="editor-action-bar-status"
           disabled={saving}
@@ -257,7 +257,7 @@ export function EditorActionBar({
         </button>
         <button
           type="button"
-          onClick={handleExportClick}
+          onClick={() => void handleExportClick()}
           disabled={exportDisabled}
           className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-[var(--color-icon-slot)] focus-visible:transition-none disabled:cursor-not-allowed disabled:opacity-60"
         >

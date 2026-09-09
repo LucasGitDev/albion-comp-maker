@@ -85,7 +85,7 @@ export function CompShareStatus({ compId, slug, publicOrigin, initialState }: Co
           />
           <button
             type="button"
-            onClick={handleCopy}
+            onClick={() => void handleCopy()}
             className="rounded-md bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
           >
             {copied ? "Copiado!" : "Copiar link"}

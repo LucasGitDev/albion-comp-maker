@@ -112,6 +112,56 @@ describe("POST/GET /api/background (ACM-014)", () => {
       expect(response.status).toBe(415);
     });
 
+    it("413s when Content-Length header alone reports a size above the cap", async () => {
+      mockAuth.mockResolvedValue(sessionFor("user-a"));
+      const { POST } = await import("@/app/api/background/route");
+      const request = {
+        headers: new Headers({ "content-length": String(4 * 1024 * 1024 + 1) }),
+        formData: async () => ({ get: () => null }),
+      } as unknown as Request;
+      const response = await POST(request);
+      expect(response.status).toBe(413);
+    });
+
+    it("400s when the multipart body cannot be parsed", async () => {
+      mockAuth.mockResolvedValue(sessionFor("user-a"));
+      const { POST } = await import("@/app/api/background/route");
+      const request = {
+        headers: new Headers(),
+        formData: async () => {
+          throw new Error("boom");
+        },
+      } as unknown as Request;
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+    });
+
+    it("400s when the file field is missing", async () => {
+      mockAuth.mockResolvedValue(sessionFor("user-a"));
+      const { POST } = await import("@/app/api/background/route");
+      const request = {
+        headers: new Headers(),
+        formData: async () => ({ get: () => null }),
+      } as unknown as Request;
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+    });
+
+    it("429s when the write rate limit is exceeded", async () => {
+      mockAuth.mockResolvedValue(sessionFor("user-a"));
+      const { checkWriteRateLimit } = await import("@/lib/rate-limit");
+      for (let i = 0; i < 200; i++) {
+        try {
+          checkWriteRateLimit("user-a");
+        } catch {
+          break;
+        }
+      }
+      const { POST } = await import("@/app/api/background/route");
+      const response = await POST(postRequest(await pngBuffer()));
+      expect(response.status).toBe(429);
+    });
+
     it("200s on a valid upload and inserts a row scoped to the session user", async () => {
       mockAuth.mockResolvedValue(sessionFor("user-a"));
       const { POST } = await import("@/app/api/background/route");
@@ -212,6 +262,35 @@ describe("POST/GET /api/background (ACM-014)", () => {
         params: Promise.resolve({ id }),
       });
       expect(response.status).toBe(200);
+    });
+
+    it("429s an anonymous caller once the public-read rate limit is exhausted", async () => {
+      const id = await uploadAs("user-a");
+      mockAuth.mockResolvedValue(null);
+      const { GET } = await import("@/app/api/background/[id]/route");
+      const { checkPublicReadRateLimit } = await import("@/lib/public-read-rate-limit");
+      for (let i = 0; i < 500; i++) {
+        if (!checkPublicReadRateLimit("9.9.9.9")) break;
+      }
+
+      const response = await GET(
+        new Request(`http://localhost/api/background/${id}`, { headers: { "x-forwarded-for": "9.9.9.9" } }) as never,
+        { params: Promise.resolve({ id }) },
+      );
+      expect(response.status).toBe(429);
+    });
+
+    it("404s when the stored file name no longer matches the trusted pattern", async () => {
+      const id = await uploadAs("user-a");
+      const { eq } = await import("drizzle-orm");
+      await db.update(backgroundImages).set({ fileName: "../../etc/passwd" }).where(eq(backgroundImages.id, id));
+
+      mockAuth.mockResolvedValue(sessionFor("user-a"));
+      const { GET } = await import("@/app/api/background/[id]/route");
+      const response = await GET(new Request(`http://localhost/api/background/${id}`) as never, {
+        params: Promise.resolve({ id }),
+      });
+      expect(response.status).toBe(404);
     });
 
     it("404s for a nonexistent id", async () => {

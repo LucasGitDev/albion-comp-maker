@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { RATE_LIMIT_POLICY, createSurfaceLimiter, UNTRUSTED_KEY } from "@/lib/rate-limit-policy";
 
 describe("rate-limit-policy", () => {
@@ -20,6 +20,28 @@ describe("rate-limit-policy", () => {
         expect(limiter.check(UNTRUSTED_KEY, t0 + i)).toBe(true);
       }
       expect(limiter.check(UNTRUSTED_KEY, t0 + policy.untrustedMax)).toBe(false);
+    }
+  });
+
+  it("clamps untrustedMax down to perIpMax and logs when a policy violates the invariant", () => {
+    const original = RATE_LIMIT_POLICY.items.untrustedMax;
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      RATE_LIMIT_POLICY.items.untrustedMax = RATE_LIMIT_POLICY.items.perIpMax + 5;
+      const limiter = createSurfaceLimiter("items");
+      const t0 = Date.now();
+
+      for (let i = 0; i < RATE_LIMIT_POLICY.items.perIpMax; i++) {
+        expect(limiter.check(UNTRUSTED_KEY, t0 + i)).toBe(true);
+      }
+      // Clamped to perIpMax, not the misconfigured (larger) untrustedMax.
+      expect(limiter.check(UNTRUSTED_KEY, t0 + RATE_LIMIT_POLICY.items.perIpMax)).toBe(false);
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("rate_limit_policy_invariant_violated"),
+      );
+    } finally {
+      RATE_LIMIT_POLICY.items.untrustedMax = original;
+      errorSpy.mockRestore();
     }
   });
 
