@@ -70,12 +70,48 @@ function isUseServerFile(content: string): boolean {
   return false;
 }
 
-const IMPORT_SPECIFIER_PATTERN = /(?:import|export)(?:\s+type)?[^'"]*?from\s+["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|import\s+["']([^"']+)["']/g;
+const IMPORT_SPECIFIER_PATTERN =
+  /(?:import|export)(?:\s+(type)\b)?([^'"]*?)from\s+["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|import\s+["']([^"']+)["']/g;
+
+/**
+ * `import type { ... } from "..."` (and `export type { ... } from`) are
+ * fully erased at build time — TypeScript strips the whole statement, so
+ * nothing crosses the client/server boundary. Likewise a named import
+ * clause where every specifier carries an inline `type` modifier (e.g.
+ * `import { type A, type B } from "..."`) is erased entirely, while one
+ * with even a single value specifier (`import { type A, b } from "..."`)
+ * still pulls a real value across and must be flagged.
+ */
+function isTypeOnlyImport(typeKeyword: string | undefined, clause: string): boolean {
+  if (typeKeyword) return true;
+
+  const braceMatch = clause.match(/\{([^}]*)\}/);
+  const outsideBraces =
+    braceMatch && braceMatch.index !== undefined
+      ? clause.slice(0, braceMatch.index) + clause.slice(braceMatch.index + braceMatch[0].length)
+      : clause;
+  if (outsideBraces.replace(/,/g, "").trim() !== "") return false; // default or namespace import: always a value
+
+  if (!braceMatch) return false; // no named clause and no default/namespace: malformed, treat as value to be safe
+
+  const names = braceMatch[1]
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+  if (names.length === 0) return false;
+  return names.every((name) => /^type\b/.test(name));
+}
 
 function extractImportSpecifiers(content: string): string[] {
   const specifiers: string[] = [];
   for (const match of content.matchAll(IMPORT_SPECIFIER_PATTERN)) {
-    const specifier = match[1] ?? match[2] ?? match[3];
+    const [, typeKeyword, clause, fromSpecifier, dynamicSpecifier, sideEffectSpecifier] = match;
+    if (fromSpecifier) {
+      if (isTypeOnlyImport(typeKeyword, clause ?? "")) continue;
+      specifiers.push(fromSpecifier);
+      continue;
+    }
+    const specifier = dynamicSpecifier ?? sideEffectSpecifier;
     if (specifier) specifiers.push(specifier);
   }
   return specifiers;
