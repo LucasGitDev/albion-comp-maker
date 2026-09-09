@@ -126,13 +126,13 @@ describe("BuildCard", () => {
     expect(root.querySelectorAll("button, input, select, textarea, a[href]").length).toBe(0);
   });
 
-  it("does not render empty equipment slots in the exported card", () => {
+  it("renders empty equipment slots as placeholders instead of dropping them (ACM-092 AC#3)", () => {
     const state = buildWithMainhand();
     const { container } = render(<BuildCard state={state} />);
-    // Only mainhand + head were populated; offhand/shoes/etc. must not appear as tiles.
-    expect(container.querySelector('[data-slot="offhand"]')).toBeNull();
-    expect(container.querySelector('[data-slot="shoes"]')).toBeNull();
-    expect(container.querySelector('[data-slot="head"]')).toBeTruthy();
+    // Only mainhand + head were populated; the rest still render, as placeholders.
+    expect(container.querySelector('[data-slot="offhand"][data-slot-state="empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-slot="shoes"][data-slot-state="empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-slot="head"][data-slot-state="filled"]')).toBeTruthy();
   });
 
   it("renders the empty-build placeholder copy when there is no mainhand", () => {
