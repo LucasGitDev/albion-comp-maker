@@ -4,69 +4,84 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  pull-requests: write
+
 jobs:
   lint:
     runs-on: ubuntu-latest
+    outputs:
+      issues: ${{ steps.run.outputs.issues }}
+      async_issues: ${{ steps.run.outputs.async_issues }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 10.17.0
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
+      - id: run
+        shell: bash
+        run: |
+          set +e
+          OUTPUT=$(pnpm lint 2>&1)
+          EXIT=$?
+          echo "$OUTPUT"
+          ISSUES=$(echo "$OUTPUT" | grep -cE "^\s+[0-9]+:[0-9]+\s+(error|warning)" 2>/dev/null || echo 0)
+          ASYNC=$(echo "$OUTPUT" | grep -c "no-floating-promises\|no-misused-promises" 2>/dev/null || echo 0)
+          echo "issues=${ISSUES:-0}" >> "$GITHUB_OUTPUT"
+          echo "async_issues=${ASYNC:-0}" >> "$GITHUB_OUTPUT"
+          exit $EXIT
 
   typecheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 10.17.0
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsc --noEmit
 
   coverage:
     runs-on: ubuntu-latest
+    outputs:
+      branch_pct: ${{ steps.run.outputs.branch_pct }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 10.17.0
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - uses: actions/cache@v4
         with:
           path: .cache
           key: ao-cdn-cache-${{ github.run_id }}
           restore-keys: |
             ao-cdn-cache-
-
       - run: pnpm install --frozen-lockfile
-
       - name: Sync AO catalogue
         run: pnpm sync:ao
-
-      - run: pnpm exec vitest run --coverage
-
+      - id: run
+        shell: bash
+        run: |
+          set +e
+          OUTPUT=$(pnpm exec vitest run --coverage 2>&1)
+          EXIT=$?
+          echo "$OUTPUT"
+          PCT=$(echo "$OUTPUT" | grep "All files" | awk -F'|' '{gsub(/ /,"",$3); print $3}')
+          echo "branch_pct=${PCT:-unknown}" >> "$GITHUB_OUTPUT"
+          exit $EXIT
       - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -75,81 +90,167 @@ jobs:
 
   duplication:
     runs-on: ubuntu-latest
+    outputs:
+      pct: ${{ steps.run.outputs.pct }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 10.17.0
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec jscpd .
+      - id: run
+        shell: bash
         continue-on-error: true
+        run: |
+          set +e
+          OUTPUT=$(pnpm exec jscpd . 2>&1)
+          echo "$OUTPUT"
+          PCT=$(echo "$OUTPUT" | grep -oP '\d+\.\d+(?=%)' | tail -1 || echo "0")
+          echo "pct=${PCT:-0}" >> "$GITHUB_OUTPUT"
 
   dead-code:
     runs-on: ubuntu-latest
+    outputs:
+      count: ${{ steps.run.outputs.count }}
+      items: ${{ steps.run.outputs.items }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 10.17.0
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec knip
+      - id: run
+        shell: bash
         continue-on-error: true
+        run: |
+          set +e
+          OUTPUT=$(pnpm exec knip --reporter compact 2>&1)
+          echo "$OUTPUT"
+          COUNT=$(echo "$OUTPUT" | grep -c "^" 2>/dev/null || echo 0)
+          ITEMS=$(echo "$OUTPUT" | head -10 | tr '\n' ';' | sed 's/;$//')
+          echo "count=${COUNT:-0}" >> "$GITHUB_OUTPUT"
+          echo "items=${ITEMS}" >> "$GITHUB_OUTPUT"
 
   audit:
     runs-on: ubuntu-latest
+    outputs:
+      vulns: ${{ steps.run.outputs.vulns }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 10.17.0
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --prod --audit-level=high
+      - id: run
+        shell: bash
+        run: |
+          set +e
+          OUTPUT=$(pnpm audit --prod --audit-level=high 2>&1)
+          echo "$OUTPUT"
+          EXIT=$?
+          VULNS=$(echo "$OUTPUT" | grep -oP '\d+(?= high| critical)' | paste -sd+ | bc 2>/dev/null || echo 0)
+          echo "vulns=${VULNS:-0}" >> "$GITHUB_OUTPUT"
+          exit $EXIT
 
   summary:
     needs: [lint, typecheck, coverage, duplication, dead-code, audit]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Build summary body
-        id: body
+      - id: build
+        shell: bash
+        env:
+          LINT_RESULT: ${{ needs.lint.result }}
+          LINT_ISSUES: ${{ needs.lint.outputs.issues }}
+          ASYNC_ISSUES: ${{ needs.lint.outputs.async_issues }}
+          TC_RESULT: ${{ needs.typecheck.result }}
+          COV_RESULT: ${{ needs.coverage.result }}
+          COV_PCT: ${{ needs.coverage.outputs.branch_pct }}
+          DUP_PCT: ${{ needs.duplication.outputs.pct }}
+          DEAD_COUNT: ${{ needs.dead-code.outputs.count }}
+          DEAD_ITEMS: ${{ needs.dead-code.outputs.items }}
+          AUDIT_RESULT: ${{ needs.audit.result }}
+          AUDIT_VULNS: ${{ needs.audit.outputs.vulns }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+          RUN_NUM: ${{ github.run_number }}
         run: |
-          {
-            echo "body<<EOF"
-            echo "## Quality Gate Summary"
-            echo ""
-            echo "| Metric | Result |"
-            echo "|---|---|"
-            echo "| lint | ${{ needs.lint.result }} |"
-            echo "| typecheck | ${{ needs.typecheck.result }} |"
-            echo "| coverage | ${{ needs.coverage.result }} |"
-            echo "| duplication | ${{ needs.duplication.result }} |"
-            echo "| dead-code | ${{ needs.dead-code.result }} |"
-            echo "| audit | ${{ needs.audit.result }} |"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          icon() {
+            [[ "$1" == "success" ]] && echo "✅" || { [[ "$2" == "advisory" ]] && echo "⚠️" || echo "❌"; }
+          }
+
+          COV_ICON=$(icon "$COV_RESULT")
+          LINT_ICON=$(icon "$LINT_RESULT")
+          TC_ICON=$(icon "$TC_RESULT")
+          AUDIT_ICON=$(icon "$AUDIT_RESULT")
+          ASYNC_ICON=$([ "${ASYNC_ISSUES:-0}" = "0" ] && echo "✅" || echo "❌")
+          DUP_PCT_NUM=${DUP_PCT:-0}
+          DUP_OK=$(awk "BEGIN{print ($DUP_PCT_NUM <= 15) ? \"yes\" : \"no\"}")
+          DUP_ICON=$([[ "$DUP_OK" == "yes" ]] && echo "✅" || echo "⚠️")
+          DEAD_ICON=$([ "${DEAD_COUNT:-0}" = "0" ] && echo "✅" || echo "⚠️")
+
+          BLOCKING_FAIL=false
+          for r in "$LINT_RESULT" "$TC_RESULT" "$COV_RESULT" "$AUDIT_RESULT"; do
+            [[ "$r" != "success" ]] && BLOCKING_FAIL=true && break
+          done
+          [[ "${ASYNC_ISSUES:-0}" != "0" ]] && BLOCKING_FAIL=true
+
+          HAS_WARN=false
+          [[ "${DEAD_COUNT:-0}" != "0" ]] && HAS_WARN=true
+          [[ "$DUP_OK" != "yes" ]] && HAS_WARN=true
+
+          if $BLOCKING_FAIL; then
+            OVERALL="❌ Failure"
+          elif $HAS_WARN; then
+            OVERALL="⚠️ Warning"
+          else
+            OVERALL="✅ Pass"
+          fi
+
+          DEAD_SECTION=""
+          if [[ "${DEAD_COUNT:-0}" != "0" && -n "${DEAD_ITEMS}" ]]; then
+            DEAD_ROWS=$(echo "$DEAD_ITEMS" | tr ';' '\n' | sed 's/^/- /')
+            DEAD_SECTION="
+          <details>
+          <summary>💀 Dead Code (${DEAD_COUNT} item(s))</summary>
+
+          ${DEAD_ROWS}
+
+          </details>"
+          fi
+
+          BODY="## 📊 Quality Gate Summary — ${OVERALL}
+
+          > Commit \`${SHA:0:8}\` · Run [#${RUN_NUM}](${RUN_URL}) · $(date -u '+%Y-%m-%d %H:%M UTC')
+
+          | Métrica | Resultado | Threshold | Status |
+          |---|---|---|---|
+          | 📊 Coverage | ${COV_PCT:----}% (branch) | ≥ 79% | ${COV_ICON} |
+          | 🔁 Duplication | ${DUP_PCT:-0}% | ≤ 15% | ${DUP_ICON} |
+          | 🔍 Linting | ${LINT_ISSUES:-0} issue(s) | 0 | ${LINT_ICON} |
+          | 🏁 Race Conditions | ${ASYNC_ISSUES:-0} detected | 0 | ${ASYNC_ICON} |
+          | 🔒 Vulnerabilidades | ${AUDIT_VULNS:-0} detected | 0 | ${AUDIT_ICON} |
+          | 💀 Dead Code | ${DEAD_COUNT:-0} item(s) | 0 (advisory) | ${DEAD_ICON} |
+          ${DEAD_SECTION}
+          <sub>Quality Gate · Thresholds em \`.github/workflows/quality.yml\`</sub>"
+
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: quality-gate
-          message: ${{ steps.body.outputs.body }}
+          message: ${{ steps.build.outputs.body }}
