@@ -57,7 +57,7 @@ describe("EditorActionBar (ACM-037 AC#2, AC#5, AC#6)", () => {
     vi.useRealTimers();
   });
 
-  it("disables Salvar with a reason when the build has no name/items", () => {
+  it("disables Salvar with a reason when the build has no name", () => {
     mockSession(true);
     render(
       <EditorActionBar
@@ -69,7 +69,18 @@ describe("EditorActionBar (ACM-037 AC#2, AC#5, AC#6)", () => {
       />
     );
     expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByText("Dê um nome e escolha ao menos 1 item")).toBeInTheDocument();
+    expect(screen.getByText("Dê um nome pra build")).toBeInTheDocument();
+  });
+
+  it("allows saving a named build with zero slots filled (ACM-092 AC#1)", async () => {
+    mockSession(true);
+    const { onSave } = renderBar({ filledCount: 0, totalSlots: 9 });
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Build salva.")).toBeInTheDocument();
   });
 
   it("calls onSave when authenticated and shows the saved state", async () => {
@@ -121,7 +132,7 @@ describe("EditorActionBar (ACM-037 AC#2, AC#5, AC#6)", () => {
   it("hides the decorative slot counter on narrow screens so the status text isn't squeezed (390px review finding)", () => {
     mockSession(true);
     renderBar({ buildName: "", filledCount: 0, totalSlots: 9 });
-    const status = screen.getByText("Dê um nome e escolha ao menos 1 item");
+    const status = screen.getByText("Dê um nome pra build");
     expect(status.className).not.toMatch(/truncate/);
     expect(screen.getByTestId("slot-count").className).toMatch(/hidden/);
   });
