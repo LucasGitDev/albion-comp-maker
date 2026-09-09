@@ -389,4 +389,139 @@ describe("runMigrations", () => {
       sqlite.close();
     }
   });
+
+  describe("migration 0004 (comps.is_public, ACM-066/decision-025)", () => {
+    /** Builds a migrations dir containing exactly migrations 0000-0003 (schema pre-0004). */
+    function schema0003Dir(targetDir: string): string {
+      const repoMigrationsDir = path.resolve(process.cwd(), "drizzle");
+      fs.mkdirSync(path.join(targetDir, "meta"), { recursive: true });
+
+      const migrationFiles = [
+        "0000_overconfident_the_fury.sql",
+        "0001_add_build_slug_public_forked.sql",
+        "0002_add_comp_slug_and_label.sql",
+        "0003_add_theme_json_and_background_images.sql",
+      ];
+      for (const file of migrationFiles) {
+        fs.copyFileSync(path.join(repoMigrationsDir, file), path.join(targetDir, file));
+      }
+      for (const file of fs.readdirSync(path.join(repoMigrationsDir, "meta"))) {
+        if (file.startsWith("0000_") || file.startsWith("0001_") || file.startsWith("0002_") || file.startsWith("0003_")) {
+          fs.copyFileSync(path.join(repoMigrationsDir, "meta", file), path.join(targetDir, "meta", file));
+        }
+      }
+      const journal = JSON.parse(fs.readFileSync(path.join(repoMigrationsDir, "meta", "_journal.json"), "utf-8")) as {
+        entries: unknown[];
+      };
+      fs.writeFileSync(
+        path.join(targetDir, "meta", "_journal.json"),
+        JSON.stringify({ ...journal, entries: journal.entries.slice(0, 4) }),
+      );
+      return targetDir;
+    }
+
+    it("does not contain a table rebuild (guard against drizzle-kit regenerating 0004 as a rebuild)", () => {
+      const sql = fs.readFileSync(path.resolve(process.cwd(), "drizzle/0004_add_comp_is_public.sql"), "utf-8");
+      // Strip `--` comment lines before checking: the migration's own
+      // header comment *talks about* "DROP TABLE" to explain why there
+      // isn't one, so the guard has to look only at actual SQL statements.
+      const executableSql = sql
+        .split("\n")
+        .filter((line) => !line.trimStart().startsWith("--"))
+        .join("\n");
+      expect(executableSql).not.toMatch(/DROP TABLE/i);
+      expect(executableSql).not.toMatch(/__new_comps/i);
+    });
+
+    it("backfills is_public only for comps already reachable under the decision-015 derived rule, with zero row loss and no FK violations", () => {
+      const phase0003Dir = path.join(tmpDir, "migrations-phase0003");
+      schema0003Dir(phase0003Dir);
+      runMigrations(dbPath, phase0003Dir);
+
+      const seedSqlite = new Database(dbPath);
+      seedSqlite.pragma("foreign_keys = ON");
+      try {
+        seedSqlite
+          .prepare(`INSERT INTO user (id, name, email) VALUES (@id, @name, @email)`)
+          .run({ id: "owner-1", name: "Owner 1", email: "owner-1@example.com" });
+        seedSqlite
+          .prepare(`INSERT INTO user (id, name, email) VALUES (@id, @name, @email)`)
+          .run({ id: "owner-2", name: "Owner 2", email: "owner-2@example.com" });
+
+        const insertBuild = seedSqlite.prepare(
+          `INSERT INTO builds (id, user_id, name, role, content, slug, is_public)
+           VALUES (@id, @userId, @name, NULL, '{}', @slug, @isPublic)`,
+        );
+        insertBuild.run({ id: "build-public-1", userId: "owner-1", name: "Public 1", slug: "public-1", isPublic: 1 });
+        insertBuild.run({ id: "build-public-2", userId: "owner-1", name: "Public 2", slug: "public-2", isPublic: 1 });
+        insertBuild.run({ id: "build-private-1", userId: "owner-1", name: "Private 1", slug: "private-1", isPublic: 0 });
+        insertBuild.run({ id: "build-foreign-public", userId: "owner-2", name: "Foreign Public", slug: "foreign-public", isPublic: 1 });
+
+        const insertComp = seedSqlite.prepare(
+          `INSERT INTO comps (id, user_id, name, slug) VALUES (@id, @userId, @name, @slug)`,
+        );
+        // (a) all builds public -> should become reachable (is_public=1)
+        insertComp.run({ id: "comp-all-public", userId: "owner-1", name: "All Public", slug: "all-public" });
+        // (b) one public + one private -> stays unreachable (is_public=0)
+        insertComp.run({ id: "comp-mixed", userId: "owner-1", name: "Mixed", slug: "mixed" });
+        // (c) no builds at all -> stays unreachable
+        insertComp.run({ id: "comp-empty", userId: "owner-1", name: "Empty", slug: "empty" });
+        // (d) comp belonging to another user, all builds public -> becomes
+        // reachable regardless of whose comp it is (backfill has no
+        // per-user scoping, only per-comp derived reachability)
+        insertComp.run({ id: "comp-other-user", userId: "owner-2", name: "Other User", slug: "other-user" });
+
+        const insertCompBuild = seedSqlite.prepare(
+          `INSERT INTO comp_builds (id, comp_id, build_id, position, count) VALUES (@id, @compId, @buildId, @position, 1)`,
+        );
+        insertCompBuild.run({ id: "cb-1", compId: "comp-all-public", buildId: "build-public-1", position: 0 });
+        insertCompBuild.run({ id: "cb-2", compId: "comp-all-public", buildId: "build-public-2", position: 1 });
+        insertCompBuild.run({ id: "cb-3", compId: "comp-mixed", buildId: "build-public-1", position: 0 });
+        insertCompBuild.run({ id: "cb-4", compId: "comp-mixed", buildId: "build-private-1", position: 1 });
+        insertCompBuild.run({ id: "cb-5", compId: "comp-other-user", buildId: "build-foreign-public", position: 0 });
+      } finally {
+        seedSqlite.close();
+      }
+
+      const preCounts = (() => {
+        const db = new Database(dbPath);
+        try {
+          return {
+            comps: (db.prepare("SELECT COUNT(*) as n FROM comps").get() as { n: number }).n,
+            compBuilds: (db.prepare("SELECT COUNT(*) as n FROM comp_builds").get() as { n: number }).n,
+            builds: (db.prepare("SELECT COUNT(*) as n FROM builds").get() as { n: number }).n,
+          };
+        } finally {
+          db.close();
+        }
+      })();
+
+      runMigrations(dbPath, path.resolve(process.cwd(), "drizzle"));
+
+      const sqlite = new Database(dbPath);
+      try {
+        const postCounts = {
+          comps: (sqlite.prepare("SELECT COUNT(*) as n FROM comps").get() as { n: number }).n,
+          compBuilds: (sqlite.prepare("SELECT COUNT(*) as n FROM comp_builds").get() as { n: number }).n,
+          builds: (sqlite.prepare("SELECT COUNT(*) as n FROM builds").get() as { n: number }).n,
+        };
+        expect(postCounts).toEqual(preCounts);
+
+        const isPublicByComp = Object.fromEntries(
+          (sqlite.prepare("SELECT id, is_public FROM comps").all() as Array<{ id: string; is_public: number }>).map(
+            (row) => [row.id, row.is_public],
+          ),
+        );
+        expect(isPublicByComp["comp-all-public"]).toBe(1);
+        expect(isPublicByComp["comp-mixed"]).toBe(0);
+        expect(isPublicByComp["comp-empty"]).toBe(0);
+        expect(isPublicByComp["comp-other-user"]).toBe(1);
+
+        const violations = sqlite.pragma("foreign_key_check") as unknown[];
+        expect(violations).toEqual([]);
+      } finally {
+        sqlite.close();
+      }
+    });
+  });
 });
