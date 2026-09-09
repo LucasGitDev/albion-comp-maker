@@ -1,6 +1,6 @@
 import "server-only";
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { builds, compBuilds, comps } from "@/db/schema";
@@ -40,9 +40,13 @@ export type PublicBuild = {
  */
 export async function getPublicBuildBySlug(slug: string): Promise<PublicBuild | null> {
   const db = getDb();
-  const [row] = await db.select().from(builds).where(eq(builds.slug, slug)).limit(1);
+  const [row] = await db
+    .select()
+    .from(builds)
+    .where(and(eq(builds.slug, slug), eq(builds.isPublic, true)))
+    .limit(1);
 
-  if (!row || !row.isPublic) {
+  if (!row) {
     return null;
   }
 
@@ -94,32 +98,52 @@ export type PublicComp = {
  *
  * `entries` is ordered by `comp_builds.position` (ACM-019), never
  * insertion order.
+ *
+ * `builds.is_public` lives in the join's WHERE clause (not a post-fetch JS
+ * filter), matching the mutation-side ownership predicates (ACM-018/019).
+ * Because a single private build must still make the WHOLE comp
+ * unreachable rather than silently dropping that one slot, we compare the
+ * WHERE-filtered row count against the true attached-build count: any
+ * mismatch means at least one attached build failed the `is_public` WHERE
+ * and the comp is unreachable.
  */
 export async function getPublicCompBySlug(slug: string): Promise<PublicComp | null> {
   const db = getDb();
-  const [comp] = await db.select().from(comps).where(eq(comps.slug, slug)).limit(1);
+  const [comp] = await db
+    .select()
+    .from(comps)
+    .where(and(eq(comps.slug, slug), eq(comps.isPublic, true)))
+    .limit(1);
 
-  if (!comp || !comp.isPublic) {
+  if (!comp) {
+    return null;
+  }
+
+  const [{ totalCount }] = await db
+    .select({ totalCount: count() })
+    .from(compBuilds)
+    .where(eq(compBuilds.compId, comp.id));
+
+  if (totalCount === 0) {
     return null;
   }
 
   const rows = await db
     .select({ compBuild: compBuilds, build: builds })
     .from(compBuilds)
-    .innerJoin(builds, eq(compBuilds.buildId, builds.id))
+    .innerJoin(
+      builds,
+      and(eq(compBuilds.buildId, builds.id), eq(builds.isPublic, true)),
+    )
     .where(eq(compBuilds.compId, comp.id))
     .orderBy(asc(compBuilds.position));
 
-  if (rows.length === 0) {
+  if (rows.length !== totalCount) {
     return null;
   }
 
   const entries: PublicCompBuildEntry[] = [];
   for (const { compBuild, build } of rows) {
-    if (!build.isPublic) {
-      return null;
-    }
-
     const parsed = parseBuildContent(build.content);
     if (!parsed.ok) {
       return null;

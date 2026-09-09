@@ -4,10 +4,12 @@ title: i18n routing PT-BR / EN with locale toggle (RF-10)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:34'
+updated_date: '2026-09-09 03:07'
 labels: []
 milestone: m-7
 dependencies:
   - ACM-005
+priority: medium
 ordinal: 23000
 ---
 

@@ -3,11 +3,13 @@ id: ACM-084
 title: >-
   Bucket untrusted compartilhado tem orcamento maior que o per-IP e depende de
   RATE_LIMIT_TRUSTED_HOPS correto
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-08 13:38'
+updated_date: '2026-09-09 03:24'
 labels: []
 dependencies: []
+priority: medium
 ordinal: 82000
 ---
 

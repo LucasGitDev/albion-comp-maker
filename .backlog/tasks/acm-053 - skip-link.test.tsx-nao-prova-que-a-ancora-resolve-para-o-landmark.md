@@ -4,8 +4,10 @@ title: skip-link.test.tsx nao prova que a ancora resolve para o landmark
 status: To Do
 assignee: []
 created_date: '2026-09-07 19:23'
+updated_date: '2026-09-09 03:07'
 labels: []
 dependencies: []
+priority: low
 ordinal: 53000
 ---
 
