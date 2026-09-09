@@ -171,7 +171,7 @@ export function Header(): React.JSX.Element {
           // (see the `/builds` page's own CTA).
           <Link
             href="/comp/new"
-            className="hidden rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none md:inline-block"
+            className="hidden bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none md:inline-block"
           >
             {t(locale, "account.newComp")}
           </Link>
@@ -181,7 +181,7 @@ export function Header(): React.JSX.Element {
           <Link
             href="/comp/new"
             aria-label={t(locale, "account.newCompAriaLabel")}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-accent)] text-lg font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none md:hidden"
+            className="flex h-11 w-11 items-center justify-center bg-[var(--color-accent)] text-lg font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none md:hidden"
           >
             +
           </Link>

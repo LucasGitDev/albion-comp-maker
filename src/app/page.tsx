@@ -43,7 +43,7 @@ export default async function Home(): Promise<React.JSX.Element> {
   if (!session?.user?.id) {
     return (
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">
-        <section className="flex flex-1 flex-col items-center justify-center gap-4 border-b border-[var(--color-border)] px-6 py-16 text-center">
+        <section className="flex flex-col items-center gap-4 border-b border-[var(--color-border)] px-6 pt-24 pb-32 text-center">
           <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             {t(locale, "home.heroTitle")}
           </h1>
@@ -51,7 +51,7 @@ export default async function Home(): Promise<React.JSX.Element> {
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- /api/auth/signin is a NextAuth route handler, not an app-router page (same rationale as Header.tsx). */}
           <a
             href="/api/auth/signin"
-            className="mt-2 rounded-full bg-[var(--color-accent)] px-6 py-3 font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
+            className="mt-2 bg-[var(--color-accent)] px-6 py-3 font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
           >
             {t(locale, "home.signInWithDiscord")}
           </a>
@@ -74,7 +74,7 @@ export default async function Home(): Promise<React.JSX.Element> {
             </Link>
             <Link
               href="/comp/new"
-              className="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
+              className="bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
             >
               {t(locale, "home.newComp")}
             </Link>
@@ -104,7 +104,7 @@ export async function CompsList({ locale = DEFAULT_LOCALE }: { locale?: Locale }
         <p className="max-w-sm text-sm text-foreground/60">{t(locale, "home.emptySubtitle")}</p>
         <Link
           href="/comp/new"
-          className="mt-2 rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
+          className="mt-2 bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
         >
           {t(locale, "home.emptyCta")}
         </Link>
