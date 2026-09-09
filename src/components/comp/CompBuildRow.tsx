@@ -21,6 +21,7 @@ export type CompBuildRowProps = {
  */
 export function CompBuildRow({ entry, index, total, disabled, onMove, onRemove, onSave }: CompBuildRowProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false);
+  const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [label, setLabel] = useState(entry.label ?? "");
   const [count, setCount] = useState(entry.count);
 
@@ -35,12 +36,19 @@ export function CompBuildRow({ entry, index, total, disabled, onMove, onRemove, 
     setIsEditing(false);
   }
 
+  function handleConfirmRemove() {
+    setIsConfirmingRemove(false);
+    onRemove();
+  }
+
   return (
     <li className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col">
-          <span className="font-medium text-foreground">{entry.build.name}</span>
-          <span className="text-xs text-foreground/60">
+        <div className="flex min-w-0 flex-col">
+          <span className="min-w-0 truncate font-medium text-foreground" title={entry.build.name}>
+            {entry.build.name}
+          </span>
+          <span className="min-w-0 truncate text-xs text-foreground/60">
             {entry.build.role || "Sem papel"}
             {entry.label ? ` · ${entry.label}` : ""} · x{entry.count}
           </span>
@@ -72,14 +80,35 @@ export function CompBuildRow({ entry, index, total, disabled, onMove, onRemove, 
           >
             Editar
           </button>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onRemove}
-            className="rounded-md border border-red-500/40 px-2 py-1 text-sm text-red-500 transition-colors hover:border-red-500 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:transition-none"
-          >
-            Remover
-          </button>
+          {isConfirmingRemove ? (
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={handleConfirmRemove}
+                className="rounded-md bg-red-500 px-2 py-1 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:transition-none"
+              >
+                Confirmar remoção
+              </button>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setIsConfirmingRemove(false)}
+                className="rounded-md border border-[var(--color-border)] px-2 py-1 text-sm text-foreground/80 transition-colors hover:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:transition-none"
+              >
+                Cancelar
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setIsConfirmingRemove(true)}
+              className="rounded-md border border-red-500/40 px-2 py-1 text-sm text-red-500 transition-colors hover:border-red-500 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:transition-none"
+            >
+              Remover
+            </button>
+          )}
         </div>
       </div>
 
@@ -109,15 +138,17 @@ export function CompBuildRow({ entry, index, total, disabled, onMove, onRemove, 
           <div className="flex gap-2">
             <button
               type="button"
+              disabled={disabled}
               onClick={handleSave}
-              className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
+              className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:transition-none"
             >
               Salvar
             </button>
             <button
               type="button"
+              disabled={disabled}
               onClick={handleCancel}
-              className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm text-foreground/80 transition-colors hover:border-[var(--color-accent)] focus-visible:transition-none"
+              className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm text-foreground/80 transition-colors hover:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:transition-none"
             >
               Cancelar
             </button>

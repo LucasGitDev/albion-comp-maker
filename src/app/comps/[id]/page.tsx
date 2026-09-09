@@ -65,6 +65,8 @@ export default async function CompDetailPage({ params }: PageProps): Promise<Rea
     id: build.id,
     name: build.name,
     role: build.role,
+    slug: build.slug,
+    isPublic: build.isPublic,
   }));
 
   return (

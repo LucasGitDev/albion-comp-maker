@@ -18,30 +18,67 @@ export type AddBuildDialogProps = {
  * in-game items, not of the user's saved builds — so this is a small,
  * dedicated modal rather than a generalization of `ItemPicker`.
  *
- * Plain `role="dialog"` + `Escape`-to-close + focus-on-open, no portal/focus
- * trap library: no dialog primitive exists yet in this codebase's
- * dependencies (only `ItemPicker`'s own popover, which is not reusable
- * here), and this is a lower-frequency, lower-risk surface than the
- * editor's slot picker.
+ * `role="dialog"` + `Escape`-to-close + focus-on-open, with a hand-rolled
+ * focus trap (Tab/Shift+Tab cycle within the modal) and focus restoration to
+ * whatever triggered the dialog on close: no dialog primitive exists yet in
+ * this codebase's dependencies (only `ItemPicker`'s own popover, which is
+ * not reusable here), so `role`/`aria-modal` alone are not enough — they are
+ * purely semantic and do not stop focus from leaving the modal via Tab.
  */
 export function AddBuildDialog({ builds, disabled, onSelect, onClose }: AddBuildDialogProps): React.JSX.Element {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     closeButtonRef.current?.focus();
+
+    function getFocusableElements(): HTMLElement[] {
+      const container = dialogRef.current;
+      if (!container) return [];
+      return Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+    }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = getFocusableElements();
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey) {
+        if (active === first || !dialogRef.current?.contains(active)) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !dialogRef.current?.contains(active)) {
+        event.preventDefault();
+        first.focus();
       }
     }
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previouslyFocused?.focus();
+    };
   }, [onClose]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-build-dialog-title"

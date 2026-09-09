@@ -29,7 +29,9 @@ function entry(overrides: Partial<CompBuildEntry> = {}): CompBuildEntry {
   };
 }
 
-const myBuilds: MyBuildOption[] = [{ id: "build-2", name: "Healer Build", role: "Healer" }];
+const myBuilds: MyBuildOption[] = [
+  { id: "build-2", name: "Healer Build", role: "Healer", slug: "healer-build", isPublic: true },
+];
 
 describe("CompBuildsManager (ACM-098)", () => {
   beforeEach(() => {
@@ -95,9 +97,20 @@ describe("CompBuildsManager (ACM-098)", () => {
     render(<CompBuildsManager compId="comp-1" initialEntries={[entry()]} myBuilds={myBuilds} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Remover" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar remoção" }));
 
     expect(screen.queryByText("Tank Build")).not.toBeInTheDocument();
     await waitFor(() => expect(mockRemoveBuildFromComp).toHaveBeenCalledWith("comp-1", "cb-1"));
+  });
+
+  it("AC#3 (confirmation): clicking Remover without confirming does not call removeBuildFromComp", async () => {
+    render(<CompBuildsManager compId="comp-1" initialEntries={[entry()]} myBuilds={myBuilds} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remover" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.getByText("Tank Build")).toBeInTheDocument();
+    expect(mockRemoveBuildFromComp).not.toHaveBeenCalled();
   });
 
   it("AC#3 (error path): restores the entry and shows a retry banner when removal fails", async () => {
@@ -106,6 +119,7 @@ describe("CompBuildsManager (ACM-098)", () => {
     render(<CompBuildsManager compId="comp-1" initialEntries={[entry()]} myBuilds={myBuilds} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Remover" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar remoção" }));
 
     await screen.findByText(/não foi possível remover/i);
     expect(screen.getByText("Tank Build")).toBeInTheDocument();
@@ -152,5 +166,105 @@ describe("CompBuildsManager (ACM-098)", () => {
       }),
     );
     expect(screen.getByText(/Main tank/)).toBeInTheDocument();
+  });
+
+  it("AC#4 (error path): restores the original order and shows a retry banner when reorderCompBuilds fails", async () => {
+    mockReorderCompBuilds.mockRejectedValue(new Error("boom"));
+
+    render(
+      <CompBuildsManager
+        compId="comp-1"
+        initialEntries={[
+          entry({ compBuildId: "cb-1", build: { id: "b1", name: "First", role: null, slug: "first", isPublic: true } }),
+          entry({ compBuildId: "cb-2", build: { id: "b2", name: "Second", role: null, slug: "second", isPublic: true } }),
+        ]}
+        myBuilds={myBuilds}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: /mover .* para baixo/i })[0]);
+
+    await screen.findByText(/não foi possível reordenar/i);
+    const names = screen.getAllByRole("listitem").map((li) => li.textContent);
+    expect(names[0]).toContain("First");
+    expect(names[1]).toContain("Second");
+  });
+
+  it("AC#5 (error path): reverts label/count to the previous values and shows a retry banner when updateCompBuild fails", async () => {
+    mockUpdateCompBuild.mockRejectedValue(new Error("boom"));
+
+    render(<CompBuildsManager compId="comp-1" initialEntries={[entry({ label: "Old label", count: 1 })]} myBuilds={myBuilds} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.change(screen.getByLabelText("Label"), { target: { value: "New label" } });
+    fireEvent.change(screen.getByLabelText("Quantidade"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await screen.findByText(/não foi possível salvar/i);
+    expect(screen.getByText(/Old label/)).toBeInTheDocument();
+    expect(screen.getByText(/x1/)).toBeInTheDocument();
+    expect(screen.queryByText(/New label/)).not.toBeInTheDocument();
+  });
+
+  it("concurrency guard: Salvar/Cancelar are disabled while another action (e.g. a reorder) is in flight", async () => {
+    let resolveReorder!: (value: unknown) => void;
+    mockReorderCompBuilds.mockImplementation(() => new Promise((resolve) => (resolveReorder = resolve)));
+
+    render(
+      <CompBuildsManager
+        compId="comp-1"
+        initialEntries={[
+          entry({ compBuildId: "cb-1", build: { id: "b1", name: "First", role: null, slug: "first", isPublic: true } }),
+          entry({ compBuildId: "cb-2", build: { id: "b2", name: "Second", role: null, slug: "second", isPublic: true } }),
+        ]}
+        myBuilds={myBuilds}
+      />,
+    );
+
+    // Open the edit panel on the second entry BEFORE starting the reorder, so Salvar/Cancelar exist
+    // in the DOM (they are only rendered while `isEditing`) and we can assert they become disabled
+    // once a different entry's reorder is in flight — this is the fix for the race where Salvar had
+    // no `disabled` gating at all and could fire a save concurrently with an in-flight reorder.
+    fireEvent.click(screen.getAllByRole("button", { name: "Editar" })[1]);
+    expect(screen.getByRole("button", { name: "Salvar" })).not.toBeDisabled();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /mover .* para baixo/i })[0]);
+    await waitFor(() => expect(mockReorderCompBuilds).toHaveBeenCalled());
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeDisabled();
+
+    resolveReorder([]);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Salvar" })).not.toBeDisabled());
+  });
+
+  it("reconciliation: a failed reorder swaps only the two moved entries back by id, leaving other entries' fields untouched", async () => {
+    mockReorderCompBuilds.mockRejectedValue(new Error("boom"));
+
+    render(
+      <CompBuildsManager
+        compId="comp-1"
+        initialEntries={[
+          entry({
+            compBuildId: "cb-1",
+            label: "Kept label",
+            count: 7,
+            build: { id: "b1", name: "First", role: null, slug: "first", isPublic: true },
+          }),
+          entry({ compBuildId: "cb-2", build: { id: "b2", name: "Second", role: null, slug: "second", isPublic: true } }),
+        ]}
+        myBuilds={myBuilds}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: /mover .* para baixo/i })[0]);
+
+    await screen.findByText(/não foi possível reordenar/i);
+
+    const names = screen.getAllByRole("listitem").map((li) => li.textContent);
+    expect(names[0]).toContain("First");
+    expect(names[0]).toContain("Kept label");
+    expect(names[0]).toContain("x7");
+    expect(names[1]).toContain("Second");
   });
 });
