@@ -1,10 +1,10 @@
 ---
 id: ACM-093
 title: 'i18n: toggle de idioma EN/PT-BR para nomes de itens e UI'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-09 02:55'
+updated_date: '2026-09-09 03:05'
 labels: []
 milestone: m-7
 dependencies: []

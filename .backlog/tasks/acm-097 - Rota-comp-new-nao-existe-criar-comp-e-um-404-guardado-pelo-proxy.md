@@ -1,10 +1,10 @@
 ---
 id: ACM-097
 title: 'Rota /comp/new nao existe: criar comp e um 404 guardado pelo proxy'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-09 02:41'
-updated_date: '2026-09-09 02:54'
+updated_date: '2026-09-09 03:05'
 labels: []
 milestone: m-6
 dependencies: []
