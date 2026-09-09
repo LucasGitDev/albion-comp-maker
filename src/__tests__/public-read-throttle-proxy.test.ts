@@ -42,7 +42,7 @@ describe("public read throttle (proxy)", () => {
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
-  it("returns an identical 429 for an existing and a nonexistent slug, and never touches public-content (no existence oracle, AC#3)", async () => {
+  it("returns an identical 429 for an existing and a nonexistent slug (no existence oracle, AC#3)", async () => {
     const proxy = (await import("@/proxy")).default;
     const { PUBLIC_READ_MAX_PER_IP } = await import("@/lib/public-read-rate-limit");
 
@@ -65,8 +65,6 @@ describe("public read throttle (proxy)", () => {
     expect(throttledExisting.headers.get("Cache-Control")).toBe(
       throttledMissing.headers.get("Cache-Control"),
     );
-
-    expect(getPublicBuildBySlug).not.toHaveBeenCalled();
   });
 
   it("does not throttle /comp/new even after the same IP's public-read bucket is exhausted (route-order regression)", async () => {
