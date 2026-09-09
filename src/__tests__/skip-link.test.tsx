@@ -12,6 +12,14 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
   return { useItemCatalogue: () => ({ items, loading: false, failed: false, failedReason: null, retry: vi.fn() }) };
 });
 
+// `Home` (ACM-096) reads `auth()`/`listMyCompsWithStatus()` directly — mocked
+// here (unauthenticated, matching this suite's landing-only assertions) so
+// this suite never pulls in the real `@/auth/config` module, which
+// transitively imports `next-auth` and hits an unrelated extensionless
+// `next/server` import that vitest's ESM resolution can't follow.
+vi.mock("@/auth/config", () => ({ auth: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/actions/comps", () => ({ listMyCompsWithStatus: vi.fn().mockResolvedValue([]) }));
+
 import Home from "@/app/page";
 import BuildsPage from "@/app/builds/page";
 import NewBuildPage from "@/app/(editor)/build/new/page";
@@ -28,8 +36,8 @@ vi.mock("next/navigation", async () => {
  * the link is a dead anchor (ACM-037 review finding).
  */
 describe("global skip link target (ACM-037 review fix)", () => {
-  it("renders a focusable #main-content landmark on the home route", () => {
-    render(<Home />);
+  it("renders a focusable #main-content landmark on the home route", async () => {
+    render(await Home());
     const main = document.getElementById("main-content");
     expect(main).toBeInTheDocument();
     expect(main?.tagName).toBe("MAIN");
