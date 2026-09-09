@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AOItem } from "@/data/ao-data.d";
 
@@ -51,13 +51,15 @@ afterEach(() => {
 
 describe("/build/new — mobile group-nav strip (ACM-041)", () => {
   it("the global counter denominator excludes a locked offhand on a two-handed build", () => {
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
-      8,
-      0
-    );
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
+        8,
+        0
+      );
+    });
     // 10 slots total minus the locked offhand = 9 reachable; only mainhand
     // is filled, so 1/9 — never 1/10 (unreachable) and never 0/9 (offhand
     // silently dropped from the numerator too).
@@ -65,13 +67,15 @@ describe("/build/new — mobile group-nav strip (ACM-041)", () => {
   });
 
   it("the Armas chip denominator drops to 1 (not 2) when offhand is locked", () => {
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
-      8,
-      0
-    );
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
+        8,
+        0
+      );
+    });
     expect(screen.getByRole("link", { name: /armas 1 de 1/i })).toBeInTheDocument();
   });
 

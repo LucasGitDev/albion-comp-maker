@@ -101,6 +101,14 @@ export type BuildActions = {
   ): void;
   setSwapSpell(id: string, slot: Slot, group: SpellGroup, spellId: string | null): void;
   reset(): void;
+  /**
+   * Replaces the whole build with `state` (ACM-099): reopening a saved build
+   * in `/build/[id]/edit` needs to load its persisted content wholesale, not
+   * mutate slot-by-slot through the setters above. `state` is expected to
+   * already be validated (the caller reads it via `parseBuildContent`) — this
+   * is a plain assignment, it does not re-validate.
+   */
+  hydrate(state: BuildState): void;
 };
 
 export type BuildStore = {
@@ -280,5 +288,7 @@ export const useBuildStore = create<BuildStore>((set) => ({
       })),
 
     reset: () => set({ build: createEmptyBuild() }),
+
+    hydrate: (state) => set({ build: state }),
   },
 }));

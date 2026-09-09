@@ -80,6 +80,18 @@ async function loadOwnedBuild(userId: string, buildId: string): Promise<BuildRow
   return row;
 }
 
+/**
+ * Loads a single build owned by the current user, for reopening it in the
+ * editor (ACM-099 AC#1/AC#5). Reuses `loadOwnedBuild`'s IDOR-safe "not found"
+ * shape — a nonexistent id and another user's build both throw
+ * `BuildNotFoundError`, so `/build/[id]/edit` can 404 either case identically
+ * without leaking which one it was.
+ */
+export async function getBuildForEdit(id: string): Promise<BuildRow> {
+  const session = await requireSession();
+  return loadOwnedBuild(session.user.id, id);
+}
+
 /** Loads a single build owned by the current user, for share/slug management UI (ACM-067). */
 export async function getBuild(id: string): Promise<BuildRow> {
   const session = await requireSession();

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AOItem } from "@/data/ao-data.d";
 
@@ -129,13 +129,15 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
   });
 
   it("locked offhand (mainhand two-handed) never opens the picker", () => {
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
-      8,
-      0,
-    );
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
+        8,
+        0,
+      );
+    });
     expect(screen.getByText("Ocupada por arma de duas mãos")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -143,14 +145,15 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
 
 describe("/build/new — tier/enchant selectors are actually reachable (ACM-031 review fix)", () => {
   it("renders the enchant selector for an equipped item and changing it updates the store", async () => {
-    useBuildStore.getState().actions.setItem(
-      "head",
-      { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false, maxEnchant: 4 },
-      4,
-      0
-    );
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setItem(
+        "head",
+        { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+    });
 
     const enchantSelect = await screen.findByRole("combobox", { name: "Encantamento de Cabeça" });
     fireEvent.change(enchantSelect, { target: { value: "3" } });
@@ -160,14 +163,15 @@ describe("/build/new — tier/enchant selectors are actually reachable (ACM-031 
   });
 
   it("renders the tier selector for an equipped item and changing it updates the store", async () => {
-    useBuildStore.getState().actions.setItem(
-      "head",
-      { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false, maxEnchant: 4 },
-      4,
-      0
-    );
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setItem(
+        "head",
+        { uniquename: "T4_HEAD_PLATE_SET1", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+    });
 
     // The mocked catalogue only carries T4_HEAD_PLATE_SET1, so the tier
     // selector has a single option, but its mere presence proves
@@ -189,23 +193,25 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
   it("calls saveBuild with the current build's name, role and serialized content", async () => {
     mockSession(true);
     mockSaveBuild.mockResolvedValue({ id: "b1" });
-    useBuildStore.getState().actions.setName("Bruiser de Frontline");
-    useBuildStore.getState().actions.setRole("Tank");
-    // T4_MAIN_SWORD (mocked catalogue) rather than an item absent from it:
-    // the ACM-092 revised gate reads selectable spell groups off the loaded
-    // catalogue via `spellCandidatesBySlot`, so an itemId the catalogue
-    // doesn't know about would never satisfy "hasReadyItem" no matter what
-    // its `spells` record holds.
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
-      4,
-      0
-    );
-    useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
-    useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setName("Bruiser de Frontline");
+      useBuildStore.getState().actions.setRole("Tank");
+      // T4_MAIN_SWORD (mocked catalogue) rather than an item absent from it:
+      // the ACM-092 revised gate reads selectable spell groups off the loaded
+      // catalogue via `spellCandidatesBySlot`, so an itemId the catalogue
+      // doesn't know about would never satisfy "hasReadyItem" no matter what
+      // its `spells` record holds.
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+      useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+      useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
+    });
+
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
@@ -227,17 +233,19 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
   it("surfaces the real saveBuild failure instead of always reporting success", async () => {
     mockSession(true);
     mockSaveBuild.mockRejectedValue(new Error("boom"));
-    useBuildStore.getState().actions.setName("Bruiser de Frontline");
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
-      4,
-      0
-    );
-    useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
-    useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setName("Bruiser de Frontline");
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+      useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+      useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
+    });
+
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
@@ -249,9 +257,10 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
 describe("/build/new — Salvar/Exportar require ≥1 item with selectable spells filled (ACM-092 revised spec)", () => {
   it("disables Salvar and Exportar on a completely empty build", () => {
     mockSession(true);
-    useBuildStore.getState().actions.setName("Bruiser de Frontline");
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setName("Bruiser de Frontline");
+    });
 
     expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button", { name: "Exportar PNG" })).toBeDisabled();
@@ -279,17 +288,18 @@ describe("/build/new — Salvar/Exportar require ≥1 item with selectable spell
 
   it("enables Salvar and Exportar once the mainhand weapon has every selectable spell filled", () => {
     mockSession(true);
-    useBuildStore.getState().actions.setName("Bruiser de Frontline");
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
-      4,
-      0
-    );
-    useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
-    useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setName("Bruiser de Frontline");
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+      useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+      useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
+    });
 
     expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "false");
     expect(screen.getByRole("button", { name: "Exportar PNG" })).not.toBeDisabled();
@@ -316,14 +326,15 @@ describe("/build/new — Salvar/Exportar require ≥1 item with selectable spell
 
 describe("/build/new — main slot grid shows ability slots and item names (ACM-040)", () => {
   it("renders the spell picker with a row per group for a weapon equipped in the mainhand slot", () => {
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
-      4,
-      0
-    );
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+    });
 
     const mainhandCard = document.querySelector('[data-slot="mainhand"]')!;
     expect(mainhandCard.querySelector('[data-testid="spell-picker"]')).toBeInTheDocument();
@@ -333,15 +344,16 @@ describe("/build/new — main slot grid shows ability slots and item names (ACM-
   });
 
   it("renders the spell picker only for the slot whose item has spells, and the empty state for the one that doesn't", () => {
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
-      4,
-      0
-    );
-    useBuildStore.getState().actions.setItem("bag", { uniquename: "T4_BAG", twohanded: false, maxEnchant: 0 }, 4, 0);
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+      useBuildStore.getState().actions.setItem("bag", { uniquename: "T4_BAG", twohanded: false, maxEnchant: 0 }, 4, 0);
+    });
 
     // Scoped to `[data-testid="slot-grid"]` so this doesn't accidentally
     // match the read-only build-card preview tile, which shares the same
@@ -358,14 +370,15 @@ describe("/build/new — main slot grid shows ability slots and item names (ACM-
   });
 
   it("shows the localized item name on the slot card instead of the raw uniquename", () => {
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
-      4,
-      0
-    );
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+    });
 
     const mainhandCard = document.querySelector('[data-slot="mainhand"]')!;
     expect(mainhandCard).toHaveTextContent("Broadsword");
@@ -463,17 +476,18 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
   it("saving succeeds when a swap is added and never touched (ACM-012 review round 3: swapSchema.label allows '', so no onBlur is required before Salvar)", async () => {
     mockSession(true);
     mockSaveBuild.mockResolvedValue({ id: "b1" });
-    useBuildStore.getState().actions.setName("Bruiser de Frontline");
-    useBuildStore.getState().actions.setItem(
-      "mainhand",
-      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
-      4,
-      0
-    );
-    useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
-    useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
-
     renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setName("Bruiser de Frontline");
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+      useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+      useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
+    });
 
     // Add a swap and never focus/blur its label input.
     fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
@@ -486,6 +500,29 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
     expect(JSON.parse(payload.content).swaps[0].label).toBe("");
     expect(await screen.findByText("Build salva.")).toBeInTheDocument();
     expect(screen.queryByText("Não deu para salvar.")).not.toBeInTheDocument();
+  });
+});
+
+describe("/build/new — clears leftover state from a previous edit session (ACM-099 bugfix)", () => {
+  it("resets the singleton store instead of showing the previously edited build's data", () => {
+    // Simulates the store as left behind by `/build/<id>/edit` (BuildEditor's
+    // `mode: "edit"` hydrate effect) before the user navigates client-side to
+    // `/build/new` without a full page reload.
+    useBuildStore.getState().actions.setName("Tank Grovekeeper");
+    useBuildStore.getState().actions.setRole("Tank");
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+      4,
+      0
+    );
+
+    renderPage();
+
+    expect(useBuildStore.getState().build.name).toBe("");
+    expect(useBuildStore.getState().build.role).toBe("");
+    expect(useBuildStore.getState().build.slots.mainhand).toBeNull();
+    expect(screen.queryByDisplayValue("Tank Grovekeeper")).not.toBeInTheDocument();
   });
 });
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { listMyBuilds } from "@/actions/builds";
+import { BuildsListManager } from "@/components/builds/BuildsListManager";
 
 /**
  * Lists the current user's builds (ACM-018). This is a plain `/builds`
@@ -38,34 +39,14 @@ export default async function BuildsPage(): Promise<React.JSX.Element> {
         </Link>
       </div>
 
-      {myBuilds.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] py-16 text-center">
-          <p className="text-base font-medium text-foreground">
-            Nenhuma build ainda
-          </p>
-          <p className="max-w-sm text-sm text-foreground/60">
-            Crie sua primeira build para começar.
-          </p>
-        </div>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {myBuilds.map((build) => (
-            <li key={build.id}>
-              <Link
-                href={`/builds/${build.id}`}
-                className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 transition-colors hover:border-[var(--color-accent)] focus-visible:transition-none"
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium text-foreground">{build.name}</span>
-                  <span className="text-xs text-foreground/60">
-                    {build.role || "Sem papel"} · {build.isPublic ? "Pública" : "Privada"}
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <BuildsListManager
+        initialBuilds={myBuilds.map((build) => ({
+          id: build.id,
+          name: build.name,
+          role: build.role,
+          isPublic: build.isPublic,
+        }))}
+      />
     </main>
   );
 }
