@@ -113,8 +113,11 @@ describe("searchItems", () => {
 });
 
 describe("performance", () => {
-  function synthesizeCatalogue(): AOItem[] {
-    // Mirrors the real slot histogram in doc-002 §0 (2036 equippable items).
+  // Mirrors the real slot histogram in doc-002 §0 (2036 equippable items) at a
+  // given scale factor, so we can compare N items against 4N items measured in
+  // the *same test run*. See ACM-083 / decision on why this replaces absolute
+  // wall-clock budgets.
+  function synthesizeCatalogue(scale: number): AOItem[] {
     const histogram: Array<[AOItem["slot"], number]> = [
       ["mainhand", 817],
       ["head", 280],
@@ -128,7 +131,8 @@ describe("performance", () => {
     const items: AOItem[] = [];
     const words = ["Holy", "Fire", "Frost", "Great", "Cursed", "Bastard", "Royal", "Iron", "Sacred"];
     let counter = 0;
-    for (const [slot, count] of histogram) {
+    for (const [slot, baseCount] of histogram) {
+      const count = Math.max(1, Math.round(baseCount * scale));
       for (let i = 0; i < count; i++) {
         const tier = (counter % 8) + 1;
         const enchant = counter % 5;
@@ -152,27 +156,57 @@ describe("performance", () => {
     return items;
   }
 
-  it("filters the real-sized mainhand bucket in well under 50ms after the debounce", () => {
-    const catalogue = synthesizeCatalogue();
-    expect(catalogue).toHaveLength(2036);
-    const index = buildItemIndex(catalogue);
-
-    const queries = ["t8 holy", "fire", "royal iron", "8.3", "sacred"];
-    const start = performance.now();
-    for (const query of queries) {
-      searchItems(index, query, { slot: "mainhand", locale: "en-US" });
+  // Runs `fn` a few times and keeps the minimum, to smooth out one-off
+  // scheduler hiccups without hiding a real complexity regression.
+  function measureMin(fn: () => void, repeats = 5): number {
+    let best = Infinity;
+    for (let i = 0; i < repeats; i++) {
+      const start = performance.now();
+      fn();
+      const elapsed = performance.now() - start;
+      if (elapsed < best) best = elapsed;
     }
-    const elapsed = performance.now() - start;
+    return Math.max(best, 0.001);
+  }
 
-    // 5 full passes over the 817-item mainhand bucket, well under the 50ms budget.
-    expect(elapsed).toBeLessThan(50);
+  // ACM-083: absolute wall-clock budgets (e.g. "under 50ms") are flaky under
+  // CPU contention (parallel worktrees / shared CI runners both saw a
+  // machine-wide slowdown push these past 50ms with no code regression).
+  // Instead we assert *algorithmic complexity*: build/search cost at 4x the
+  // catalogue size must not exceed a generous multiple of the cost at 1x,
+  // measured back-to-back in the same process. Both measurements suffer the
+  // same contention, so the ratio stays stable even on a loaded machine,
+  // while it still fails hard if someone introduces e.g. an accidental O(n^2)
+  // pass over the catalogue (4x input -> ~16x time would blow the budget).
+  const COMPLEXITY_SLACK = 10;
+
+  it("builds the index in roughly linear time as the catalogue grows 4x", () => {
+    const small = synthesizeCatalogue(1);
+    const large = synthesizeCatalogue(4);
+    expect(large.length).toBeGreaterThanOrEqual(small.length * 3.5);
+
+    const smallElapsed = measureMin(() => buildItemIndex(small));
+    const largeElapsed = measureMin(() => buildItemIndex(large));
+
+    expect(largeElapsed).toBeLessThan(smallElapsed * COMPLEXITY_SLACK);
   });
 
-  it("builds the full 2036-item index in a single fast pass", () => {
-    const catalogue = synthesizeCatalogue();
-    const start = performance.now();
-    buildItemIndex(catalogue);
-    const elapsed = performance.now() - start;
-    expect(elapsed).toBeLessThan(50);
+  it("searches the mainhand bucket in roughly linear time as it grows 4x", () => {
+    const smallCatalogue = synthesizeCatalogue(1);
+    const largeCatalogue = synthesizeCatalogue(4);
+    const smallIndex = buildItemIndex(smallCatalogue);
+    const largeIndex = buildItemIndex(largeCatalogue);
+    const queries = ["t8 holy", "fire", "royal iron", "8.3", "sacred"];
+
+    const runQueries = (index: ReturnType<typeof buildItemIndex>) => {
+      for (const query of queries) {
+        searchItems(index, query, { slot: "mainhand", locale: "en-US" });
+      }
+    };
+
+    const smallElapsed = measureMin(() => runQueries(smallIndex));
+    const largeElapsed = measureMin(() => runQueries(largeIndex));
+
+    expect(largeElapsed).toBeLessThan(smallElapsed * COMPLEXITY_SLACK);
   });
 });

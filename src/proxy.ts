@@ -15,10 +15,19 @@ const authProxy = auth((req) => {
   }
 });
 
+// Literal editor-creation routes that must always go through the
+// authenticated branch, never the public-read branch. `/build/new` and
+// `/comp/new` both look like `/build/:slug` / `/comp/:slug` to the regex
+// below, so they are checked against this list first (decision-016
+// addendum: symmetric treatment, /build/new no longer spends the shared
+// 120/60s public-read budget).
+const AUTH_ONLY_LITERAL_PATHS = new Set(["/build/new", "/comp/new"]);
+
 // A single segment after "build" or "comp" — `/build/:slug` / `/comp/:slug`.
-// `/comp/new` must be excluded here (checked before this regex in the
-// router below), otherwise the build-creation page would be treated as an
-// anonymous public route (decision-016).
+// `/build/new` and `/comp/new` must be excluded here (checked before this
+// regex in the router below via AUTH_ONLY_LITERAL_PATHS), otherwise the
+// build/comp creation pages would be treated as anonymous public routes
+// (decision-016).
 const PUBLIC_READ_PATHS = /^\/(build|comp)\/[^/]+\/?$/;
 
 /**
@@ -39,17 +48,18 @@ function throttledResponse(): Response {
 
 /**
  * Routes between the public-read branch (per-IP throttle, no session
- * lookup) and the authenticated branch (`auth(handler)`). `/comp/new` is
- * checked BEFORE the public-read path test, otherwise it would match
- * `/comp/:slug` and be treated as a public route. The public branch never
- * calls `auth()`: an anonymous request must not pay a session lookup
- * against the SQLite-backed adapter (decision-012).
+ * lookup) and the authenticated branch (`auth(handler)`). `/build/new` and
+ * `/comp/new` are checked BEFORE the public-read path test, otherwise they
+ * would match `/build/:slug` / `/comp/:slug` and be treated as public
+ * routes. The public branch never calls `auth()`: an anonymous request
+ * must not pay a session lookup against the SQLite-backed adapter
+ * (decision-012).
  */
 export default function proxy(
   req: Parameters<typeof authProxy>[0],
   ctx: Parameters<typeof authProxy>[1],
 ) {
-  if (req.nextUrl.pathname === "/comp/new") {
+  if (AUTH_ONLY_LITERAL_PATHS.has(req.nextUrl.pathname)) {
     return authProxy(req, ctx);
   }
 

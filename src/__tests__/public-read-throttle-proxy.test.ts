@@ -86,6 +86,47 @@ describe("public read throttle (proxy)", () => {
     expect(res?.status).toBe(302);
   });
 
+  it("does not throttle /build/new even after the same IP's public-read bucket is exhausted (symmetric with /comp/new, decision-016)", async () => {
+    const proxy = (await import("@/proxy")).default;
+    const { PUBLIC_READ_MAX_PER_IP } = await import("@/lib/public-read-rate-limit");
+
+    for (let i = 0; i < PUBLIC_READ_MAX_PER_IP + 5; i++) {
+      (proxy as (r: unknown) => unknown)(makeRequest("/build/abc12345"));
+    }
+
+    const res = (proxy as (r: unknown) => unknown)(makeRequest("/build/new")) as
+      | Response
+      | undefined;
+
+    // Unauthenticated -> auth branch redirects to "/", never a 429.
+    expect(res).toBeInstanceOf(Response);
+    expect(res?.status).toBe(302);
+  });
+
+  it("routes both /build/new and /comp/new to the auth branch (not the public-read regex match)", async () => {
+    const proxy = (await import("@/proxy")).default;
+
+    const buildRes = (proxy as (r: unknown) => unknown)(
+      makeRequest("/build/new"),
+    ) as Response | undefined;
+    const compRes = (proxy as (r: unknown) => unknown)(
+      makeRequest("/comp/new"),
+    ) as Response | undefined;
+
+    expect(buildRes).toBeInstanceOf(Response);
+    expect(buildRes?.status).toBe(302);
+    expect(compRes).toBeInstanceOf(Response);
+    expect(compRes?.status).toBe(302);
+  });
+
+  it("still routes /build/:slug (non-'new' slug) to the public-read branch", async () => {
+    const proxy = (await import("@/proxy")).default;
+
+    const res = (proxy as (r: unknown) => unknown)(makeRequest("/build/not-new"));
+
+    expect(res).toBeUndefined();
+  });
+
   it("routes /builds/anything to the auth branch, not the public-read branch", async () => {
     const proxy = (await import("@/proxy")).default;
 

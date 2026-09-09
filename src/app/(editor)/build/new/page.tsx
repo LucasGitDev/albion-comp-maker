@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Slot } from "@/data/ao-data";
 import type { AOItem } from "@/data/ao-data.d";
 import { saveBuild } from "@/actions/builds";
@@ -26,6 +26,25 @@ import { selectActions, selectBuild, useBuildStore } from "@/store/build-store";
 import { useLocale } from "@/components/i18n/LocaleProvider";
 
 type PickerTarget = { origin: "main"; slot: Slot } | { origin: "swap"; swapId: string; slot: Slot };
+
+/**
+ * `BuildCard`'s fixed logical width for the default `vertical` layout
+ * (decision-010/doc-006) — it never shrinks with its flex parent. Used here
+ * (not imported from `BuildCardVertical`, which keeps its own copy private)
+ * to compute the scale-to-fit factor for the preview column below.
+ */
+const PREVIEW_CARD_WIDTH = 960;
+/** `ThemePanel`'s fixed column width (`w-80`). */
+const THEME_PANEL_WIDTH = 320;
+/** Gap between the preview column and the docked panel (`gap-6`). */
+const THEME_PANEL_GAP = 24;
+/**
+ * Below this scale factor a docked side-by-side panel would shrink the card
+ * preview past legibility (ACM-095 round-2 review). At that point the panel
+ * renders as a modal overlay instead of taking a column, so the card keeps
+ * its full available width.
+ */
+const MIN_DOCK_SCALE = 0.7;
 
 /**
  * Owns the only store subscription in the editor tree. Slot cards and the
@@ -181,6 +200,89 @@ export default function NewBuildPage(): React.JSX.Element {
 
   const [theme, setTheme] = useState<BuildCardTheme>(DEFAULT_BUILD_CARD_THEME);
   const [themePanelOpen, setThemePanelOpen] = useState(false);
+  /**
+   * ACM-095 round 2: whether the appearance panel takes its own column next
+   * to the card ("docked") or renders as a modal overlay ("overlay"). Chosen
+   * from the row's real measured width, not a CSS breakpoint — see the
+   * `ResizeObserver` effect below for the arithmetic.
+   */
+  const [panelMode, setPanelMode] = useState<"docked" | "overlay">("docked");
+  /** Scale-to-fit factor applied to the card preview so it never overflows its column. */
+  const [previewScale, setPreviewScale] = useState(1);
+  /** Card's own unscaled layout height (`offsetHeight` — unaffected by the `transform: scale()` applied to the same node), used to reserve the correct (scaled) height for the preview wrapper instead of leaving a gap below it. */
+  const [cardNaturalHeight, setCardNaturalHeight] = useState(0);
+  const editorRowRef = useRef<HTMLDivElement | null>(null);
+  const cardScaleRef = useRef<HTMLDivElement | null>(null);
+  const showDockedPanel = themePanelOpen && panelMode === "docked";
+  const showOverlayPanel = themePanelOpen && panelMode === "overlay";
+
+  /**
+   * Derives the panel mode and the card's scale-to-fit factor from
+   * `window.innerWidth`, not from measuring the editor row's own
+   * `clientWidth` (ACM-095 round 2 review-fix — a bare `overflow-x-auto`
+   * previously hid part of the 960px card, and an initial attempt at this
+   * fix measured the row itself, which back-fires: before the first
+   * correction runs the row renders at the card's full unscaled width,
+   * which is wider than the viewport, so flexbox's default
+   * `min-width: auto` on the row lets it overflow its own parent instead of
+   * shrinking — the "available width" it reports is then the inflated,
+   * already-overflowing size, not the real one, and the scale computed from
+   * it never corrects down. `window.innerWidth` cannot inflate that way, so
+   * the arithmetic mirrors exactly what a human measures with the browser's
+   * viewport width: `<main>`'s own `p-8` (32px each side) and (when the
+   * panel is open) its raised `max-w-[1600px]` cap are the only two known
+   * quantities subtracted from it.
+   */
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const MAIN_PADDING_X = 64; // p-8, both sides
+    const MAIN_MAX_WIDTH_CLOSED = 1152; // max-w-6xl
+    const MAIN_MAX_WIDTH_OPEN = 1600; // raised cap while the panel is open
+    const update = (): void => {
+      const mainCap = themePanelOpen ? MAIN_MAX_WIDTH_OPEN : MAIN_MAX_WIDTH_CLOSED;
+      const mainWidth = Math.min(window.innerWidth, mainCap);
+      const rowWidth = mainWidth - MAIN_PADDING_X;
+      if (!themePanelOpen) {
+        setPanelMode("docked");
+        setPreviewScale(Math.min(1, rowWidth / PREVIEW_CARD_WIDTH));
+        return;
+      }
+      const dockedAvailable = rowWidth - THEME_PANEL_WIDTH - THEME_PANEL_GAP;
+      const dockedScale = Math.min(1, dockedAvailable / PREVIEW_CARD_WIDTH);
+      if (dockedScale < MIN_DOCK_SCALE) {
+        setPanelMode("overlay");
+        setPreviewScale(Math.min(1, rowWidth / PREVIEW_CARD_WIDTH));
+      } else {
+        setPanelMode("docked");
+        setPreviewScale(dockedScale);
+      }
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [themePanelOpen]);
+
+  useLayoutEffect(() => {
+    const el = cardScaleRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = (): void => setCardNaturalHeight(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Escape closes the overlay panel from anywhere on the page, not just
+  // while focus is inside it (mirrors the simple dialog pattern already used
+  // by `EditorActionBar`'s auth gate popover).
+  useEffect(() => {
+    if (!showOverlayPanel) return;
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") setThemePanelOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showOverlayPanel]);
 
   const spellCandidatesBySlot = useMemo(() => {
     const map: Partial<Record<Slot, Partial<Record<SpellGroup, readonly SpellCandidate[]>>>> = {};
@@ -255,7 +357,11 @@ export default function NewBuildPage(): React.JSX.Element {
   }, [build, theme]);
 
   return (
-    <main id="main-content" tabIndex={-1} className="mx-auto flex min-w-0 max-w-6xl flex-col gap-6 p-8 pb-24 md:pb-8 outline-none">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className={`mx-auto flex min-w-0 flex-col gap-6 p-8 pb-24 outline-none md:pb-8 ${themePanelOpen ? "max-w-[1600px]" : "max-w-6xl"}`}
+    >
       <Breadcrumb current={build.name.trim() || "Nova build"} />
       <EditorActionBar
         buildName={build.name}
@@ -272,16 +378,41 @@ export default function NewBuildPage(): React.JSX.Element {
         tabbed/clicked into or announced by AT — it reinforces (but doesn't
         replace) the popover's own focus trap (ACM-034 follow-up review).
       */}
-      <div inert={pickerOpen} className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start">
+      <div ref={editorRowRef} inert={pickerOpen} className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
+          {/*
+            ACM-095 round 2: a fixed `max-w-6xl` cap on `<main>` froze the
+            preview column at 744px in every viewport once the panel opened,
+            and a bare `overflow-x-auto` fallback hid part of the 960px-wide
+            card behind a scrollbar instead of shrinking it. The wrapper here
+            scales the card down to `previewScale` (never up — see the
+            `ResizeObserver` effect above) so the whole card is always
+            visible; `#capture-root` itself (inside `BuildCard`) keeps its
+            hardcoded 960px logical width regardless of this ancestor's
+            `transform`, which is what `html-to-image`/export reads (it
+            clones `#capture-root`'s own subtree, not this ancestor, so the
+            visual scale never reaches the exported PNG).
+          */}
           <div ref={previewContainerRef} className="flex justify-center">
-            <BuildCard
-              state={build}
-              theme={theme}
-              itemNames={cardLookups.itemNames}
-              spellNames={cardLookups.spellNames}
-              spellGroupsByItem={cardLookups.spellGroupsByItem}
-            />
+            <div
+              style={{
+                width: PREVIEW_CARD_WIDTH * previewScale,
+                height: cardNaturalHeight > 0 ? cardNaturalHeight * previewScale : undefined,
+              }}
+            >
+              <div
+                ref={cardScaleRef}
+                style={{ width: PREVIEW_CARD_WIDTH, transform: `scale(${previewScale})`, transformOrigin: "top left" }}
+              >
+                <BuildCard
+                  state={build}
+                  theme={theme}
+                  itemNames={cardLookups.itemNames}
+                  spellNames={cardLookups.spellNames}
+                  spellGroupsByItem={cardLookups.spellGroupsByItem}
+                />
+              </div>
+            </div>
           </div>
           <BuildHeader build={build} onNameChange={actions.setName} onRoleChange={actions.setRole} />
           {/*
@@ -331,12 +462,37 @@ export default function NewBuildPage(): React.JSX.Element {
             />
           </div>
         </div>
-        {themePanelOpen && (
+        {showDockedPanel && (
           <div id="theme-panel">
             <ThemePanel theme={theme} onChange={setTheme} accent={build.accent} onAccentChange={actions.setAccent} />
           </div>
         )}
       </div>
+      {/*
+        ACM-095 round 2: below `MIN_DOCK_SCALE` a docked column would shrink
+        the card past legibility, so the panel renders as a modal overlay
+        instead — sanctioned by the task text's "drawer... OU um modal
+        separado" alternative. Backdrop click and Escape both close it,
+        mirroring `EditorActionBar`'s own auth-gate popover (no full focus
+        trap there either).
+      */}
+      {showOverlayPanel && (
+        <div
+          className="fixed inset-0 z-40 flex justify-end bg-black/50 p-4"
+          onClick={() => setThemePanelOpen(false)}
+        >
+          <div
+            id="theme-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Aparência"
+            onClick={(event) => event.stopPropagation()}
+            className="max-h-full overflow-y-auto"
+          >
+            <ThemePanel theme={theme} onChange={setTheme} accent={build.accent} onAccentChange={actions.setAccent} />
+          </div>
+        </div>
+      )}
       {pickerTarget && !offhandLockBlocksPicker && (
         <SlotPickerPopover
           slot={pickerTarget.slot}

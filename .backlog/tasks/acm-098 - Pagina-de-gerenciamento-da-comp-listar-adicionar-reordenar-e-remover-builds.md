@@ -1,10 +1,10 @@
 ---
 id: ACM-098
 title: 'Pagina de gerenciamento da comp: listar, adicionar, reordenar e remover builds'
-status: In Review
+status: In Progress
 assignee: []
 created_date: '2026-09-09 02:42'
-updated_date: '2026-09-09 03:17'
+updated_date: '2026-09-09 03:20'
 labels: []
 milestone: m-6
 dependencies: []
@@ -48,80 +48,38 @@ Componentes: reusa BuildCardCompressed para preview da entrada; novos CompBuildR
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Implementado em src/app/comps/[id]/page.tsx (rota por id, decision-027), extendendo a página existente com uma seção "Builds da comp" acima de "Compartilhar comp".
+## Revisão visual (design-ui-review) — SHA 43471e6
 
-Decisões não-óbvias:
-- Adicionei `listCompBuildsDetailed` em src/actions/comps.ts (nova função, não reescreve nenhuma das 4 actions existentes) porque `listCompBuilds` só retorna `buildId` — a UI precisa de nome/role por entrada. Faz um innerJoin selecionando só id/name/role/slug/isPublic de builds, nunca content/themeJson.
-- Não usei `BuildCardCompressed` para o preview de cada entrada (a descrição da task sugeria isso). Renderizar o card completo por entrada exigiria carregar `content` de cada build + montar lookups de itens/spells por linha, custo não justificado pelos ACs (nenhum AC pede a visualização do card). Optei por uma linha de texto (nome + role + label + count), no mesmo padrão visual já usado em /builds e /comps. Documentado aqui como desvio deliberado da descrição, não dos ACs.
-- Reordenação via setas (↑/↓), não drag-and-drop — convenção citada explicitamente na task, e evita adicionar uma lib de dnd.
-- Sem lib de toast (não existe no repo) — erros de ação aparecem como um banner inline com "Tentar de novo" que preserva a ordem local (reverte para o último estado bom, não perde a entrada), conforme pedido no fluxo de erro da task.
-- AddBuildDialog é um modal simples (role="dialog", Escape fecha, foco inicial no botão fechar) sem lib de dialog/portal — não existe nenhuma no repo; ItemPicker é de itens do jogo, não reaproveitável para builds.
-- AC#7 (not-found sem revelar existência) já estava coberto pelo catch existente de CompNotFoundError -> notFound() na página; validado que listCompBuildsDetailed/listMyBuilds seguem o mesmo padrão de erro.
-- Fora de escopo: exportar PNG da comp (ACM-020, não implementado ainda) — mencionado na descrição como ação primária futura, mas não faz parte dos ACs desta task; não adicionei um botão placeholder para não criar uma ação morta.
+Autenticação: sem provider de credenciais (Discord OAuth only, database sessions via @auth/drizzle-adapter). Rodei migrations automaticamente via src/instrumentation.ts ao subir `next dev -p 3098`, depois inseri diretamente no SQLite (`data/app.db`) um `user`, uma `session` (sessionToken usado como cookie `authjs.session-token`, domain localhost, http) e dados de teste: 1 comp com 9 builds (8 normais + 1 com nome de 80 chars) e 1 comp vazia. Sem alterar nenhum arquivo do worktree além de `.env.local`/DB de dev (removidos ao final). Testei com Playwright headless (script descartável).
 
-Testes: src/__tests__/comp-builds-manager.test.tsx (client component, cobre AC#1-6 incl. rollback em erro) e novos casos em src/__tests__/comps-actions.test.ts para listCompBuildsDetailed (ordenação, join, IDOR).
+### BLOQUEADOR (Alto)
+1. **Nome de build longo estoura o layout e causa overflow horizontal em TODAS as viewports, incluindo 1440px e 390px.** O `span.font-medium` do nome em `CompBuildRow.tsx` não tem `break-words`/`min-w-0`/`truncate` — um nome de 80 chars sem espaços renderiza em uma única linha de ~854px, empurrando os botões de ação para fora do card e criando `document.scrollWidth` >> `clientWidth` (390: scrollWidth=1106 vs clientWidth=390; 1440: 1490 vs 1440). Isso não é hipotético: `builds.name` não tem limite de tamanho conhecido no schema. Reproduzi com screenshot em `/comps/[id]` (nome "XXXX...XXXX" 80 chars).
 
-make check verde: lint, tsc, build, vitest (703 testes).
+2. **`AddBuildDialog` não tem focus trap — Tab escapa do modal para o fundo da página.** Testado de verdade com teclado (Tab repetido): no Tab #11 o foco vazou para um checkbox fora do dialog (`Comp pública`, na seção "Compartilhar comp" atrás do overlay). O dialog é `role="dialog"` com `aria-modal="true"` mas isso é só semântico — sem trap real, um usuário de teclado/leitor de tela pode interagir com conteúdo atrás do overlay enquanto o modal "está aberto". Confirma a suspeita do prompt: modal artesanal sem lib vazou foco.
 
-AUDITORIA DE SEGURANCA (read-only) - PR #69, SHA 43471e6, branch task/98-comp-management
+3. **Foco não retorna ao gatilho ao fechar o dialog (Escape).** Após `Escape`, `document.activeElement` não é o botão "Adicionar build" que abriu o modal (ficou vazio/body). Regressão de acessibilidade de teclado — usuário perde a posição de navegação.
 
-VEREDITO: SEGURO. Nenhum finding CRITICAL/HIGH. Merge nao bloqueado por este auditor.
+### ALTO (divergência de spec / AC)
+4. **AC#6 não cumprido integralmente.** A spec exige que o estado vazio explique que "o link público não funciona até ter ao menos uma build" (a comp sem builds quebra `getPublicCompBySlug`, ACM-066). O texto implementado é genérico: "A comp só pode ser exportada com pelo menos uma build." — não menciona o link público quebrado, que é exatamente o ponto crítico citado na descrição da task.
 
-1. IDOR em /comps/[id] - SEGURO. src/app/comps/[id]/page.tsx chama getComp/getCompPublishState/listCompBuildsDetailed, cada uma via requireSession()+loadOwnedComp (src/actions/comps.ts:65-77, 154-157, 172-195). Nao-dono ou id inexistente -> CompNotFoundError -> notFound() identico (page.tsx:44-49). Checagem e' 100% server-side, nao so na renderizacao.
+5. **Sem preview visual (`BuildCardCompressed`) como a spec pedia explicitamente** ("Componentes: reusa BuildCardCompressed para preview da entrada"). Implementado como linha de texto simples (nome + papel + label + count). Opinião de produto: para uma lista de gerenciamento (não o card final exportado), texto é aceitável para reconhecer builds pelo nome/papel — mas comps costumam ter builds com nomes parecidos (ex.: "Fire Staff Healer" vs "Holy Staff Healer"), e sem ícone do item principal o usuário perde o reconhecimento visual rápido que o resto do produto (cards, export) usa. Não é bloqueador de uso, mas é uma divergência real da spec, não uma "melhoria" do implementer — deveria ter sido negociada como decisão de escopo antes, não decidida silenciosamente na implementação.
 
-2. listCompBuildsDetailed - SEGURO. src/actions/comps.ts:180 chama loadOwnedComp(session.user.id, compId) ANTES do join; WHERE eq(compBuilds.compId, compId) so' e' alcancado apos ownership check (linhas 190-195). Nao ha' forma de listar builds de comp alheia so' com o compId.
+6. **Rota diverge do spec.** Task pede `/comp/[id]/edit`; implementado em `/comps/[id]`. Convenção de nome de rota (singular/plural) e path (`/edit`) ambos diferentes. Sem decisão de arquitetura registrada justificando a mudança.
 
-3. addBuildToComp - vetor de vazamento cruzado - SEGURO. src/actions/comps.ts:373-378: apos carregar a build por id, valida `!build.isPublic && build.userId !== session.user.id` -> lanca CompBuildRefNotFoundError com a MESMA forma de erro de "nao existe". So' e' possivel anexar build propria OU build publica de terceiro; build privada alheia nunca entra na comp e portanto nunca aparece via listCompBuildsDetailed. Comentario no codigo (ACM-016) documenta explicitamente esse cuidado.
+7. **Sem confirmação ao remover uma build da comp.** O botão "Remover" executa a remoção imediatamente (otimista), sem diálogo de confirmação nem "desfazer". A spec/checklist pede "confirmação e feedback" — aqui há feedback (a linha some) mas nenhuma confirmação prévia. Risco de remoção acidental em uma lista de até 20 builds.
 
-4. removeBuildFromComp / reorderCompBuilds - SEGURO. removeBuildFromComp (comps.ts:426-440) usa loadOwnedCompBuild, que primeiro chama loadOwnedComp e so' entao valida compBuildId pertence aquele compId; delete tambem refiltra por compId no WHERE. reorderCompBuilds (comps.ts:496-533) chama loadOwnedComp antes de tudo, e valida que orderedCompBuildIds e' permutacao EXATA dos ids existentes daquele comp (existingIds vem de query filtrada por comp.id) - id de outra comp e' rejeitado por CompBuildReorderInvalidError. Nao ha' como destruir/reordenar dado de outro usuario.
+### MÉDIO
+8. **Sem `aria-live` na lista ao reordenar.** Um usuário de leitor de tela que clica em "subir"/"descer" não recebe nenhum anúncio de que a ordem mudou — só usuários que veem a tela percebem visualmente. Os botões de seta têm `aria-label` correto (ex. "Mover Main Tank Build para cima") e desabilitam corretamente no primeiro/último item (verificado), isso está certo.
 
-5. Diferenca de erro (enumeracao) - SEGURO. loadOwnedComp (comps.ts:65-77) usa deliberadamente o MESMO CompNotFoundError tanto para id inexistente quanto para comp de outro dono (comentario explicito no codigo). addBuildToComp usa a mesma logica para build privada-nao-dono vs build inexistente (CompBuildRefNotFoundError). Nao ha' diferenca de status/mensagem observavel; nao avaliei diferenca de TIMING (fora do escopo de leitura de codigo estatico) - risco residual LOW de timing side-channel entre "0 linhas retornadas" vs "linha existe mas filtrada", comum em qualquer app com este padrao e nao especifico deste PR.
+9. **Sem estado de loading visível durante ações (add/remove/reorder/salvar).** `isPending` só desabilita botões (opacity-40); não há skeleton, spinner ou qualquer indicação de "processando". A spec pedia explicitamente "loading: skeleton das entradas" — não implementado (nem para carga inicial nem para ações).
 
-6. Exposicao de campo - SEGURO. listCompBuildsDetailed seleciona explicitamente so' {id, name, role, slug, isPublic} de builds (comps.ts:158-166, select object em 183-189) - nunca content/themeJson. isPublic=false de build alheia so' pode aparecer se essa build ja foi anexada por addBuildToComp, que ja' garante que so' builds proprias ou publicas passam por ali (item 3) - logo nao ha' vazamento de isPublic=false alheio.
+### BAIXO / OK
+- Reordenar: ordem persiste corretamente após reload (testado). Confirmado com Playwright: mover 2ª linha para cima e recarregar preserva a nova ordem no banco.
+- Estado de erro: banner inline vermelho com "Tentar de novo" (sem lib de toast, conforme esperado neste projeto), e a ordem local é revertida corretamente para o último estado bom em caso de falha de rede simulada (verificado abortando requests POST). Isso cumpre bem o requisito "não perder o estado".
+- Estado vazio: claro, com CTA e texto compreensível (só falta a menção ao link público — ver item 4).
+- Contraste do banner de erro (texto vermelho sobre fundo escuro com opacidade baixa) parece adequado visualmente, não medido com ferramenta de contraste formal.
 
-7. Auth ausente - SEGURO. Toda action (listMyComps, listMyCompsWithStatus, getComp, listCompBuilds, listCompBuildsDetailed, createComp, updateComp, toggleCompPublic, getCompPublishState, deleteComp, addBuildToComp, removeBuildFromComp, updateCompBuild, reorderCompBuilds) chama requireSession() como primeira linha, antes de qualquer query. requireSession (src/auth/session.ts) lanca se nao houver session.user.id.
+## Veredito: BLOQUEADO
 
-8. Validacao de input - SEGURO/LOW. ids (compId/buildId/compBuildId) sao strings usadas em queries drizzle parametrizadas (eq()) - sem risco de injecao SQL. Nao ha' validacao de formato (ex.: uuid regex) antes da query, mas isso e' inofensivo pois drizzle parametriza e a query so' retorna linha se o id combinar E o ownership bater; um id malformado apenas resulta em "nao encontrado". LOW: poderia adicionar z.string().uuid() na borda por defesa em profundidade/DX, mas nao e' uma vulnerabilidade de seguranca.
-
-Nenhum finding bloqueante. Nenhuma exploracao entre usuarios encontrada nos vetores auditados.
-
-## Review (SHA 43471e6, branch task/98-comp-management)
-
-Veredito: BLOQUEADO: 1 finding HIGH, 2 findings MEDIUM, 1 LOW/nota.
-
-### AC por AC
-- AC#1 (listar em ordem de position): OK. listCompBuildsDetailed faz orderBy(compBuilds.position) e a page.tsx mapeia 1:1 pra CompBuildEntry.
-- AC#2 (adicionar cria via addBuildToComp e aparece na lista): OK, testado (comp-builds-manager.test.tsx).
-- AC#3 (remover chama removeBuildFromComp sem reload): OK, testado.
-- AC#4 (reordenar persiste e sobrevive a refresh): reorderCompBuilds é chamado com a ordem correta; persistência em si é responsabilidade de uma action pré-existente (fora do diff), não retestada aqui — aceitável.
-- AC#5 (editar label/count persiste): OK no caminho feliz, testado. Sem teste do caminho de erro/rollback (ver finding MEDIUM abaixo).
-- AC#6 (estado vazio): OK, testado, mensagem confere com o texto pedido na task.
-- AC#7 (not-found sem revelar existência): OK. getCompPublishState/getComp/listCompBuildsDetailed/listMyBuilds compartilham loadOwnedComp -> CompNotFoundError -> notFound() na page; owner errado e id inexistente são indistinguíveis. Testado em comps-actions.test.ts (IDOR).
-
-### Finding HIGH — rollback otimista pode descartar uma edição bem-sucedida (race real)
-src/components/comp/CompBuildRow.tsx:112-122 — os botões "Salvar"/"Cancelar" do painel de edição NÃO recebem `disabled={disabled}` (diferente de Mover/Editar/Remover, que são gateados por `isPending`).
-Cenário de falha concreto:
-1. Lista [A, B]. Usuário abre "Editar" em B e digita um novo label (estado local, ainda não commitado ao pai).
-2. Usuário clica "↓" em A → reorderCompBuilds dispara, `isPending=true`, `previous` capturado em CompBuildsManager.tsx:100 = [A,B] (snapshot pré-reorder).
-3. Enquanto o reorder está em voo, o painel de edição de B continua aberto (Salvar/Cancelar não são desabilitados por `isPending`) — usuário clica "Salvar". handleSaveEntry (CompBuildsManager.tsx:117) dispara updateCompBuild concorrentemente com o reorder, capturando seu próprio `previous` (já com o reorder aplicado).
-4. Se reorderCompBuilds falhar (rede instável) e updateCompBuild tiver sucesso: o catch do reorder (linha ~108) faz `setEntries(previous)` com o snapshot de ANTES do label ter sido salvo — isso sobrescreve cegamente o estado atual e apaga visualmente a edição de label que já foi persistida no servidor com sucesso. UI e servidor ficam inconsistentes até o próximo full reload.
-Causa raiz: `previous` é um valor capturado por closure (não um updater funcional) e o rollback faz `setEntries(previous)` incondicionalmente, sem levar em conta mutações concorrentes que tenham ocorrido depois. Isso é agravado por Salvar/Cancelar não estarem sob o mesmo gate de `isPending` que todos os outros botões mutantes.
-Ação corretiva: gatear Salvar/Cancelar por `disabled` (serializa via UI, como já é feito para add/remove/move), E/OU trocar os rollbacks de `setEntries(previous)` por um updater funcional que reverta apenas a mutação que falhou (ex.: reconciliar por compBuildId em vez de substituir o array inteiro).
-
-### Finding MEDIUM — testes de rollback incompletos
-comp-builds-manager.test.tsx cobre rollback de erro para add (AC#2) e remove (AC#3), mas não para reorder (AC#4) nem para save de label/count (AC#5). Dado que o finding HIGH acima é justamente uma interação entre save e reorder, a ausência de teste de rollback nesses dois caminhos é a lacuna que deixou o bug passar.
-
-### Finding MEDIUM — dados otimistas falsos em handleAdd
-CompBuildsManager.tsx (handleAdd) monta a entrada otimista com `slug: ""` e `isPublic: true` hardcoded, em vez dos valores reais da build selecionada (disponíveis em `myBuilds`/na resposta do dialog). Hoje não é renderizado, mas é estado deliberadamente incorreto sobrevivendo até o próximo refresh — qualquer uso futuro de `entry.build.slug`/`isPublic` logo após um add vai ler lixo.
-
-### Finding LOW — AddBuildDialog sem focus trap e sem restauração de foco
-AddBuildDialog.tsx: role="dialog" + aria-modal="true" + foco inicial no botão fechar + Escape fecha — mas não há focus trap (Tab pode sair do modal para o conteúdo por trás do overlay) nem restauração de foco ao fechar (fecha para <body>, perde a posição do usuário de teclado/leitor de tela). Não bloqueante pelos ACs (nenhum AC pede a11y completa do dialog), mas registrado como dívida.
-
-### Não-findings / desvios aceitos
-- listCompBuildsDetailed confirmado selecionando só id/name/role/slug/isPublic de builds, nunca content/themeJson (src/actions/comps.ts).
-- Desvio de não usar BuildCardCompressed: aceito. Nenhum AC exige o card completo; justificativa de custo (carregar content por linha) é razoável e documentada.
-- Escopo: diff toca só os arquivos esperados (comps.ts, comps/[id]/page.tsx, CompBuildsManager/CompBuildRow/AddBuildDialog, 2 arquivos de teste). Não tocou page.tsx raiz, build/new/page.tsx, ThemePanel.tsx nem package.json.
-- `npx tsc --noEmit`: sem erros. `npm test`: 703/703 passando (mas ver lacuna de cobertura acima).
-
-Reprovado por 1 HIGH (race de rollback otimista com perda silenciosa de edição confirmada por servidor). Devolver ao implementer: gatear Salvar/Cancelar por `disabled` e/ou tornar o rollback não-destrutivo para mutações concorrentes; adicionar testes de rollback para reorder e save.
+Motivos de bloqueio: itens 1 (overflow em nome longo, quebra visual em qualquer viewport) e 2 (focus trap ausente, falha de acessibilidade de teclado real e verificada) são suficientes para bloquear por si só. Itens 4, 6 e 7 são divergências de spec/AC que precisam de decisão explícita (aceitar como está, ou implementar) antes de Done.
 <!-- SECTION:NOTES:END -->
