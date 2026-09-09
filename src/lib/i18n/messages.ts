@@ -10,6 +10,7 @@ import type { Locale } from "@/lib/i18n/locales";
  */
 export type MessageKey =
   | "nav.myComps"
+  | "nav.share"
   | "account.signIn"
   | "account.fallbackLabel"
   | "account.newBuild"
@@ -23,6 +24,7 @@ export type MessageKey =
 export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
   "en-US": {
     "nav.myComps": "My comps",
+    "nav.share": "Share",
     "account.signIn": "Sign in",
     "account.fallbackLabel": "Account",
     "account.newBuild": "New build",
@@ -35,6 +37,7 @@ export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
   },
   "pt-BR": {
     "nav.myComps": "Minhas comps",
+    "nav.share": "Compartilhar",
     "account.signIn": "Entrar",
     "account.fallbackLabel": "Conta",
     "account.newBuild": "Nova build",

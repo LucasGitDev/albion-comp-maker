@@ -65,7 +65,7 @@ export default function proxy(
 }
 
 export const config = {
-  matcher: ["/builds/:path*", "/comp/new", "/build/:slug", "/comp/:slug"],
+  matcher: ["/builds/:path*", "/comps/:path*", "/comp/new", "/build/:slug", "/comp/:slug"],
   // Database-strategy sessions require a real DB lookup (via
   // `@auth/drizzle-adapter` + better-sqlite3, a native Node addon), which
   // cannot run on the Edge runtime. No runtime opt-in is needed here: the

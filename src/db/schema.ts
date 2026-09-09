@@ -135,6 +135,13 @@ export const comps = sqliteTable(
     slug: text("slug").notNull(),
     // Free text per decision-002 — no DB-level CHECK constraint.
     contentType: text("content_type"),
+    // Explicit "intent to share" flag (ACM-066, decision-025), an AND-gate
+    // on top of the regular derived from `comp_builds`/`builds.is_public`
+    // (decision-015): a comp is publicly reachable only when this is true
+    // AND the derived rule also holds. This flag never widens
+    // reachability by itself — see `getPublicCompBySlug` in
+    // `src/lib/public-content.ts`.
+    isPublic: integer("is_public", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(unixepoch() * 1000)`),

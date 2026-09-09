@@ -54,6 +54,7 @@ export function Header(): React.JSX.Element {
   const account = useAccountState(t(locale, "account.fallbackLabel"));
   const navLinks: ReadonlyArray<{ href: string; label: string }> = [
     { href: "/", label: t(locale, "nav.myComps") },
+    { href: "/comps", label: t(locale, "nav.share") },
   ];
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const mobileNavTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -179,8 +180,6 @@ export function Header(): React.JSX.Element {
         {/*
           The mobile disclosure only earns its place once there's a route
           beyond Home to navigate to (doc-004 §4: "não abrir painel vazio").
-          `/builds` doesn't exist yet (§1.1), so `navLinks` has exactly one
-          entry today and the trigger stays hidden.
         */}
         {navLinks.length > 1 && (
           <div className="relative md:hidden">

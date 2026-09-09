@@ -156,7 +156,7 @@ describe("public-content (ACM-021 read-only public data access)", () => {
 
       const [comp] = await db
         .insert(comps)
-        .values({ userId: "user-a", name: "ZvZ Comp", slug: "zvz-comp-1" })
+        .values({ userId: "user-a", name: "ZvZ Comp", slug: "zvz-comp-1", isPublic: true })
         .returning();
 
       // Inserted out of position order on purpose: position 1 (buildB)
@@ -197,7 +197,7 @@ describe("public-content (ACM-021 read-only public data access)", () => {
 
       const [comp] = await db
         .insert(comps)
-        .values({ userId: "user-a", name: "Mixed Comp", slug: "mixed-comp-1" })
+        .values({ userId: "user-a", name: "Mixed Comp", slug: "mixed-comp-1", isPublic: true })
         .returning();
 
       await db.insert(compBuilds).values({ compId: comp.id, buildId: publicBuild.id, position: 0, count: 1 });
@@ -212,6 +212,86 @@ describe("public-content (ACM-021 read-only public data access)", () => {
       const { getPublicCompBySlug } = await import("@/lib/public-content");
 
       const result = await getPublicCompBySlug("does-not-exist");
+
+      expect(result).toBeNull();
+    });
+
+    it("returns null when comps.is_public is false, even if every referenced build is public (ACM-066, decision-025)", async () => {
+      const { getPublicCompBySlug } = await import("@/lib/public-content");
+
+      const [build] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Public Build",
+          slug: "public-build-not-shared",
+          content: validBuildContent({ name: "Public Build" }),
+          isPublic: true,
+        })
+        .returning();
+
+      const [comp] = await db
+        .insert(comps)
+        .values({ userId: "user-a", name: "Not Shared Comp", slug: "not-shared-comp-1", isPublic: false })
+        .returning();
+
+      await db.insert(compBuilds).values({ compId: comp.id, buildId: build.id, position: 0, count: 1 });
+
+      const result = await getPublicCompBySlug("not-shared-comp-1");
+
+      expect(result).toBeNull();
+    });
+
+    it("returns the full comp when comps.is_public is true and every build is public and valid", async () => {
+      const { getPublicCompBySlug } = await import("@/lib/public-content");
+
+      const [build] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Shared Build",
+          slug: "shared-build-1",
+          content: validBuildContent({ name: "Shared Build" }),
+          isPublic: true,
+        })
+        .returning();
+
+      const [comp] = await db
+        .insert(comps)
+        .values({ userId: "user-a", name: "Shared Comp", slug: "shared-comp-1", isPublic: true })
+        .returning();
+
+      await db.insert(compBuilds).values({ compId: comp.id, buildId: build.id, position: 0, count: 1 });
+
+      const result = await getPublicCompBySlug("shared-comp-1");
+
+      expect(result).not.toBeNull();
+      expect(result?.entries).toHaveLength(1);
+      expect(result?.entries[0]?.build.name).toBe("Shared Build");
+    });
+
+    it("returns null when comps.is_public is true but the referenced build's content fails parseBuildContent", async () => {
+      const { getPublicCompBySlug } = await import("@/lib/public-content");
+
+      const [build] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Invalid Content Build",
+          slug: "invalid-content-build-1",
+          content: "not valid json {{{",
+          isPublic: true,
+        })
+        .returning();
+
+      const [comp] = await db
+        .insert(comps)
+        .values({ userId: "user-a", name: "Invalid Comp", slug: "invalid-comp-1", isPublic: true })
+        .returning();
+
+      await db.insert(compBuilds).values({ compId: comp.id, buildId: build.id, position: 0, count: 1 });
+
+      const result = await getPublicCompBySlug("invalid-comp-1");
 
       expect(result).toBeNull();
     });
