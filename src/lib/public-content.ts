@@ -77,13 +77,20 @@ export type PublicComp = {
 };
 
 /**
- * Loads a comp by its immutable slug. Comps have no `is_public` column of
- * their own (decision-015): a comp is publicly reachable only if it has at
- * least one build AND every `comp_builds` row's referenced build is itself
- * `is_public` with content that passes `parseBuildContent`. Any single
- * private or invalid-content build anywhere in the comp makes the WHOLE
- * comp unreachable — never a partial render that silently drops the
- * offending slot, which would leak "this comp has N builds, one hidden".
+ * Loads a comp by its immutable slug. Reachability is the AND of two
+ * independent conditions (ACM-066, decision-025):
+ *
+ * 1. `comps.is_public` — an explicit, dono-controlled "intent to share"
+ *    flag. It only ever restricts, never widens, reachability.
+ * 2. The derived rule from decision-015: the comp has at least one build
+ *    AND every `comp_builds` row's referenced build is itself `is_public`
+ *    with content that passes `parseBuildContent`.
+ *
+ * Any single private or invalid-content build anywhere in the comp makes
+ * the WHOLE comp unreachable — never a partial render that silently drops
+ * the offending slot, which would leak "this comp has N builds, one
+ * hidden". Likewise, `is_public = false` alone is enough to return `null`
+ * regardless of the state of the comp's builds.
  *
  * `entries` is ordered by `comp_builds.position` (ACM-019), never
  * insertion order.
@@ -92,7 +99,7 @@ export async function getPublicCompBySlug(slug: string): Promise<PublicComp | nu
   const db = getDb();
   const [comp] = await db.select().from(comps).where(eq(comps.slug, slug)).limit(1);
 
-  if (!comp) {
+  if (!comp || !comp.isPublic) {
     return null;
   }
 

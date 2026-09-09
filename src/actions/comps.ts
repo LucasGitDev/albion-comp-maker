@@ -1,12 +1,14 @@
 "use server";
 
-import { and, eq, max, sql } from "drizzle-orm";
+import { and, eq, max, sql, sum } from "drizzle-orm";
 
 import { requireSession } from "@/auth/session";
 import { getDb } from "@/db/client";
 import { builds, compBuilds, comps } from "@/db/schema";
+import { getCompPublishStatus } from "@/lib/comp-publish-status";
 import { compBuildLabelSchema, compNameSchema } from "@/lib/comp-schema";
 import { checkWriteRateLimit } from "@/lib/rate-limit";
+import type { CompPublishState } from "@/types/comp-publish-status";
 import { generateSlug } from "@/lib/slug";
 import { CompBuildReorderInvalidError, CompBuildRefNotFoundError, CompNotFoundError } from "./comp-errors";
 
@@ -97,6 +99,64 @@ export async function listMyComps(): Promise<CompRow[]> {
   return db.select().from(comps).where(eq(comps.userId, session.user.id)).orderBy(comps.updatedAt);
 }
 
+export type CompListItem = {
+  comp: CompRow;
+  buildCount: number;
+  privateBuildCount: number;
+  /**
+   * Coarse reachability for the `/comps` list badge (ACM-066): the SQL
+   * aggregate rule from decision-015 (has builds, none private) AND'd with
+   * `comp.is_public`. Does NOT run `parseBuildContent` on every build's
+   * content (that's a per-row JS check, not expressible as a cheap
+   * aggregate) — a comp with invalid-content builds can read `true` here
+   * and still 404 publicly. The detail page's `getCompPublishState` is the
+   * source of truth; this is a best-effort summary for the list view only.
+   */
+  isReachable: boolean;
+};
+
+/**
+ * Lists every comp owned by the current user with a share-status summary
+ * for the `/comps` list badge (ACM-066). Uses a single aggregated query
+ * (one row per comp, `LEFT JOIN` + `GROUP BY`) instead of N+1 queries per
+ * comp — the per-blocker detail only exists on `/comps/[id]`
+ * (`getCompPublishState`).
+ */
+export async function listMyCompsWithStatus(): Promise<CompListItem[]> {
+  const session = await requireSession();
+  const db = getDb();
+
+  const rows = await db
+    .select({
+      comp: comps,
+      buildCount: sql<number>`COUNT(${compBuilds.id})`,
+      privateBuildCount: sum(sql`CASE WHEN ${builds.isPublic} = 0 THEN 1 ELSE 0 END`),
+    })
+    .from(comps)
+    .leftJoin(compBuilds, eq(compBuilds.compId, comps.id))
+    .leftJoin(builds, eq(builds.id, compBuilds.buildId))
+    .where(eq(comps.userId, session.user.id))
+    .groupBy(comps.id)
+    .orderBy(comps.updatedAt);
+
+  return rows.map((row) => {
+    const buildCount = Number(row.buildCount);
+    const privateBuildCount = Number(row.privateBuildCount ?? 0);
+    return {
+      comp: row.comp,
+      buildCount,
+      privateBuildCount,
+      isReachable: row.comp.isPublic && buildCount > 0 && privateBuildCount === 0,
+    };
+  });
+}
+
+/** Loads a single comp owned by the current user (e.g. for its slug/name). */
+export async function getComp(id: string): Promise<CompRow> {
+  const session = await requireSession();
+  return loadOwnedComp(session.user.id, id);
+}
+
 /** Lists a comp's builds ordered by position. Ownership-checked. */
 export async function listCompBuilds(compId: string): Promise<CompBuildRow[]> {
   const session = await requireSession();
@@ -167,6 +227,50 @@ export async function updateComp(input: UpdateCompInput): Promise<CompRow> {
     throw new CompNotFoundError();
   }
   return row;
+}
+
+/**
+ * Flips `isPublic` on an owned comp (ACM-066, decision-025). Mirrors
+ * `toggleBuildPublic` in `src/actions/builds.ts`: the update statement
+ * itself also filters by `userId` so a TOCTOU between the ownership read
+ * and the write can never flip a comp the caller does not own.
+ *
+ * This flag is an AND-gate on top of the derived rule from decision-015 —
+ * flipping it to `true` here does NOT by itself make any build readable
+ * publicly; `getPublicCompBySlug` still requires every referenced build to
+ * be `is_public` with valid content.
+ */
+export async function toggleCompPublic(id: string): Promise<CompRow> {
+  const session = await requireSession();
+  checkWriteRateLimit(session.user.id);
+
+  const current = await loadOwnedComp(session.user.id, id);
+
+  const db = getDb();
+  const [row] = await db
+    .update(comps)
+    .set({ isPublic: !current.isPublic, updatedAt: new Date() })
+    .where(and(eq(comps.id, id), eq(comps.userId, session.user.id)))
+    .returning();
+
+  if (!row) {
+    throw new CompNotFoundError();
+  }
+  return row;
+}
+
+/**
+ * Owner-scoped diagnosis of the comp's public-share status (ACM-066,
+ * decision-025). `requireSession()` + `loadOwnedComp` run BEFORE any of
+ * the per-build detail in `getCompPublishStatus` is read — a non-owner
+ * gets the same `CompNotFoundError` as an unowned/nonexistent id, never a
+ * partial or distinguishable response (IDOR).
+ */
+export async function getCompPublishState(compId: string): Promise<CompPublishState> {
+  const session = await requireSession();
+  await loadOwnedComp(session.user.id, compId);
+
+  return getCompPublishStatus(compId, session.user.id);
 }
 
 /** Hard-deletes a comp (and its comp_builds rows, via ON DELETE CASCADE). */
