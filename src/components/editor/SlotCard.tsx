@@ -124,6 +124,14 @@ export function SlotCard({
   const label = SLOT_LABELS[slot] ?? slot;
   const tierColor = item && item.tier > 0 ? (TIER_COLOR_VAR[item.tier] ?? "var(--color-tier-low)") : undefined;
 
+  // ACM-090: `spellCandidatesByGroup` never includes a "passive" entry for
+  // slots whose passive is never a selectable ability (cape/bag/mount/
+  // food/potion) — that exclusion is applied upstream, once, by
+  // `groupSpellsForItem` (see `NON_SELECTABLE_PASSIVE_SLOTS` in
+  // spell-groups.ts), the single source of truth shared with the exported
+  // build-card lookups. SlotCard just renders whatever it's handed.
+  const selectableSpellCandidatesByGroup = spellCandidatesByGroup;
+
   // ACM-089: auto-fill any spell group that has exactly one candidate for
   // the currently equipped item, through the same `onSpellChange` path a
   // manual pick uses (identical shape, same round-trip through build
@@ -136,12 +144,12 @@ export function SlotCard({
   const itemSpells = item?.spells;
   useEffect(() => {
     if (!item || !onSpellChange) return;
-    const updates = computeAutoSelections(item.spells, spellCandidatesByGroup);
+    const updates = computeAutoSelections(item.spells, selectableSpellCandidatesByGroup);
     for (const group of Object.keys(updates) as SpellGroup[]) {
       onSpellChange(slot, group, updates[group] ?? null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, item?.itemId, itemSpells, spellCandidatesByGroup, onSpellChange]);
+  }, [slot, item?.itemId, itemSpells, selectableSpellCandidatesByGroup, onSpellChange]);
 
   if (locked) {
     return (
@@ -292,7 +300,7 @@ export function SlotCard({
         <SpellPicker
           itemName={itemName ?? item.itemId}
           selected={item.spells}
-          candidatesByGroup={spellCandidatesByGroup}
+          candidatesByGroup={selectableSpellCandidatesByGroup}
           onSelect={(group, spellId) => onSpellChange(slot, group, spellId)}
         />
       )}
