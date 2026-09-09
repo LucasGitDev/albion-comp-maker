@@ -29,6 +29,13 @@
       "when": 1788830393796,
       "tag": "0003_add_theme_json_and_background_images",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788921012184,
+      "tag": "0004_add_comp_is_public",
+      "breakpoints": true
     }
   ]
 }
