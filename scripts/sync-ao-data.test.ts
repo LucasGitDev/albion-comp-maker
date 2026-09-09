@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { computeMaxEnchant, humanizeSpellName, isEmittedConsumable, resolveSpellLocalizedNames } from "./sync-ao-data";
+import {
+  computeMaxEnchant,
+  humanizeSpellName,
+  isEmittedConsumable,
+  isReleasedItem,
+  resolveSpellLocalizedNames,
+} from "./sync-ao-data";
 
 describe("computeMaxEnchant", () => {
   it("returns 0 when the enchantments key is absent (e.g. a mount)", () => {
@@ -76,6 +82,59 @@ describe("isEmittedConsumable", () => {
 
   it("excludes vanity fireworks (T3_VANITY_CONSUMABLE_FIREWORKS_BLUE: consumables/other)", () => {
     expect(isEmittedConsumable({ "@shopcategory": "consumables", "@shopsubcategory1": "other" })).toBe(false);
+  });
+});
+
+describe("isReleasedItem", () => {
+  it("excludes an item localized only in EN-US (T8_HEAD_PLATE_PROTOTYPE shape, decision-024)", () => {
+    expect(
+      isReleasedItem({ LocalizedNames: { "EN-US": "Dragonknight Helmet" } }),
+    ).toBe(false);
+  });
+
+  it("includes a fully localized item (T8_HEAD_PLATE_SET3 shape)", () => {
+    expect(
+      isReleasedItem({
+        LocalizedNames: {
+          "EN-US": "Soldier Helmet",
+          "PT-BR": "Capacete de Soldado",
+          "DE-DE": "Soldatenhelm",
+        },
+      }),
+    ).toBe(true);
+  });
+
+  it("includes an item with exactly 2 locales (threshold)", () => {
+    expect(
+      isReleasedItem({ LocalizedNames: { "EN-US": "Foo", "PT-BR": "Bar" } }),
+    ).toBe(true);
+  });
+
+  it("excludes missing, null, or empty LocalizedNames", () => {
+    expect(isReleasedItem({})).toBe(false);
+    expect(isReleasedItem({ LocalizedNames: null })).toBe(false);
+    expect(isReleasedItem({ LocalizedNames: {} })).toBe(false);
+  });
+
+  it("does not exclude a fully localized item whose uniquename contains PROTOTYPE (AC-2: not a substring rule)", () => {
+    // Regression: proves the predicate is about localization coverage, not
+    // uniquename pattern matching — a legitimately released item that happens
+    // to have "PROTOTYPE" in its name (hypothetical) must still pass.
+    expect(
+      isReleasedItem({
+        LocalizedNames: {
+          "EN-US": "Prototype Blade",
+          "PT-BR": "Lamina Prototipo",
+          "DE-DE": "Prototyp-Klinge",
+        },
+      }),
+    ).toBe(true);
+  });
+
+  it("includes a vanity item with 15 locales despite no description (proves we didn't land on rejected option B)", () => {
+    const fifteenLocales: Record<string, string> = {};
+    for (let i = 0; i < 15; i++) fifteenLocales[`LOCALE-${i}`] = "Vanity Knight Helmet";
+    expect(isReleasedItem({ LocalizedNames: fifteenLocales })).toBe(true);
   });
 });
 
