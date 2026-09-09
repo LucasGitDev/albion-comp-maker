@@ -4,7 +4,7 @@ title: 'Editor: permitir salvar e exportar build com slots parcialmente preenchi
 status: In Progress
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-09 02:27'
+updated_date: '2026-09-09 02:28'
 labels: []
 milestone: m-3
 dependencies: []
@@ -75,4 +75,20 @@ Ou seja, o implementer nao errou 3x o mesmo alvo — o alvo mudou e o PR ficou o
 Beneficio colateral: a questao de PRODUTO que travou as rodadas 1 e 2 (qual a copy correta para build zero-slots no card exportado) fica RESOLVIDA POR CONSTRUCAO. Com AC#1/#2 gateando o export, build vazia nunca chega ao PNG (que e literalmente o AC#4). Logo a string disputada 'Nenhum item equipado ainda — comece pela mao principal.' e codigo inalcancavel no caminho de export e deve ser REMOVIDA, nao reescrita. Nao ha mais decisao de copy pendente para o humano.
 
 Escopo despachado ao implementer nesta rodada: (1) restaurar gate de conteudo minimo em canSave, (2) mesmo gate em exportDisabled, (3) reescrever o teste que travava o comportamento oposto ao AC, (4) remover a copy de estado vazio do caminho de export, (5) fechar a lacuna do guard-test EDIT_HINT_SNIPPETS que passava com a string nova.
+
+ORCHESTRATOR - CORRECAO: os findings CRITICAL da rodada anterior eram FALSOS POSITIVOS por review de commit desatualizado.
+
+O revisor auditou f6a2b85; o head real do branch e 4a6b222 ('fix(editor): require >=1 ready item to save or export build'), que ja continha as correcoes. Verificado por mim diretamente via 'git show origin/task/92-partial-slots:...', nao por relato de agent:
+- EditorActionBar.tsx:106 -> canSave = buildName.trim() !== '' && hasReadyItem
+- EditorActionBar.tsx:156 -> exportDisabled = !hasReadyItem || saving || exporting
+- EditorActionBar.tsx:134 -> handleExport retorna cedo se !hasReadyItem
+- string 'Nenhum item equipado ainda' nao existe mais em codigo de producao (sobrevive so em comentario de teste)
+- flag isEmpty removido de BuildCardVertical/Compressed/List
+- guard-test trocado de lista de strings literais para regex de verbos imperativos PT-BR (pega reformulacoes futuras)
+
+CI verde em 4a6b222. 639 testes passando.
+
+A tentativa 3/3 foi consumida por um diagnostico errado do revisor, nao por falha do implementer. Nenhuma mudanca de codigo foi necessaria nesta rodada.
+
+LICAO DE HARNESS: o revisor precisa fixar o commit auditado (git fetch + git log do head) e reportar o SHA revisado junto com o veredito. Sem isso, review de PR com push concorrente gera falso positivo caro — aqui custou uma tentativa inteira do budget e quase mandou a task de volta para To Do sem motivo.
 <!-- SECTION:NOTES:END -->
