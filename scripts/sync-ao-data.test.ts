@@ -146,4 +146,37 @@ describe("humanizeSpellName", () => {
   it("strips PASSIVE_ prefix before humanizing", () => {
     expect(humanizeSpellName("PASSIVE_MAXLOAD_OWL")).toBe("Maxload Owl");
   });
+
+  describe("compound-word overrides (ACM-086)", () => {
+    it.each([
+      ["REJUVMUSHROOM_GRENADE", "Rejuv Mushroom Grenade"],
+      ["ICEROCK_EXPLODE", "Ice Rock Explode"],
+      ["SMITE_AOE", "Smite (AoE)"],
+      ["SPEEDARCHER_KITE", "Speed Archer Kite"],
+      ["CURSEDHANDS_STACKUP", "Cursed Hands Stack Up"],
+      ["CROSSSTEP_ROUNDHOUSE", "Cross Step Roundhouse"],
+      ["TRIPLECOMBO_DIVEKICK", "Triple Combo Dive Kick"],
+      ["FROSTBOMB_CASTSLOW", "Frost Bomb Cast Slow"],
+    ])("humanizes %s as %s instead of the unsegmented split", (uniquename, expected) => {
+      expect(humanizeSpellName(uniquename)).toBe(expected);
+    });
+
+    it("applies the override after stripping a known prefix", () => {
+      expect(humanizeSpellName("PASSIVE_SMITE_AOE")).toBe("Smite (AoE)");
+      expect(humanizeSpellName("ACTIVE_FROSTBOMB_CASTSLOW")).toBe("Frost Bomb Cast Slow");
+    });
+  });
+
+  describe("regression: unrelated uniquenames keep the generic split (no override applied)", () => {
+    it.each([
+      ["PYROBLAST_SKILLSHOT", "Pyroblast Skillshot"],
+      ["PASSIVE_MAXLOAD_OWL", "Maxload Owl"],
+      ["TOGGLE_AUTOATTACK", "Autoattack"],
+      ["VANITY_HALLOWEEN_HAT", "Halloween Hat"],
+      ["FIREBALL_T4", "Fireball T4"],
+      ["ROOT_AE", "Root AE"],
+    ])("humanizes %s as %s", (uniquename, expected) => {
+      expect(humanizeSpellName(uniquename)).toBe(expected);
+    });
+  });
 });
