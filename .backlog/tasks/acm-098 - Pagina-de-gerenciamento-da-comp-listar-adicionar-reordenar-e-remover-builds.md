@@ -1,9 +1,10 @@
 ---
 id: ACM-098
 title: 'Pagina de gerenciamento da comp: listar, adicionar, reordenar e remover builds'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-09 02:42'
+updated_date: '2026-09-09 03:06'
 labels: []
 milestone: m-6
 dependencies: []
