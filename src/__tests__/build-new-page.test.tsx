@@ -488,3 +488,47 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
     expect(screen.queryByText("Não deu para salvar.")).not.toBeInTheDocument();
   });
 });
+
+describe("/build/new — appearance panel layout (ACM-095)", () => {
+  it("does not render the appearance panel before it is opened", () => {
+    renderPage();
+    expect(document.getElementById("theme-panel")).not.toBeInTheDocument();
+  });
+
+  it("toggling 'Aparência' mounts the panel as a layout sibling of the build card, not on top of it", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Aparência" }));
+
+    const panel = document.getElementById("theme-panel");
+    expect(panel).toBeInTheDocument();
+
+    // The panel and the card preview must be siblings inside the same flex
+    // row (`lg:flex-row`), so the panel occupies its own column instead of
+    // being positioned (fixed/absolute) on top of the card — that layout
+    // shape is what makes the row grow to accommodate both instead of one
+    // overlapping the other.
+    const row = panel?.parentElement;
+    expect(row).toHaveClass("lg:flex-row");
+    const style = panel ? getComputedStyle(panel) : null;
+    expect(style?.position).not.toBe("fixed");
+    expect(style?.position).not.toBe("absolute");
+
+    // The card's fixed-width preview column contains its own overflow
+    // rather than bleeding past its box into the panel's column.
+    const captureRoot = document.getElementById("capture-root");
+    const previewColumn = captureRoot?.closest(".overflow-x-auto");
+    expect(previewColumn).toBeInTheDocument();
+  });
+
+  it("closing the panel removes it and restores the single-column layout", () => {
+    renderPage();
+
+    const toggle = screen.getByRole("button", { name: "Aparência" });
+    fireEvent.click(toggle);
+    expect(document.getElementById("theme-panel")).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(document.getElementById("theme-panel")).not.toBeInTheDocument();
+  });
+});

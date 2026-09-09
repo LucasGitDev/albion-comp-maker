@@ -274,7 +274,20 @@ export default function NewBuildPage(): React.JSX.Element {
       */}
       <div inert={pickerOpen} className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
-          <div ref={previewContainerRef} className="flex justify-center">
+          {/*
+            ACM-095: `BuildCard` renders at a fixed logical pixel width
+            (960px for the default `vertical` layout — decision-010/doc-006)
+            that never shrinks with its flex parent. With the appearance
+            panel open, the editor column can end up narrower than that
+            fixed width; without `overflow-x-auto` here the card would
+            overflow this `flex-1` column with `overflow: visible` and
+            visually bleed on top of `ThemePanel` instead of being contained
+            by (and scrollable within) its own column. `overflow-x-auto`
+            keeps the panel's real DOM position — it never sits on top of
+            the card — while still letting the full card be reached by
+            scrolling at narrow widths.
+          */}
+          <div ref={previewContainerRef} className="flex justify-center overflow-x-auto">
             <BuildCard
               state={build}
               theme={theme}
