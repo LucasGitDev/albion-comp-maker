@@ -4,7 +4,7 @@ title: 'i18n: toggle de idioma EN/PT-BR para nomes de itens e UI'
 status: In Review
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-09 02:43'
+updated_date: '2026-09-09 02:48'
 labels: []
 milestone: m-7
 dependencies: []
@@ -258,4 +258,32 @@ Verificacao manual executada (pnpm dev, porta 3001 pois 3000 estava ocupada por 
 
 Nao tocado: editor body, SLOT_LABELS, ThemePanel, metadata (fora de escopo, decision-026).
 Conflito ACM-066 (Header.tsx): alteracao cirurgica, sem tocar em NAV_LINKS/rotas alem de renomear para navLinks e tornar dinamico com t().
+
+## Review (PR #64) — SHA auditado: e7ff1ab (origin/task/93-i18n-toggle, merge commit atualizado)
+
+Codigo lido via worktree ../albion-comp-maker-task-93 no SHA e7ff1ab (confirmado com git log -1). Rodei npm test (678/678 verdes) e tsc --noEmit (limpo) diretamente nesse SHA.
+
+### Verificacao dos pontos pedidos
+
+1. AC#2/AC#4 (fallback): `resolveLocalizedName` (src/lib/localized-name.ts) implementa locale -> en-US -> undefined corretamente, delegando para `pickLocalizedName` tolerante a casing. Teste `localized-name-fallback.test.ts` cobre exatamente o caso PASSIVE_AA_STACK (EN-US only) e casing CDN "PT-BR". OK.
+
+2. ARMADILHA do useMemo sem `locale` nas deps: VERIFICADO DE FATO no arquivo (nao por alegacao) — src/app/(editor)/build/new/page.tsx:128-142. `itemNames` tem deps `[items, locale]` e `spellCandidatesByItemId` tem deps `[items, locale]`; `cardLookups` (linha 168) deriva de ambos. Cadeia de recomputo correta. O bug sinalizado pelo architect NAO esta presente.
+
+3. Dedupe SEARCHED_LOCALES: `grep -rn "SEARCHED_LOCALES" src` retorna apenas o comentario em `src/lib/i18n/locales.ts` (mencao textual, nao declaracao). `item-index.ts` e `highlight.ts` importam `SUPPORTED_LOCALES`/`otherLocaleOf` de `@/lib/i18n/locales`. Confirmado.
+
+4. SSR sem JS: `public-pages-locale.test.tsx` e um teste real, nao fraco — invoca a page function real (`PublicBuildPage({params})`), mocka `next/headers.cookies()` e `fs.readFile` (dado real do ao-data), e faz assert em `container.textContent` do HTML renderizado (contains "Espada Larga", not-contains "Broadsword"). Prova o caminho SSR de fato. OK.
+
+5. `<html lang>`: virou dinamico. `RootLayout` agora e async, le `getRequestLocale()`, usa `lang={locale}` (era fixo "pt-BR"). Skip link tambem usa `t(locale, "a11y.skipToContent")`. Confirmado no diff.
+
+6. Escopo: fechado exatamente conforme decision-026. `messages.ts` cobre so nav (myComps, share — share ja existia hardcoded no Header original, nao e string nova), conta, skip link, toggle labels. Nenhum touch em SlotCard/SLOT_LABELS/ThemePanel/metadata (grep confirmou 0 arquivos). Sem novas dependencias em package.json.
+
+7. Merge ACM-066: diff entre a versao do branch e origin/main para `src/lib/public-content.ts`, `src/actions/comps.ts`, `src/lib/comp-publish-status.ts` e `drizzle/0004_add_comp_is_public.sql` e VAZIO (arquivos identicos, nada perdido no merge alem do Header ja mencionado pelo implementer).
+
+8. Testes: nenhum teste encontrado que apenas espelhe a implementacao. `public-pages-locale.test.tsx` e `build-card-lookups.test.ts` testam comportamento observavel (HTML renderizado / fallback real). `locale-toggle.test.tsx` e `header.test.tsx` testam efeito (cookie escrito, router.refresh chamado, string trocada) e nao detalhes internos.
+
+### Findings
+Nenhum finding CRITICAL/HIGH. Nenhum MEDIUM relevante alem de nota informativa: `nav.share` foi incluido no dicionario ainda que nao listado explicitamente na decision-026 (que citava so myComps + conta + skip link + toggle) — porem a string "Compartilhar" ja existia hardcoded no Header antes desta task, entao traduzi-la e consistente com "chrome global do Header" e nao e scope creep real (LOW, nao bloqueia).
+
+### Veredito: LGTM
+make check equivalente rodado manualmente no SHA e7ff1ab: tsc --noEmit limpo, 72 arquivos de teste / 678 testes verdes. Merge com ACM-066 intacto. Nenhum AC violado (desvio de "localStorage" para cookie e decisao arquitetural documentada e correta tecnicamente, nao um bug).
 <!-- SECTION:NOTES:END -->
