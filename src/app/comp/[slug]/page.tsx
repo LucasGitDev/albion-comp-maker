@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { BuildCard } from "@/components/build-card/BuildCard";
+import { GuestCTABanner } from "@/components/layout/GuestCTABanner";
 import { getPublicCompBySlug } from "@/lib/public-content";
 import { buildCardLookupsFor } from "@/lib/build-card-lookups";
 import { getRequestLocale } from "@/lib/i18n/server-locale";
@@ -38,6 +39,9 @@ export default async function PublicCompPage({ params }: PageProps): Promise<Rea
   }
 
   const locale = await getRequestLocale();
+  // Awaited here (not rendered as `<GuestCTABanner />` JSX) — see the same
+  // note in `/build/[id]/page.tsx` (ACM-117).
+  const guestCta = await GuestCTABanner({ callbackPath: `/comp/${slug}` });
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8 outline-none">
@@ -65,6 +69,7 @@ export default async function PublicCompPage({ params }: PageProps): Promise<Rea
           }),
         )}
       </div>
+      {guestCta}
     </main>
   );
 }

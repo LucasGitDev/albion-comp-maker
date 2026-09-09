@@ -19,7 +19,9 @@ export type MessageKey =
   | "a11y.skipToContent"
   | "locale.toggleLabel"
   | "locale.en"
-  | "locale.pt";
+  | "locale.pt"
+  | "guestCta.message"
+  | "guestCta.signIn";
 
 export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
   "en-US": {
@@ -34,6 +36,8 @@ export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
     "locale.toggleLabel": "Language",
     "locale.en": "EN",
     "locale.pt": "PT",
+    "guestCta.message": "Build your own comp",
+    "guestCta.signIn": "Sign in with Discord",
   },
   "pt-BR": {
     "nav.myComps": "Minhas comps",
@@ -47,6 +51,8 @@ export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
     "locale.toggleLabel": "Idioma",
     "locale.en": "EN",
     "locale.pt": "PT",
+    "guestCta.message": "Monte sua própria comp",
+    "guestCta.signIn": "Entrar com Discord",
   },
 };
 

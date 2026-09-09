@@ -26,6 +26,14 @@ vi.mock("@/lib/i18n/server-locale", () => ({
   getRequestLocale: vi.fn(async () => "en-US"),
 }));
 
+// `GuestCTABanner` (ACM-117) calls `auth()`, which pulls in next-auth's
+// full runtime (unavailable/unresolvable under vitest's jsdom environment).
+// Mocked here since this suite isolates the page component, not auth
+// resolution — the banner itself is unauthenticated in this suite's fixtures.
+vi.mock("@/auth", () => ({
+  auth: vi.fn(async () => null),
+}));
+
 function makePublicBuild(overrides: Partial<PublicBuild> = {}): PublicBuild {
   const content = createEmptyBuild();
   content.name = overrides.content?.name ?? "Fire Staff";

@@ -24,6 +24,12 @@ vi.mock("@/lib/public-content", () => ({
   getPublicBuildBySlug: mockGetPublicBuildBySlug,
 }));
 
+// `GuestCTABanner` (ACM-117) calls `auth()`, which pulls in next-auth's
+// full runtime (unavailable/unresolvable under vitest's jsdom environment).
+vi.mock("@/auth", () => ({
+  auth: vi.fn(async () => null),
+}));
+
 function makePublicBuild(): PublicBuild {
   const content = createEmptyBuild();
   content.name = "Sword Build";

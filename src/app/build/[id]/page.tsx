@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { BuildCard } from "@/components/build-card/BuildCard";
+import { GuestCTABanner } from "@/components/layout/GuestCTABanner";
 import { getPublicBuildBySlug } from "@/lib/public-content";
 import { buildCardLookupsFor } from "@/lib/build-card-lookups";
 import { getRequestLocale } from "@/lib/i18n/server-locale";
@@ -38,10 +39,16 @@ export default async function PublicBuildPage({ params }: PageProps): Promise<Re
 
   const locale = await getRequestLocale();
   const lookups = await buildCardLookupsFor(build.content, locale);
+  // Awaited here (not rendered as `<GuestCTABanner />` JSX) because this
+  // page is exercised in tests via plain `react-dom`, which — unlike
+  // Next.js's RSC runtime — cannot render an async component nested inside
+  // another element (ACM-117).
+  const guestCta = await GuestCTABanner({ callbackPath: `/build/${id}` });
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center gap-6 p-8 outline-none">
       <BuildCard state={build.content} layout="vertical" {...lookups} />
+      {guestCta}
     </main>
   );
 }
