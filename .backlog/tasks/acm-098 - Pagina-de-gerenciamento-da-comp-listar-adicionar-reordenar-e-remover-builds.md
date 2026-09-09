@@ -4,7 +4,7 @@ title: 'Pagina de gerenciamento da comp: listar, adicionar, reordenar e remover 
 status: In Progress
 assignee: []
 created_date: '2026-09-09 02:42'
-updated_date: '2026-09-09 03:06'
+updated_date: '2026-09-09 03:14'
 labels: []
 milestone: m-6
 dependencies: []
@@ -44,3 +44,22 @@ Componentes: reusa BuildCardCompressed para preview da entrada; novos CompBuildR
 - [ ] #6 Comp sem builds mostra estado vazio explicando que o link publico nao funciona ate ter ao menos uma build
 - [ ] #7 Usuario que nao e dono recebe not-found na rota de edicao, sem revelar existencia da comp
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implementado em src/app/comps/[id]/page.tsx (rota por id, decision-027), extendendo a página existente com uma seção "Builds da comp" acima de "Compartilhar comp".
+
+Decisões não-óbvias:
+- Adicionei `listCompBuildsDetailed` em src/actions/comps.ts (nova função, não reescreve nenhuma das 4 actions existentes) porque `listCompBuilds` só retorna `buildId` — a UI precisa de nome/role por entrada. Faz um innerJoin selecionando só id/name/role/slug/isPublic de builds, nunca content/themeJson.
+- Não usei `BuildCardCompressed` para o preview de cada entrada (a descrição da task sugeria isso). Renderizar o card completo por entrada exigiria carregar `content` de cada build + montar lookups de itens/spells por linha, custo não justificado pelos ACs (nenhum AC pede a visualização do card). Optei por uma linha de texto (nome + role + label + count), no mesmo padrão visual já usado em /builds e /comps. Documentado aqui como desvio deliberado da descrição, não dos ACs.
+- Reordenação via setas (↑/↓), não drag-and-drop — convenção citada explicitamente na task, e evita adicionar uma lib de dnd.
+- Sem lib de toast (não existe no repo) — erros de ação aparecem como um banner inline com "Tentar de novo" que preserva a ordem local (reverte para o último estado bom, não perde a entrada), conforme pedido no fluxo de erro da task.
+- AddBuildDialog é um modal simples (role="dialog", Escape fecha, foco inicial no botão fechar) sem lib de dialog/portal — não existe nenhuma no repo; ItemPicker é de itens do jogo, não reaproveitável para builds.
+- AC#7 (not-found sem revelar existência) já estava coberto pelo catch existente de CompNotFoundError -> notFound() na página; validado que listCompBuildsDetailed/listMyBuilds seguem o mesmo padrão de erro.
+- Fora de escopo: exportar PNG da comp (ACM-020, não implementado ainda) — mencionado na descrição como ação primária futura, mas não faz parte dos ACs desta task; não adicionei um botão placeholder para não criar uma ação morta.
+
+Testes: src/__tests__/comp-builds-manager.test.tsx (client component, cobre AC#1-6 incl. rollback em erro) e novos casos em src/__tests__/comps-actions.test.ts para listCompBuildsDetailed (ordenação, join, IDOR).
+
+make check verde: lint, tsc, build, vitest (703 testes).
+<!-- SECTION:NOTES:END -->
