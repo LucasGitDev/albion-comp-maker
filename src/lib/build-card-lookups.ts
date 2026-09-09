@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import type { AOData, AOItem } from "@/data/ao-data.d";
-import { groupItemSpells } from "@/components/editor/spell-groups";
+import { groupSpellsForItem } from "@/components/editor/spell-groups";
 import type { BuildCardLookups } from "@/components/build-card/types";
 import type { BuildState, SpellGroup } from "@/types/build";
 import { pickLocalizedName } from "@/lib/localized-name";
@@ -89,7 +89,14 @@ export async function buildCardLookupsFor(state: BuildState): Promise<BuildCardL
 
     itemNames[itemId] = pickLocalizedName(item.localizedNames, LOCALE) ?? item.uniquename;
 
-    const grouped = groupItemSpells(item.spells, LOCALE);
+    // ACM-090: `groupSpellsForItem` (not the raw `groupItemSpells`) applies
+    // the cape/bag/mount/food/potion "passive is never selectable"
+    // exclusion using `item.slot`, so the exported card never renders a
+    // chip the editor's picker wouldn't offer — including for a stale
+    // `BuildState.spells.passive` set before this exclusion existed:
+    // "passive" simply never appears in `spellGroupsByItem` for these
+    // slots, so `SpellRow` never gets a group to render one for.
+    const grouped = groupSpellsForItem(item, LOCALE);
     spellGroupsByItem[itemId] = Object.keys(grouped) as SpellGroup[];
 
     for (const candidates of Object.values(grouped)) {
