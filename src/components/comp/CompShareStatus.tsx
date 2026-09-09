@@ -58,8 +58,12 @@ export function CompShareStatus({ compId, slug, publicOrigin, initialState }: Co
 
   function handleMakeBuildPublic(buildId: string) {
     startTransition(async () => {
-      await toggleBuildPublic(buildId);
-      router.refresh();
+      try {
+        await toggleBuildPublic(buildId);
+        router.refresh();
+      } catch {
+        toast.error("Erro ao salvar. Tente novamente.");
+      }
     });
   }
 

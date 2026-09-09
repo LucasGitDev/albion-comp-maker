@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { regenerateBuildSlug, toggleBuildPublic } from "@/actions/builds";
 
@@ -33,16 +34,24 @@ export function BuildShareStatus({ buildId, slug, isPublic, publicOrigin }: Buil
 
   function handleToggle() {
     startTransition(async () => {
-      await toggleBuildPublic(buildId);
-      router.refresh();
+      try {
+        await toggleBuildPublic(buildId);
+        router.refresh();
+      } catch {
+        toast.error("Erro ao salvar. Tente novamente.");
+      }
     });
   }
 
   function handleRegenerate() {
     startTransition(async () => {
-      await regenerateBuildSlug(buildId);
-      setConfirmingRegenerate(false);
-      router.refresh();
+      try {
+        await regenerateBuildSlug(buildId);
+        setConfirmingRegenerate(false);
+        router.refresh();
+      } catch {
+        toast.error("Erro ao salvar. Tente novamente.");
+      }
     });
   }
 
