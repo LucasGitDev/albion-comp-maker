@@ -6,6 +6,7 @@ import { CompNotFoundError } from "@/actions/comp-errors";
 import { getComp, getCompPublishState, listCompBuildsDetailed } from "@/actions/comps";
 import type { CompBuildEntry, MyBuildOption } from "@/components/comp/CompBuildsManager";
 import { CompBuildsManager } from "@/components/comp/CompBuildsManager";
+import { CompHeader } from "@/components/comp/CompHeader";
 import { CompShareStatus } from "@/components/comp/CompShareStatus";
 
 type PageProps = {
@@ -71,7 +72,7 @@ export default async function CompDetailPage({ params }: PageProps): Promise<Rea
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 p-8 outline-none">
-      <h1 className="text-xl font-semibold text-foreground">{name}</h1>
+      <CompHeader compId={id} initialName={name} />
       <CompBuildsManager compId={id} compName={name} initialEntries={entries} myBuilds={buildOptions} />
       <div className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-foreground">Compartilhar comp</h2>
