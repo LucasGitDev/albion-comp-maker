@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Slot } from "@/data/ao-data";
 import type { AOItem } from "@/data/ao-data.d";
 import { saveBuild, updateBuild } from "@/actions/builds";
@@ -62,6 +63,7 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
   const build = useBuildStore(selectBuild);
   const actions = useBuildStore(selectActions);
   const locale = useLocale();
+  const router = useRouter();
   /**
    * ACM-100 AC#5: when this build is being created/edited from within a
    * comp's own page (`/comps/[id]`), that page links here with `comp`/
@@ -412,13 +414,20 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
       });
       return;
     }
-    await saveBuild({
+    // ACM-112: redirect to the newly created build's edit route so a second
+    // click on Save (or any re-save) hits the `updateBuild` branch above
+    // instead of `saveBuild` again, which would otherwise create a duplicate
+    // row silently. Forward the current search params (`comp`/`compName`,
+    // read in the lazy `compTrail` initializer above) so the "back to comp"
+    // breadcrumb link survives the redirect.
+    const row = await saveBuild({
       name: build.name,
       role: build.role.trim() === "" ? null : build.role,
       content: JSON.stringify(build),
       theme: JSON.stringify(theme),
     });
-  }, [build, theme, props]);
+    router.push(`/build/${row.id}/edit${window.location.search}`);
+  }, [build, theme, props, router]);
 
   return (
     <main

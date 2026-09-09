@@ -2,8 +2,10 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AOItem } from "@/data/ao-data.d";
 
+const mockRouterPush = vi.fn();
+
 vi.mock("next/navigation", () => ({
-  useRouter: vi.fn(() => ({ refresh: vi.fn() })),
+  useRouter: vi.fn(() => ({ refresh: vi.fn(), push: mockRouterPush })),
 }));
 
 vi.mock("@/components/editor/use-item-catalogue", () => {
@@ -72,6 +74,7 @@ function mockSession(authenticated: boolean) {
 beforeEach(() => {
   useBuildStore.getState().actions.reset();
   mockSaveBuild.mockReset();
+  mockRouterPush.mockReset();
 });
 
 afterEach(() => {
@@ -228,6 +231,37 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     // implementation resolved without ever calling `saveBuild`, so
     // "Build salva." rendered without anything actually persisted.
     expect(await screen.findByText("Build salva.")).toBeInTheDocument();
+
+    // ACM-112: a second click on "new" without this redirect hits `saveBuild`
+    // again and silently creates a duplicate row.
+    expect(mockRouterPush).toHaveBeenCalledWith("/build/b1/edit");
+  });
+
+  it("forwards comp/compName query params on redirect so the breadcrumb's back-to-comp link survives (review fix)", async () => {
+    window.history.pushState({}, "", "/build/new?comp=c1&compName=Frontline");
+    mockSession(true);
+    mockSaveBuild.mockResolvedValue({ id: "b1" });
+    renderPage();
+    act(() => {
+      useBuildStore.getState().actions.setName("Bruiser de Frontline");
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+        4,
+        0
+      );
+      useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+      useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockRouterPush).toHaveBeenCalledWith("/build/b1/edit?comp=c1&compName=Frontline")
+    );
+
+    window.history.pushState({}, "", "/build/new");
   });
 
   it("surfaces the real saveBuild failure instead of always reporting success", async () => {
