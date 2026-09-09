@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { FALLBACK_NAME_LOCALE, type Locale } from "@/lib/i18n/locales";
 
 /**
  * Case-insensitive lookup into a `localizedNames`-shaped record.
@@ -29,7 +29,8 @@ export function pickLocalizedName(
 
 /**
  * Centralized fallback chain (ACM-093 / decision-026): requested locale ->
- * `DEFAULT_LOCALE` -> `undefined` (never the uniquename — callers own that
+ * `FALLBACK_NAME_LOCALE` (always `"en-US"`, independent of the UI's
+ * `DEFAULT_LOCALE`) -> `undefined` (never the uniquename — callers own that
  * last step, since a spell's "no name at all" case and an item's are
  * handled slightly differently in a couple of call sites).
  *
@@ -42,6 +43,6 @@ export function resolveLocalizedName(
 ): string | undefined {
   const direct = pickLocalizedName(names, locale);
   if (direct !== undefined) return direct;
-  if (locale === DEFAULT_LOCALE) return undefined;
-  return pickLocalizedName(names, DEFAULT_LOCALE);
+  if (locale === FALLBACK_NAME_LOCALE) return undefined;
+  return pickLocalizedName(names, FALLBACK_NAME_LOCALE);
 }

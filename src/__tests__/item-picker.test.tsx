@@ -43,8 +43,10 @@ describe("ItemPicker", () => {
 
   it("filters results by the fixed slot prop, never showing other-slot items", () => {
     render(<ItemPicker slot="offhand" items={ITEMS} onSelect={vi.fn()} onClose={vi.fn()} />);
-    expect(screen.getByText("Shield")).toBeInTheDocument();
-    expect(screen.queryByText("Broadsword")).not.toBeInTheDocument();
+    // DEFAULT_LOCALE is pt-BR (ACM-093 visual-review fix), so with no
+    // locale prop/context the picker falls back to the pt-BR name.
+    expect(screen.getByText("Escudo")).toBeInTheDocument();
+    expect(screen.queryByText("Espadão")).not.toBeInTheDocument();
   });
 
   it("shows the ItemIcon and tier chip for each result row", () => {
@@ -129,17 +131,19 @@ describe("ItemPicker", () => {
     const input = screen.getByRole("combobox");
 
     fireEvent.change(input, { target: { value: "hammer" } });
-    // Immediately after typing, the previous (unfiltered) list is still shown.
-    expect(screen.getByText("Broadsword")).toBeInTheDocument();
+    // Immediately after typing, the previous (unfiltered) list is still
+    // shown. DEFAULT_LOCALE is pt-BR (ACM-093 visual-review fix), so with
+    // no locale prop/context the picker falls back to pt-BR names.
+    expect(screen.getByText("Espadão")).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.queryByText("Broadsword")).not.toBeInTheDocument();
+      expect(screen.queryByText("Espadão")).not.toBeInTheDocument();
     });
     // Full text asserted via textContent (not the default text-node-only
     // matcher) because ACM-028 wraps the matched substring in <mark>,
-    // splitting "Sacred Hammer" across sibling nodes.
+    // splitting "Martelo Sagrado" across sibling nodes.
     expect(
-      screen.getByText((_, element) => element?.textContent === "Sacred Hammer")
+      screen.getByText((_, element) => element?.textContent === "Martelo Sagrado")
     ).toBeInTheDocument();
   });
 });

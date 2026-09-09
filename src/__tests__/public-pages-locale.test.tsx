@@ -90,7 +90,7 @@ describe("public build page honors the acm_locale cookie in SSR (ACM-093)", () =
     expect(container.textContent).not.toContain("Broadsword");
   });
 
-  it("renders the en-US item name server-side when no cookie is set", async () => {
+  it("renders the pt-BR item name server-side when no cookie is set (DEFAULT_LOCALE is pt-BR)", async () => {
     mockCookiesGet.mockReturnValue(undefined);
     mockGetPublicBuildBySlug.mockResolvedValue(makePublicBuild());
 
@@ -98,6 +98,6 @@ describe("public build page honors the acm_locale cookie in SSR (ACM-093)", () =
     const element = await PublicBuildPage({ params: Promise.resolve({ slug: "broadsword-abc123" }) });
     const { container } = render(element);
 
-    expect(container.textContent).toContain("Broadsword");
+    expect(container.textContent).toContain("Espada Larga");
   });
 });
