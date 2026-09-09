@@ -75,7 +75,7 @@ describe("NewCompForm — AC#3 validation errors stay inline and never call the 
     fireEvent.change(screen.getByLabelText("Nome da comp"), { target: { value: tooLong } });
     fireEvent.click(screen.getByRole("button", { name: "Criar comp" }));
 
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(String(tooLong.length));
     expect(mockCreateCompAction).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Nome da comp")).toHaveValue(tooLong);
   });
@@ -126,5 +126,30 @@ describe("NewCompForm — live character counter", () => {
 
     fireEvent.change(screen.getByLabelText("Nome da comp"), { target: { value: "ZvZ Terça" } });
     expect(screen.getByTestId("comp-name-char-count")).toHaveTextContent(`9/${COMP_NAME_MAX_LENGTH}`);
+  });
+
+  it("stays silent in the polite live region and shows the default counter style while under the limit", () => {
+    render(<NewCompForm />);
+
+    fireEvent.change(screen.getByLabelText("Nome da comp"), { target: { value: "ZvZ Terça" } });
+
+    expect(screen.getByRole("status")).toHaveTextContent("");
+    expect(screen.getByTestId("comp-name-char-count")).not.toHaveClass("text-red-500");
+  });
+
+  it("announces the over-limit condition politely and styles the counter distinctly, without duplicating role=alert", () => {
+    render(<NewCompForm />);
+    const tooLong = "a".repeat(COMP_NAME_MAX_LENGTH + 1);
+
+    fireEvent.change(screen.getByLabelText("Nome da comp"), { target: { value: tooLong } });
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(
+      `Nome muito longo: ${tooLong.length} de ${COMP_NAME_MAX_LENGTH} caracteres`,
+    );
+    expect(screen.getByTestId("comp-name-char-count")).toHaveClass("text-red-500");
+    // The over-limit condition is only surfaced via the polite status region
+    // while typing — no `role="alert"` exists yet until the user submits.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
