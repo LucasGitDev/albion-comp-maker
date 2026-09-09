@@ -4,10 +4,12 @@ title: 'Multi-export: full comp PNG + per-build ZIP (RF-8)'
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:33'
+updated_date: '2026-09-09 03:07'
 labels: []
 milestone: m-6
 dependencies:
   - ACM-015
+priority: high
 ordinal: 20000
 ---
 

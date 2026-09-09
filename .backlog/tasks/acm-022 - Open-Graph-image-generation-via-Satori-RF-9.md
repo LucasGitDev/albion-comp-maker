@@ -4,12 +4,13 @@ title: Open Graph image generation via Satori (RF-9)
 status: To Do
 assignee: []
 created_date: '2026-09-07 13:34'
-updated_date: '2026-09-07 17:05'
+updated_date: '2026-09-09 03:07'
 labels: []
 milestone: m-7
 dependencies:
   - ACM-018
   - ACM-019
+priority: medium
 ordinal: 22000
 ---
 

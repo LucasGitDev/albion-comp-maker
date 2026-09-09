@@ -4,8 +4,10 @@ title: Contador de slots do EditorActionBar fica invisivel exatamente em 390px
 status: To Do
 assignee: []
 created_date: '2026-09-07 20:31'
+updated_date: '2026-09-09 03:07'
 labels: []
 dependencies: []
+priority: low
 ordinal: 65000
 ---
 

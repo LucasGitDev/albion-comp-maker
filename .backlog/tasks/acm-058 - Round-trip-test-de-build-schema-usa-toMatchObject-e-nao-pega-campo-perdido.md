@@ -4,8 +4,10 @@ title: Round-trip test de build-schema usa toMatchObject e nao pega campo perdid
 status: To Do
 assignee: []
 created_date: '2026-09-07 19:48'
+updated_date: '2026-09-09 03:07'
 labels: []
 dependencies: []
+priority: low
 ordinal: 58000
 ---
 
