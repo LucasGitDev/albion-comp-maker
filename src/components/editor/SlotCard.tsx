@@ -9,7 +9,11 @@ import { computeAutoSelections, type SpellCandidate } from "./spell-groups";
 import { SpellPicker } from "./SpellPicker";
 import { EnchantSelect, TierSelect } from "./TierEnchantSelectors";
 import type { EnchantOption, TierOption } from "./tier-enchant";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { t } from "@/lib/i18n/messages";
 
+/** PT-BR labels — default/fallback value; prefer `getSlotLabels(locale)` for locale-aware rendering. */
 export const SLOT_LABELS: Record<Slot, string> = {
   mainhand: "Mão principal",
   offhand: "Mão secundária",
@@ -22,6 +26,21 @@ export const SLOT_LABELS: Record<Slot, string> = {
   food: "Comida",
   potion: "Poção",
 };
+
+export function getSlotLabels(locale: Locale): Record<Slot, string> {
+  return {
+    mainhand: t(locale, "slot.mainhand"),
+    offhand: t(locale, "slot.offhand"),
+    head: t(locale, "slot.head"),
+    armor: t(locale, "slot.armor"),
+    shoes: t(locale, "slot.shoes"),
+    cape: t(locale, "slot.cape"),
+    bag: t(locale, "slot.bag"),
+    mount: t(locale, "slot.mount"),
+    food: t(locale, "slot.food"),
+    potion: t(locale, "slot.potion"),
+  };
+}
 
 const TIER_COLOR_VAR: Record<number, string> = {
   4: "var(--color-tier-4)",
@@ -121,7 +140,8 @@ export function SlotCard({
   onEnchantChange,
   onSpellChange,
 }: SlotCardProps): React.JSX.Element {
-  const label = SLOT_LABELS[slot] ?? slot;
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
+  const label = getSlotLabels(locale)[slot] ?? slot;
   const tierColor = item && item.tier > 0 ? (TIER_COLOR_VAR[item.tier] ?? "var(--color-tier-low)") : undefined;
 
   // ACM-090: `spellCandidatesByGroup` never includes a "passive" entry for
@@ -174,7 +194,7 @@ export function SlotCard({
             <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.6" />
           </svg>
         </div>
-        <p className="text-[12px] text-icon-muted">Ocupada por arma de duas mãos</p>
+        <p className="text-[12px] text-icon-muted">{t(locale, "slot.lockedByTwoHanded")}</p>
       </div>
     );
   }
@@ -198,7 +218,7 @@ export function SlotCard({
           <SlotPlaceholderIcon category={SLOT_CATEGORY[slot] ?? "weapon"} />
         </div>
         <span className="text-[12px] text-icon-muted transition-colors duration-150 ease-out hover:text-[var(--color-enchant)]">
-          Adicionar
+          {t(locale, "slot.add")}
         </span>
       </button>
     );

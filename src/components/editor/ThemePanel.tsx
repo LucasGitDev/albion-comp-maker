@@ -15,6 +15,9 @@ import {
   BG_SCALE_MAX,
   BG_SCALE_MIN,
 } from "@/lib/validation-constants";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { t } from "@/lib/i18n/messages";
 
 /**
  * ACM-014 theme panel (doc-007, simplified against decision-019's leaner
@@ -96,6 +99,7 @@ export function ThemePanel({
   accent = DEFAULT_BUILD_ACCENT,
   onAccentChange = () => {},
 }: ThemePanelProps): React.JSX.Element {
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
   const [upload, setUpload] = useState<UploadState>({ kind: "idle" });
   const [accentDraft, setAccentDraft] = useState(accent);
   /** doc-007 §11: announced via the `aria-live="polite"` region below whenever the preset or background changes. */
@@ -178,7 +182,7 @@ export function ThemePanel({
       className="flex w-full flex-col gap-6 rounded-lg border border-[var(--color-border)] p-4 md:w-80 md:shrink-0"
     >
       <h2 id={titleId} className="text-sm font-semibold text-foreground">
-        Aparência
+        {t(locale, "theme.title")}
       </h2>
 
       <div aria-live="polite" aria-atomic="true" className="sr-only">
@@ -186,7 +190,7 @@ export function ThemePanel({
       </div>
 
       <section aria-label="Preset de tema">
-        <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-foreground/70">Preset</h3>
+        <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-foreground/70">{t(locale, "theme.preset")}</h3>
         <div role="radiogroup" aria-label="Preset de tema" className="grid grid-cols-2 gap-2">
           {THEME_PRESET_NAMES.map((preset) => (
             <button
@@ -207,7 +211,7 @@ export function ThemePanel({
 
       <details open className="flex flex-col gap-3">
         <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-[0.08em] text-foreground/70">
-          Fundo <span className="font-normal normal-case tracking-normal text-foreground/50">· {backgroundSummary}</span>
+          {t(locale, "theme.background")} <span className="font-normal normal-case tracking-normal text-foreground/50">· {backgroundSummary}</span>
         </summary>
 
         <div className="flex flex-col gap-3">
@@ -304,7 +308,7 @@ export function ThemePanel({
 
       <details className="flex flex-col gap-3">
         <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-[0.08em] text-foreground/70">
-          Cores e tipografia <span className="font-normal normal-case tracking-normal text-foreground/50">· {colorsSummary}</span>
+          {t(locale, "theme.colorsAndTypography")} <span className="font-normal normal-case tracking-normal text-foreground/50">· {colorsSummary}</span>
         </summary>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
@@ -357,7 +361,7 @@ export function ThemePanel({
 
       <details className="flex flex-col gap-3">
         <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-[0.08em] text-foreground/70">
-          Conteúdo e formato <span className="font-normal normal-case tracking-normal text-foreground/50">· {contentSummary}</span>
+          {t(locale, "theme.contentAndFormat")} <span className="font-normal normal-case tracking-normal text-foreground/50">· {contentSummary}</span>
         </summary>
         <div className="flex flex-col gap-3">
           <label className="flex items-center justify-between text-xs text-foreground">

@@ -18,11 +18,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Albion Comp Maker",
-  description:
-    "Monte comps de Albion Online e exporte cards prontos para o Discord.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return {
+    title: t(locale, "metadata.title"),
+    description: t(locale, "metadata.description"),
+  };
+}
 
 export default async function RootLayout({
   children,

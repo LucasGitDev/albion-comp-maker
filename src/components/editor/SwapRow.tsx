@@ -5,9 +5,11 @@ import { ItemIcon } from "@/components/icons/ItemIcon";
 import { CategorySilhouette, type IconCategory } from "@/components/icons/category-glyphs";
 import { SLOT_ORDER } from "@/types/build";
 import type { EquippedItem, Swap, SpellGroup } from "@/types/build";
-import { SLOT_LABELS } from "./SlotCard";
+import { getSlotLabels } from "./SlotCard";
 import type { SpellCandidate } from "./spell-groups";
 import { SpellPicker } from "./SpellPicker";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
 const SLOT_CATEGORY: Record<Slot, Exclude<IconCategory, "generic">> = {
   mainhand: "weapon",
@@ -75,6 +77,8 @@ export function SwapRow({
   onRemove,
   removeButtonRef,
 }: SwapRowProps): React.JSX.Element {
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
+  const slotLabels = getSlotLabels(locale);
   const slot = (Object.keys(swap.slots)[0] as Slot | undefined) ?? "mainhand";
   const swapItem = swap.slots[slot] ?? null;
   const category = SLOT_CATEGORY[slot] ?? "weapon";
@@ -96,7 +100,7 @@ export function SwapRow({
           >
             {SLOT_ORDER.map((option) => (
               <option key={option} value={option}>
-                {SLOT_LABELS[option]}
+                {slotLabels[option]}
               </option>
             ))}
           </select>
@@ -129,7 +133,7 @@ export function SwapRow({
           <button
             type="button"
             onClick={onRequestItemPick}
-            aria-label={`Escolher item alternativo para ${SLOT_LABELS[slot]}`}
+            aria-label={`Escolher item alternativo para ${slotLabels[slot]}`}
             className="flex flex-col items-center gap-1 rounded-md p-1 transition-opacity duration-150 ease-out hover:opacity-90"
           >
             <span className="text-[11px] uppercase tracking-[0.04em] text-icon-muted">Alternativo</span>

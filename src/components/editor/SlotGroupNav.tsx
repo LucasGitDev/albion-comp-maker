@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { t } from "@/lib/i18n/messages";
 
 export type SlotGroupNavGroup = {
   /** Slug matching the `slot-group-<id>` heading rendered by `SlotGrid`. */
@@ -37,6 +40,7 @@ function readGroupNavHeightPx(): number {
  * page stays the sole store subscriber (doc-005 §9).
  */
 export function SlotGroupNav({ groups, totalFilled, totalSlots, swapsCount }: SlotGroupNavProps): React.JSX.Element {
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -135,14 +139,14 @@ export function SlotGroupNav({ groups, totalFilled, totalSlots, swapsCount }: Sl
         href={`#${SWAPS_ANCHOR_ID}`}
         onClick={handleAnchorClick(SWAPS_ANCHOR_ID)}
         aria-current={activeId === SWAPS_ANCHOR_ID ? "location" : undefined}
-        aria-label={`Swaps ${swapsCount}`}
+        aria-label={`${t(locale, "editor.swaps")} ${swapsCount}`}
         className={`flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md border px-3 py-2 text-[12px] font-medium transition-colors duration-150 ease-out ${
           activeId === SWAPS_ANCHOR_ID
             ? "border-[var(--color-accent)] bg-[var(--color-icon-slot)] text-foreground"
             : "border-[var(--color-border)] text-icon-muted"
         }`}
       >
-        Swaps · {swapsCount}
+        {t(locale, "editor.swaps")} · {swapsCount}
       </a>
     </nav>
   );

@@ -2,6 +2,9 @@
 
 import { BUILD_NAME_MAX_LENGTH, BUILD_ROLE_MAX_LENGTH } from "@/lib/validation-constants";
 import type { BuildState } from "@/types/build";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { t } from "@/lib/i18n/messages";
 
 export type BuildHeaderProps = {
   build: BuildState;
@@ -17,13 +20,14 @@ export type BuildHeaderProps = {
  * kept there so the existing assertions on that testid still pass).
  */
 export function BuildHeader({ build, onNameChange, onRoleChange }: BuildHeaderProps): React.JSX.Element {
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-sm font-semibold text-foreground/70">Detalhes da build</h1>
+      <h1 className="text-sm font-semibold text-foreground/70">{t(locale, "editor.buildDetails")}</h1>
       <div className="flex flex-wrap items-center gap-4">
       <label className="flex flex-col gap-1">
         <span className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
-          <span>Nome do build</span>
+          <span>{t(locale, "editor.buildNameLabel")}</span>
           <span
             data-testid="name-char-count"
             aria-hidden="true"
@@ -40,17 +44,17 @@ export function BuildHeader({ build, onNameChange, onRoleChange }: BuildHeaderPr
           here jumped straight to "Exportar PNG".
         */}
         <input
-          aria-label="Nome do build"
+          aria-label={t(locale, "editor.buildNameLabel")}
           value={build.name}
           onChange={(event) => onNameChange(event.target.value)}
-          placeholder="Bruiser de frontline"
+          placeholder={t(locale, "editor.buildNamePlaceholder")}
           maxLength={BUILD_NAME_MAX_LENGTH}
           className="rounded-md border border-icon-slot-empty bg-icon-slot px-3 py-1.5 text-sm outline-none focus:border-[var(--color-enchant)]"
         />
       </label>
       <label className="flex flex-col gap-1">
         <span className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
-          <span>Papel</span>
+          <span>{t(locale, "editor.roleLabel")}</span>
           <span
             data-testid="role-char-count"
             aria-hidden="true"
@@ -60,10 +64,10 @@ export function BuildHeader({ build, onNameChange, onRoleChange }: BuildHeaderPr
           </span>
         </span>
         <input
-          aria-label="Papel"
+          aria-label={t(locale, "editor.roleLabel")}
           value={build.role}
           onChange={(event) => onRoleChange(event.target.value)}
-          placeholder="Tank"
+          placeholder={t(locale, "editor.rolePlaceholder")}
           maxLength={BUILD_ROLE_MAX_LENGTH}
           className="rounded-md border border-icon-slot-empty bg-icon-slot px-3 py-1.5 text-sm outline-none focus:border-[var(--color-enchant)]"
         />

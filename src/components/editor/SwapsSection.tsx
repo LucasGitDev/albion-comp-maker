@@ -5,6 +5,9 @@ import type { Slot } from "@/data/ao-data";
 import type { EquippedItem, Swap, SpellGroup } from "@/types/build";
 import { SwapRow } from "./SwapRow";
 import type { SpellCandidate } from "./spell-groups";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { t } from "@/lib/i18n/messages";
 
 /**
  * UI-level soft cap (ACM-012 review round 2), distinct from the store's
@@ -52,6 +55,7 @@ export function SwapsSection({
   onLabelChange,
   onSpellChange,
 }: SwapsSectionProps): React.JSX.Element {
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
   const atSoftCap = swaps.length >= SWAP_SOFT_CAP;
   const softCapHintId = "swaps-soft-cap-hint";
 
@@ -97,7 +101,7 @@ export function SwapsSection({
     <section className="flex flex-col gap-3" aria-labelledby="swaps-heading">
       <div className="flex items-center justify-between">
         <h2 id="swaps-heading" className="text-[13px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
-          Swaps · {swaps.length}
+          {t(locale, "editor.swaps")} · {swaps.length}
         </h2>
         <button
           ref={addButtonRef}
@@ -107,7 +111,7 @@ export function SwapsSection({
           aria-describedby={atSoftCap ? softCapHintId : undefined}
           className="rounded-md border border-icon-slot-empty px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors duration-150 ease-out hover:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          + Adicionar swap
+          {t(locale, "editor.addSwap")}
         </button>
       </div>
 

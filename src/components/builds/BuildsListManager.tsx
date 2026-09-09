@@ -9,6 +9,9 @@ import { duplicateBuild, toggleBuildPublic, deleteBuild } from "@/actions/builds
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
 import { DeleteBuildDialog } from "./DeleteBuildDialog";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { t } from "@/lib/i18n/messages";
 
 export type BuildListItem = {
   id: string;
@@ -32,6 +35,7 @@ type ActionError = { message: string; retry: () => void };
  * shape (ACM-098) rather than a full-page reload on every action.
  */
 export function BuildsListManager({ initialBuilds }: BuildsListManagerProps): React.JSX.Element {
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
   const [builds, setBuilds] = useState<BuildListItem[]>(initialBuilds);
   const [error, setError] = useState<ActionError | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BuildListItem | null>(null);
@@ -106,13 +110,13 @@ export function BuildsListManager({ initialBuilds }: BuildsListManagerProps): Re
             <EmptyMedia variant="icon">
               <FilePlus />
             </EmptyMedia>
-            <EmptyTitle>Nenhuma build ainda</EmptyTitle>
-            <EmptyDescription>Crie sua primeira build para começar.</EmptyDescription>
+            <EmptyTitle>{t(locale, "empty.noBuilds")}</EmptyTitle>
+            <EmptyDescription>{t(locale, "empty.noBuildsSubtitle")}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button render={<Link href="/build/new" />}>
               <FilePlus />
-              Criar build
+              {t(locale, "empty.createFirstBuild")}
             </Button>
           </EmptyContent>
         </Empty>

@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { t } from "@/lib/i18n/messages";
 
 export type BreadcrumbProps = {
   /** Current step label, e.g. "Nova build" or a saved build's name. */
@@ -20,6 +25,7 @@ export type BreadcrumbProps = {
  * `comp` hop follows the same rule: a real `<Link>`, not history navigation.
  */
 export function Breadcrumb({ current, comp }: BreadcrumbProps): React.JSX.Element {
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
   return (
     <nav aria-label="Trilha" className="text-sm">
       <ol className="flex items-center gap-2">
@@ -28,7 +34,7 @@ export function Breadcrumb({ current, comp }: BreadcrumbProps): React.JSX.Elemen
             href="/"
             className="text-foreground/70 transition-colors hover:text-foreground focus-visible:transition-none"
           >
-            ← Minhas comps
+            {t(locale, "editor.breadcrumbMyComps")}
           </Link>
         </li>
         {comp && (

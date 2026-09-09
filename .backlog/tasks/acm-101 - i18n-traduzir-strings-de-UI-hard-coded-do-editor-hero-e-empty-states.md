@@ -1,10 +1,10 @@
 ---
 id: ACM-101
 title: 'i18n: traduzir strings de UI hard-coded do editor, hero e empty states'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-09 03:05'
-updated_date: '2026-09-09 03:26'
+updated_date: '2026-09-09 19:23'
 labels: []
 dependencies: []
 priority: high
@@ -39,4 +39,6 @@ Reaproveitar a infra existente: src/lib/i18n/messages.ts, t(locale, key), getReq
 
 <!-- SECTION:NOTES:BEGIN -->
 BLOQUEADA por conflito de arquivos (orchestrator paralelo, 2026-09-09). ACM-101 precisa editar src/app/page.tsx (hero/home) e src/app/(editor)/build/new/page.tsx (labels do editor). Ambos estao reclamados por PRs abertos de outro orquestrador: PR #71 (ACM-096) toca src/app/page.tsx e PR #66 (ACM-095) toca src/app/(editor)/build/new/page.tsx. Nao claimed; permanece To Do. Desbloqueio: mergear #66 e #71, entao reabrir.
+
+Implementado: mensagens novas em src/lib/i18n/messages.ts (namespaces home.*, empty.*, editor.*, slot.*, theme.*, metadata.*). Hero/home (src/app/page.tsx) e metadata (src/app/layout.tsx via generateMetadata) agora usam getRequestLocale()+t(). Componentes client do editor (BuildEditor, BuildHeader, EditorActionBar, SlotCard/getSlotLabels, SwapsSection, SwapRow parcial, SlotGroupNav, ThemePanel, Breadcrumb) usam useOptionalLocale() ?? DEFAULT_LOCALE (nao useLocale(), que exige LocaleProvider e quebraria os varios testes que renderizam esses componentes sem provider). Empty states de /comps e /builds (CompsListManager, BuildsListManager) tambem traduzidos. Escopo remanescente, documentado no comment de messages.ts: aria-labels dinamicos dentro de SwapRow (mover/remover/rotulo), TierEnchantSelectors, SpellPicker e mensagens de erro/toast (EditorActionBar KNOWN_SAVE_ERROR_MESSAGES, ThemePanel upload errors) continuam PT-BR hardcoded — sao strings com nome de item/slot interpolado, follow-up natural. make check (tsc --noEmit, lint, build, npm test) passou: 861/861 testes verdes.
 <!-- SECTION:NOTES:END -->

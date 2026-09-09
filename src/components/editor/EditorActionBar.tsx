@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildExportFilename, downloadDataUrl, exportNodeToPng } from "@/lib/export-png";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { t } from "@/lib/i18n/messages";
 
 export type EditorActionBarProps = {
   buildName: string;
@@ -122,6 +125,7 @@ export function EditorActionBar({
   themePanelOpen,
   onToggleThemePanel,
 }: EditorActionBarProps): React.JSX.Element {
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
   const [saveStatus, setSaveStatus] = useState<SaveStatus>({ kind: "idle", dirty: false });
   const [exportStatus, setExportStatus] = useState<ExportStatus>({ kind: "idle" });
   const [gateOpen, setGateOpen] = useState(false);
@@ -253,7 +257,7 @@ export function EditorActionBar({
           disabled={saving}
           className="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
         >
-          {saving ? "Salvando…" : "Salvar"}
+          {saving ? t(locale, "editor.saving") : t(locale, "editor.save")}
         </button>
         <button
           type="button"
@@ -261,7 +265,7 @@ export function EditorActionBar({
           disabled={exportDisabled}
           className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-[var(--color-icon-slot)] focus-visible:transition-none disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {exporting ? "Exportando…" : "Exportar PNG"}
+          {exporting ? t(locale, "editor.exporting") : t(locale, "editor.exportPng")}
         </button>
         {onToggleThemePanel && (
           <button
@@ -271,7 +275,7 @@ export function EditorActionBar({
             aria-controls="theme-panel"
             className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-[var(--color-icon-slot)] focus-visible:transition-none"
           >
-            Aparência
+            {t(locale, "editor.appearance")}
           </button>
         )}
 

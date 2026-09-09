@@ -6,6 +6,9 @@ import { toast } from "sonner";
 
 import { deleteComp } from "@/actions/comps";
 import { DeleteCompDialog } from "./DeleteCompDialog";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { t } from "@/lib/i18n/messages";
 
 export type CompListEntry = {
   id: string;
@@ -26,6 +29,7 @@ export type CompsListManagerProps = {
  * `BuildsListManager`'s optimistic-removal-on-confirm shape.
  */
 export function CompsListManager({ initialComps }: CompsListManagerProps): React.JSX.Element {
+  const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
   const [comps, setComps] = useState<CompListEntry[]>(initialComps);
   const [deleteTarget, setDeleteTarget] = useState<CompListEntry | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -49,13 +53,13 @@ export function CompsListManager({ initialComps }: CompsListManagerProps): React
   if (comps.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] py-16 text-center">
-        <p className="text-base font-medium text-foreground">Nenhuma comp ainda</p>
-        <p className="max-w-sm text-sm text-foreground/60">Crie sua primeira comp para começar.</p>
+        <p className="text-base font-medium text-foreground">{t(locale, "empty.noComps")}</p>
+        <p className="max-w-sm text-sm text-foreground/60">{t(locale, "empty.noCompsSubtitle")}</p>
         <Link
           href="/comp/new"
           className="mt-2 rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
         >
-          Criar primeira comp
+          {t(locale, "empty.createFirstComp")}
         </Link>
       </div>
     );

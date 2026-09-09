@@ -10,7 +10,7 @@ import { BuildCard } from "@/components/build-card";
 import { DEFAULT_BUILD_CARD_THEME, type BuildCardTheme } from "@/components/build-card/types";
 import { BuildHeader } from "@/components/editor/BuildHeader";
 import { EditorActionBar } from "@/components/editor/EditorActionBar";
-import { SLOT_LABELS } from "@/components/editor/SlotCard";
+import { getSlotLabels } from "@/components/editor/SlotCard";
 import { SLOT_COLUMNS, SLOT_ORDER, type BuildState } from "@/types/build";
 import { SlotGrid } from "@/components/editor/SlotGrid";
 import { SlotGroupNav } from "@/components/editor/SlotGroupNav";
@@ -28,6 +28,7 @@ import { useItemCatalogue } from "@/components/editor/use-item-catalogue";
 import type { SpellGroup } from "@/types/build";
 import { selectActions, selectBuild, useBuildStore } from "@/store/build-store";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import { t } from "@/lib/i18n/messages";
 
 type PickerTarget = { origin: "main"; slot: Slot } | { origin: "swap"; swapId: string; slot: Slot };
 
@@ -429,7 +430,7 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
       tabIndex={-1}
       className={`mx-auto flex min-w-0 flex-col gap-6 p-8 pb-24 outline-none md:pb-8 ${themePanelOpen ? "max-w-[1600px]" : "max-w-6xl"}`}
     >
-      <Breadcrumb current={build.name.trim() || "Nova build"} comp={compTrail} />
+      <Breadcrumb current={build.name.trim() || t(locale, "editor.newBuild")} comp={compTrail} />
       <EditorActionBar
         buildName={build.name}
         filledCount={filledCount}
@@ -550,7 +551,7 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
           <DrawerContent id="theme-panel">
             {/* Visually hidden: `ThemePanel`'s own heading is the visible title, this one only gives the dialog its required accessible name. */}
             <DrawerHeader className="sr-only">
-              <DrawerTitle>Aparência</DrawerTitle>
+              <DrawerTitle>{t(locale, "editor.appearance")}</DrawerTitle>
             </DrawerHeader>
             <div className="overflow-y-auto px-4 pb-4">
               <ThemePanel theme={theme} onChange={setTheme} accent={build.accent} onAccentChange={actions.setAccent} />
@@ -562,7 +563,7 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
           <SheetContent id="theme-panel" className="overflow-y-auto">
             {/* Visually hidden: `ThemePanel`'s own heading is the visible title, this one only gives the dialog its required accessible name. */}
             <SheetHeader className="sr-only">
-              <SheetTitle>Aparência</SheetTitle>
+              <SheetTitle>{t(locale, "editor.appearance")}</SheetTitle>
             </SheetHeader>
             <div className="px-4 pb-4">
               <ThemePanel theme={theme} onChange={setTheme} accent={build.accent} onAccentChange={actions.setAccent} />
@@ -579,7 +580,7 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
           catalogueFailedReason={failedReason}
           onRetryCatalogue={retry}
           value={activeSlotItem?.itemId ?? null}
-          label={SLOT_LABELS[pickerTarget.slot] ?? pickerTarget.slot}
+          label={getSlotLabels(locale)[pickerTarget.slot] ?? pickerTarget.slot}
           restoreFocusTo={triggerElement}
           onSelect={handleSelect}
           onClose={handleClosePicker}
