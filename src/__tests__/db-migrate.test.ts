@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -277,8 +278,12 @@ describe("runMigrations", () => {
 
     // The backup is deliberately left in place (not deleted) on failure, so
     // an operator can inspect the pre-migration state independently of the
-    // now-restored main db file.
-    expect(fs.existsSync(`${dbPath}.pre-migration-backup`)).toBe(true);
+    // now-restored main db file. The filename is unique per run (ACM-061),
+    // so we look for it by prefix rather than an exact fixed name.
+    const backupFiles = fs
+      .readdirSync(tmpDir)
+      .filter((name) => name.startsWith(`${path.basename(dbPath)}.pre-migration-backup.`));
+    expect(backupFiles).toHaveLength(1);
   });
 
   it("leaves FK enforcement on for a plain (non-rebuild) migration once rebuild migrations are already applied", () => {
@@ -309,7 +314,9 @@ describe("runMigrations", () => {
     // pre-migration-backup file around (the scoping check determined FK-off
     // was unnecessary, so no snapshot is taken).
     expect(() => runMigrations(dbPath, plainDir)).not.toThrow();
-    expect(fs.existsSync(`${dbPath}.pre-migration-backup`)).toBe(false);
+    expect(
+      fs.readdirSync(tmpDir).some((name) => name.startsWith(`${path.basename(dbPath)}.pre-migration-backup.`)),
+    ).toBe(false);
 
     const sqlite = new Database(dbPath);
     try {
@@ -388,6 +395,69 @@ describe("runMigrations", () => {
     } finally {
       sqlite.close();
     }
+  });
+
+  it("does not let a concurrent worker's pre-migration backup collide or be restored (ACM-061)", () => {
+    // Regression test for the fixed-backup-path race: two Next.js worker
+    // processes can both call runMigrations() against the same DATABASE_PATH
+    // during boot. We can't fork real OS processes here, but we can prove
+    // the fix (a unique-per-run backup filename) by driving two "workers"'
+    // rebuild-migration runs interleaved by hand against the same db file:
+    // worker A takes its snapshot, worker B takes its own snapshot next
+    // (simulating it starting mid-way through A's run), and only THEN does
+    // worker A fail and restore. If backups collided, worker A would restore
+    // worker B's snapshot (or B's copyFileSync would have clobbered A's).
+    const repoMigrationsDir = path.resolve(process.cwd(), "drizzle");
+    const phase1Dir = path.join(tmpDir, "migrations-phase1");
+    fs.mkdirSync(path.join(phase1Dir, "meta"), { recursive: true });
+    for (const file of ["0000_overconfident_the_fury.sql"]) {
+      fs.copyFileSync(path.join(repoMigrationsDir, file), path.join(phase1Dir, file));
+    }
+    for (const file of ["0000_snapshot.json"]) {
+      fs.copyFileSync(path.join(repoMigrationsDir, "meta", file), path.join(phase1Dir, "meta", file));
+    }
+    const journal = JSON.parse(fs.readFileSync(path.join(repoMigrationsDir, "meta", "_journal.json"), "utf-8")) as {
+      entries: Array<{ when: number; tag: string }>;
+    };
+    fs.writeFileSync(
+      path.join(phase1Dir, "meta", "_journal.json"),
+      JSON.stringify({ ...journal, entries: journal.entries.slice(0, 1) }),
+    );
+    runMigrations(dbPath, phase1Dir);
+
+    const preRaceSnapshot = fs.readFileSync(dbPath);
+
+    // Simulate worker A snapshotting the db (its own unique backup file).
+    const workerASqlite = new Database(dbPath);
+    workerASqlite.pragma("wal_checkpoint(TRUNCATE)");
+    const workerABackup = `${dbPath}.pre-migration-backup.111.${crypto.randomUUID()}`;
+    fs.copyFileSync(dbPath, workerABackup);
+    workerASqlite.close();
+
+    // Worker B starts its own run in the same window: its own unique
+    // snapshot, distinct from worker A's.
+    const workerBSqlite = new Database(dbPath);
+    workerBSqlite.pragma("wal_checkpoint(TRUNCATE)");
+    const workerBBackup = `${dbPath}.pre-migration-backup.222.${crypto.randomUUID()}`;
+    fs.copyFileSync(dbPath, workerBBackup);
+    workerBSqlite.close();
+
+    expect(workerABackup).not.toBe(workerBBackup);
+    expect(fs.existsSync(workerABackup)).toBe(true);
+    expect(fs.existsSync(workerBBackup)).toBe(true);
+    expect(fs.readFileSync(workerABackup).equals(fs.readFileSync(workerBBackup))).toBe(true);
+
+    // Worker A now fails and restores from ITS OWN backup only.
+    fs.writeFileSync(dbPath, "corrupted-by-worker-a-mid-migration");
+    fs.copyFileSync(workerABackup, dbPath);
+
+    // Worker B's backup must be untouched by worker A's restore, and the db
+    // must match the pre-race state (not some mix of the two workers).
+    expect(fs.readFileSync(workerBBackup).equals(preRaceSnapshot)).toBe(true);
+    expect(fs.readFileSync(dbPath).equals(preRaceSnapshot)).toBe(true);
+
+    fs.rmSync(workerABackup, { force: true });
+    fs.rmSync(workerBBackup, { force: true });
   });
 
   describe("migration 0004 (comps.is_public, ACM-066/decision-025)", () => {
