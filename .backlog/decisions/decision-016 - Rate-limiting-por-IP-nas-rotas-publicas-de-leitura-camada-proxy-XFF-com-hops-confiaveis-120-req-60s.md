@@ -176,3 +176,24 @@ alteracao e vira o teste de regressao do refactor.
 - Nao substitui cache: as paginas publicas seguem `force-dynamic`. Cachear a
   renderizacao publica seria a mitigacao estrutural do custo e nao esta no escopo
   desta task.
+
+## Adendo (ACM-077): tratamento simetrico de `/build/new` e `/comp/new`
+
+Achado da auditoria da ACM-063: `/comp/new` era excluido do ramo publico por
+igualdade de string antes do regex `PUBLIC_READ_PATHS`, mas `/build/new` nao
+recebia o mesmo tratamento e caia no ramo publico por casar com
+`/build/:slug`. Nao era regressao de seguranca (a protecao real da criacao de
+build e a checagem `auth()` na server action `saveBuild`, nao o proxy), mas
+tinha dois efeitos indesejados: (1) assimetria de leitura no codigo — quem via
+`/comp/new` tratado como caso especial podia assumir que `/build/new` tambem
+era, quando nao era; (2) acessos a `/build/new` (pagina do editor) consumiam o
+orcamento compartilhado de 120 req/60s de leitura publica por IP, efeito nao
+previsto nesta decisao original.
+
+Decisao: `/build/new` passa a ser tratado exatamente como `/comp/new` — ambos
+extraidos para uma constante unica (`AUTH_ONLY_LITERAL_PATHS`, um `Set` de
+rotas literais) checada antes do regex `PUBLIC_READ_PATHS`, e roteados sempre
+para o ramo autenticado (`authProxy`). Efeito: `/build/new` deixa de consumir
+o orcamento de leitura publica; o custo de sessao/redirect passa a ser pago
+apenas por quem acessa a pagina de criacao, simetrico ao que ja acontecia com
+`/comp/new`.
