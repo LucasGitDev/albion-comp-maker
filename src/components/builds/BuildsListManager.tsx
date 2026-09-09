@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { FilePlus, Share2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { duplicateBuild, toggleBuildPublic, deleteBuild } from "@/actions/builds";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
 import { DeleteBuildDialog } from "./DeleteBuildDialog";
 
 export type BuildListItem = {
@@ -98,10 +101,21 @@ export function BuildsListManager({ initialBuilds }: BuildsListManagerProps): Re
       )}
 
       {builds.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] py-16 text-center">
-          <p className="text-base font-medium text-foreground">Nenhuma build ainda</p>
-          <p className="max-w-sm text-sm text-foreground/60">Crie sua primeira build para começar.</p>
-        </div>
+        <Empty className="border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FilePlus />
+            </EmptyMedia>
+            <EmptyTitle>Nenhuma build ainda</EmptyTitle>
+            <EmptyDescription>Crie sua primeira build para começar.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button render={<Link href="/build/new" />}>
+              <FilePlus />
+              Criar build
+            </Button>
+          </EmptyContent>
+        </Empty>
       ) : (
         <ul className="flex flex-col gap-2">
           {builds.map((build) => (
@@ -125,6 +139,14 @@ export function BuildsListManager({ initialBuilds }: BuildsListManagerProps): Re
                   className="rounded-md border border-[var(--color-border)] px-2.5 py-1.5 font-medium text-foreground transition-colors hover:border-[var(--color-accent)] focus-visible:transition-none"
                 >
                   Editar
+                </Link>
+                <Link
+                  href={`/builds/${build.id}`}
+                  aria-label={`Compartilhar build "${build.name}"`}
+                  className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-2.5 py-1.5 font-medium text-foreground transition-colors hover:border-[var(--color-accent)] focus-visible:transition-none"
+                >
+                  <Share2 className="size-3.5" />
+                  Compartilhar
                 </Link>
                 <button
                   type="button"
