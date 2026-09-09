@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -28,7 +28,7 @@ function renderHeader() {
   );
 }
 
-describe("Header (ACM-037 AC#1, AC#3, AC#4)", () => {
+describe("Header (ACM-037 AC#1, AC#3, AC#4; ACM-100 AC#1-4)", () => {
   beforeEach(() => {
     vi.mocked(usePathname).mockReturnValue("/");
     mockSession(null);
@@ -41,24 +41,59 @@ describe("Header (ACM-037 AC#1, AC#3, AC#4)", () => {
     expect(screen.getByRole("link", { name: /página inicial/i })).toHaveAttribute("href", "/");
   });
 
-  it("shows the accent 'Nova build' CTA outside editor routes", () => {
+  it("shows the accent 'Nova comp' CTA outside editor routes", () => {
     vi.mocked(usePathname).mockReturnValue("/");
     renderHeader();
-    expect(screen.getAllByRole("link", { name: "Nova build" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Nova comp" }).length).toBeGreaterThan(0);
+    for (const link of screen.getAllByRole("link", { name: "Nova comp" })) {
+      expect(link).toHaveAttribute("href", "/comp/new");
+    }
   });
 
-  it("suppresses the 'Nova build' CTA on editor routes and shows the account slot instead", async () => {
+  it("suppresses the 'Nova comp' CTA on editor routes and shows the account slot instead", async () => {
     vi.mocked(usePathname).mockReturnValue("/build/new");
     renderHeader();
-    expect(screen.queryByRole("link", { name: "Nova build" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Nova comp" })).not.toBeInTheDocument();
     expect(screen.getByTestId("header-account-slot")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("link", { name: "Entrar" })).toBeInTheDocument());
   });
 
-  it("marks the current route with aria-current", () => {
+  it("hides the logged-area nav links when there is no session (ACM-100 AC#2)", async () => {
     vi.mocked(usePathname).mockReturnValue("/");
     renderHeader();
-    expect(screen.getByRole("link", { name: "Minhas comps" })).toHaveAttribute("aria-current", "page");
+    await waitFor(() => expect(screen.queryByRole("link", { name: "Entrar" })).not.toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: "Minhas comps" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Minhas builds" })).not.toBeInTheDocument();
+  });
+
+  it("shows '/' and '/builds' with aria-current on the active route once authenticated (ACM-100 AC#1)", async () => {
+    vi.mocked(usePathname).mockReturnValue("/");
+    mockSession({ name: "Ada" });
+    renderHeader();
+    const compsLink = await screen.findByRole("link", { name: "Minhas comps" });
+    expect(compsLink).toHaveAttribute("href", "/");
+    expect(compsLink).toHaveAttribute("aria-current", "page");
+    const buildsLink = screen.getByRole("link", { name: "Minhas builds" });
+    expect(buildsLink).toHaveAttribute("href", "/builds");
+    expect(buildsLink).not.toHaveAttribute("aria-current");
+  });
+
+  it("opens the mobile disclosure with both entries and Escape closes it, returning focus to the trigger (ACM-100 AC#3)", async () => {
+    vi.mocked(usePathname).mockReturnValue("/");
+    mockSession({ name: "Ada" });
+    renderHeader();
+    await screen.findByRole("link", { name: "Minhas comps" });
+
+    const trigger = screen.getByRole("button", { name: "Abrir navegação" });
+    fireEvent.click(trigger);
+
+    const menu = screen.getByRole("menu");
+    expect(menu).toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
   it("shows the EN locale label when the locale is en-US (ACM-093)", () => {
@@ -68,23 +103,6 @@ describe("Header (ACM-037 AC#1, AC#3, AC#4)", () => {
         <Header />
       </LocaleProvider>
     );
-    expect(screen.getAllByRole("link", { name: "New build" }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: "My comps" })).toBeInTheDocument();
-  });
-
-  it("keeps the /comps share link in the nav in pt-BR (ACM-066)", () => {
-    vi.mocked(usePathname).mockReturnValue("/");
-    renderHeader();
-    expect(screen.getByRole("link", { name: "Compartilhar" })).toHaveAttribute("href", "/comps");
-  });
-
-  it("keeps the /comps share link in the nav in en-US (ACM-066)", () => {
-    vi.mocked(usePathname).mockReturnValue("/");
-    render(
-      <LocaleProvider initialLocale="en-US">
-        <Header />
-      </LocaleProvider>
-    );
-    expect(screen.getByRole("link", { name: "Share" })).toHaveAttribute("href", "/comps");
+    expect(screen.getAllByRole("link", { name: "New comp" }).length).toBeGreaterThan(0);
   });
 });

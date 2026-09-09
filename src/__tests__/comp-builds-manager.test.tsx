@@ -44,7 +44,7 @@ describe("CompBuildsManager (ACM-098)", () => {
   it("AC#1: renders every entry in position order", () => {
     render(
       <CompBuildsManager
-        compId="comp-1"
+        compId="comp-1" compName="Comp 1"
         initialEntries={[
           entry({ compBuildId: "cb-1", position: 0, build: { id: "b1", name: "First", role: null, slug: "first", isPublic: true } }),
           entry({ compBuildId: "cb-2", position: 1, build: { id: "b2", name: "Second", role: null, slug: "second", isPublic: true } }),
@@ -59,7 +59,7 @@ describe("CompBuildsManager (ACM-098)", () => {
   });
 
   it("AC#6: shows the empty state explaining the broken public link when there are no builds", () => {
-    render(<CompBuildsManager compId="comp-1" initialEntries={[]} myBuilds={myBuilds} />);
+    render(<CompBuildsManager compId="comp-1" compName="Comp 1" initialEntries={[]} myBuilds={myBuilds} />);
 
     expect(screen.getByText("Nenhuma build nesta comp")).toBeInTheDocument();
     expect(screen.getByText(/só pode ser exportada com pelo menos uma build/i)).toBeInTheDocument();
@@ -69,7 +69,7 @@ describe("CompBuildsManager (ACM-098)", () => {
   it("AC#2: adding a build calls addBuildToComp and the entry appears without a full reload", async () => {
     mockAddBuildToComp.mockResolvedValue({ id: "cb-new", compId: "comp-1", buildId: "build-2", position: 1, count: 1, label: null });
 
-    render(<CompBuildsManager compId="comp-1" initialEntries={[entry()]} myBuilds={myBuilds} />);
+    render(<CompBuildsManager compId="comp-1" compName="Comp 1" initialEntries={[entry()]} myBuilds={myBuilds} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Adicionar build" }));
     fireEvent.click(await screen.findByRole("button", { name: /healer build/i }));
@@ -81,7 +81,7 @@ describe("CompBuildsManager (ACM-098)", () => {
   it("AC#2 (error path): reverts and shows a retry banner when addBuildToComp fails", async () => {
     mockAddBuildToComp.mockRejectedValue(new Error("boom"));
 
-    render(<CompBuildsManager compId="comp-1" initialEntries={[entry()]} myBuilds={myBuilds} />);
+    render(<CompBuildsManager compId="comp-1" compName="Comp 1" initialEntries={[entry()]} myBuilds={myBuilds} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Adicionar build" }));
     fireEvent.click(await screen.findByRole("button", { name: /healer build/i }));
@@ -94,7 +94,7 @@ describe("CompBuildsManager (ACM-098)", () => {
   it("AC#3: removing an entry calls removeBuildFromComp and drops it from the list immediately", async () => {
     mockRemoveBuildFromComp.mockResolvedValue(undefined);
 
-    render(<CompBuildsManager compId="comp-1" initialEntries={[entry()]} myBuilds={myBuilds} />);
+    render(<CompBuildsManager compId="comp-1" compName="Comp 1" initialEntries={[entry()]} myBuilds={myBuilds} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Remover" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar remoção" }));
@@ -104,7 +104,7 @@ describe("CompBuildsManager (ACM-098)", () => {
   });
 
   it("AC#3 (confirmation): clicking Remover without confirming does not call removeBuildFromComp", async () => {
-    render(<CompBuildsManager compId="comp-1" initialEntries={[entry()]} myBuilds={myBuilds} />);
+    render(<CompBuildsManager compId="comp-1" compName="Comp 1" initialEntries={[entry()]} myBuilds={myBuilds} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Remover" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
@@ -116,7 +116,7 @@ describe("CompBuildsManager (ACM-098)", () => {
   it("AC#3 (error path): restores the entry and shows a retry banner when removal fails", async () => {
     mockRemoveBuildFromComp.mockRejectedValue(new Error("boom"));
 
-    render(<CompBuildsManager compId="comp-1" initialEntries={[entry()]} myBuilds={myBuilds} />);
+    render(<CompBuildsManager compId="comp-1" compName="Comp 1" initialEntries={[entry()]} myBuilds={myBuilds} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Remover" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar remoção" }));
@@ -130,7 +130,7 @@ describe("CompBuildsManager (ACM-098)", () => {
 
     render(
       <CompBuildsManager
-        compId="comp-1"
+        compId="comp-1" compName="Comp 1"
         initialEntries={[
           entry({ compBuildId: "cb-1", build: { id: "b1", name: "First", role: null, slug: "first", isPublic: true } }),
           entry({ compBuildId: "cb-2", build: { id: "b2", name: "Second", role: null, slug: "second", isPublic: true } }),
@@ -150,7 +150,7 @@ describe("CompBuildsManager (ACM-098)", () => {
   it("AC#5: editing label and count persists via updateCompBuild", async () => {
     mockUpdateCompBuild.mockResolvedValue({});
 
-    render(<CompBuildsManager compId="comp-1" initialEntries={[entry()]} myBuilds={myBuilds} />);
+    render(<CompBuildsManager compId="comp-1" compName="Comp 1" initialEntries={[entry()]} myBuilds={myBuilds} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Editar" }));
     fireEvent.change(screen.getByLabelText("Label"), { target: { value: "Main tank" } });
@@ -173,7 +173,7 @@ describe("CompBuildsManager (ACM-098)", () => {
 
     render(
       <CompBuildsManager
-        compId="comp-1"
+        compId="comp-1" compName="Comp 1"
         initialEntries={[
           entry({ compBuildId: "cb-1", build: { id: "b1", name: "First", role: null, slug: "first", isPublic: true } }),
           entry({ compBuildId: "cb-2", build: { id: "b2", name: "Second", role: null, slug: "second", isPublic: true } }),
@@ -193,7 +193,7 @@ describe("CompBuildsManager (ACM-098)", () => {
   it("AC#5 (error path): reverts label/count to the previous values and shows a retry banner when updateCompBuild fails", async () => {
     mockUpdateCompBuild.mockRejectedValue(new Error("boom"));
 
-    render(<CompBuildsManager compId="comp-1" initialEntries={[entry({ label: "Old label", count: 1 })]} myBuilds={myBuilds} />);
+    render(<CompBuildsManager compId="comp-1" compName="Comp 1" initialEntries={[entry({ label: "Old label", count: 1 })]} myBuilds={myBuilds} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Editar" }));
     fireEvent.change(screen.getByLabelText("Label"), { target: { value: "New label" } });
@@ -212,7 +212,7 @@ describe("CompBuildsManager (ACM-098)", () => {
 
     render(
       <CompBuildsManager
-        compId="comp-1"
+        compId="comp-1" compName="Comp 1"
         initialEntries={[
           entry({ compBuildId: "cb-1", build: { id: "b1", name: "First", role: null, slug: "first", isPublic: true } }),
           entry({ compBuildId: "cb-2", build: { id: "b2", name: "Second", role: null, slug: "second", isPublic: true } }),
@@ -243,7 +243,7 @@ describe("CompBuildsManager (ACM-098)", () => {
 
     render(
       <CompBuildsManager
-        compId="comp-1"
+        compId="comp-1" compName="Comp 1"
         initialEntries={[
           entry({
             compBuildId: "cb-1",
