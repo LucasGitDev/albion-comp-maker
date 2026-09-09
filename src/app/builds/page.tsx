@@ -50,16 +50,18 @@ export default async function BuildsPage(): Promise<React.JSX.Element> {
       ) : (
         <ul className="flex flex-col gap-2">
           {myBuilds.map((build) => (
-            <li
-              key={build.id}
-              className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3"
-            >
-              <div className="flex flex-col">
-                <span className="font-medium text-foreground">{build.name}</span>
-                <span className="text-xs text-foreground/60">
-                  {build.role || "Sem papel"} · {build.isPublic ? "Pública" : "Privada"}
-                </span>
-              </div>
+            <li key={build.id}>
+              <Link
+                href={`/builds/${build.id}`}
+                className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 transition-colors hover:border-[var(--color-accent)] focus-visible:transition-none"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium text-foreground">{build.name}</span>
+                  <span className="text-xs text-foreground/60">
+                    {build.role || "Sem papel"} · {build.isPublic ? "Pública" : "Privada"}
+                  </span>
+                </div>
+              </Link>
             </li>
           ))}
         </ul>
