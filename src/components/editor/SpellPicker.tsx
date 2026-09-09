@@ -31,8 +31,20 @@ export function SpellPicker({
   candidatesByGroup,
   onSelect,
 }: SpellPickerProps): React.JSX.Element | null {
-  const rows = GROUP_ORDER.filter(({ group }) => (candidatesByGroup[group]?.length ?? 0) > 0);
-  if (rows.length === 0) {
+  // ACM-089: a weapon's E is auto-selected by the caller (see
+  // computeAutoSelections/SlotCard) whenever it has exactly one candidate,
+  // and its row is never rendered — a picker offering exactly one option is
+  // redundant. Every other group still renders as soon as it has 1+
+  // candidates (unchanged behavior).
+  const rows = GROUP_ORDER.filter(({ group }) => {
+    const count = candidatesByGroup[group]?.length ?? 0;
+    if (count === 0) return false;
+    if (group === "e" && count === 1) return false;
+    return true;
+  });
+  const hasAnyCandidates = GROUP_ORDER.some(({ group }) => (candidatesByGroup[group]?.length ?? 0) > 0);
+
+  if (!hasAnyCandidates) {
     return (
       <p
         className="truncate whitespace-nowrap text-[12px] text-icon-muted"
@@ -42,6 +54,13 @@ export function SpellPicker({
         Sem abilities
       </p>
     );
+  }
+
+  // The item's only candidates are its auto-selected single E (ACM-089) —
+  // nothing left for the user to choose, so no row and no "empty" message
+  // either (the item genuinely has an ability, just no picker needed).
+  if (rows.length === 0) {
+    return null;
   }
 
   return (
