@@ -45,6 +45,7 @@ function useAccountState(): AccountState {
 
 const NAV_LINKS: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/", label: "Minhas comps" },
+  { href: "/comps", label: "Compartilhar" },
 ];
 
 export function Header(): React.JSX.Element {
