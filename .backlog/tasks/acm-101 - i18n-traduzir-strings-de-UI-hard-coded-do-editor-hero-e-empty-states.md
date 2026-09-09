@@ -4,6 +4,7 @@ title: 'i18n: traduzir strings de UI hard-coded do editor, hero e empty states'
 status: To Do
 assignee: []
 created_date: '2026-09-09 03:05'
+updated_date: '2026-09-09 03:26'
 labels: []
 dependencies: []
 priority: high
@@ -33,3 +34,9 @@ Reaproveitar a infra existente: src/lib/i18n/messages.ts, t(locale, key), getReq
 - [ ] #4 metadata (title/description) responde ao locale do request
 - [ ] #5 Nenhuma string de UI hard-coded restante nas telas cobertas: teste automatizado ou grep documentado prova a ausencia
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+BLOQUEADA por conflito de arquivos (orchestrator paralelo, 2026-09-09). ACM-101 precisa editar src/app/page.tsx (hero/home) e src/app/(editor)/build/new/page.tsx (labels do editor). Ambos estao reclamados por PRs abertos de outro orquestrador: PR #71 (ACM-096) toca src/app/page.tsx e PR #66 (ACM-095) toca src/app/(editor)/build/new/page.tsx. Nao claimed; permanece To Do. Desbloqueio: mergear #66 e #71, entao reabrir.
+<!-- SECTION:NOTES:END -->

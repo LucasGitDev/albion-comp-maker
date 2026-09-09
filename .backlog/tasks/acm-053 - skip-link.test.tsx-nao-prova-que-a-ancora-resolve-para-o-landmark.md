@@ -4,7 +4,7 @@ title: skip-link.test.tsx nao prova que a ancora resolve para o landmark
 status: To Do
 assignee: []
 created_date: '2026-09-07 19:23'
-updated_date: '2026-09-09 03:07'
+updated_date: '2026-09-09 03:26'
 labels: []
 dependencies: []
 priority: low
@@ -24,3 +24,9 @@ Achado MEDIUM da re-review da ACM-037 (PR #31). src/__tests__/skip-link.test.tsx
 - [ ] #3 Cobre / e /builds e /build/new
 - [ ] #4 make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+BLOQUEADA por conflito de arquivos (orchestrator paralelo, 2026-09-09). ACM-053 reescreve src/__tests__/skip-link.test.tsx, arquivo ja modificado pelo PR #71 (ACM-096). Nao claimed; permanece To Do. Desbloqueio: mergear #71, entao reabrir — a reescrita deve partir da versao pos-#71.
+<!-- SECTION:NOTES:END -->
