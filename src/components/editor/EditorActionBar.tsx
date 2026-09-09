@@ -84,7 +84,12 @@ export function EditorActionBar({
     []
   );
 
-  const canSave = buildName.trim() !== "" && filledCount > 0;
+  /**
+   * ACM-092: a build with zero slots filled is still a valid save target —
+   * only the name is required. `filledCount` still feeds the "N/total slots"
+   * status readout below, it just no longer gates the button.
+   */
+  const canSave = buildName.trim() !== "";
 
   const scheduleSavedReset = useCallback(() => {
     if (resetTimer.current !== null) clearTimeout(resetTimer.current);
@@ -148,7 +153,7 @@ export function EditorActionBar({
   } else if (saveStatus.kind === "saved") {
     statusMessage = "Build salva.";
   } else if (!canSave) {
-    statusMessage = "Dê um nome e escolha ao menos 1 item";
+    statusMessage = "Dê um nome pra build";
   } else {
     statusMessage = saveStatus.dirty ? "não salvo" : "";
   }
