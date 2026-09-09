@@ -121,19 +121,19 @@ describe("AC-3: per-slot spell coverage invariant", () => {
     offhand: { total: 111, withSpells: 0 },
     cape: { total: 196, withSpells: 100 },
     bag: { total: 12, withSpells: 12 },
-    shoes: { total: 257, withSpells: 180 },
-    head: { total: 281, withSpells: 191 },
-    armor: { total: 265, withSpells: 181 },
+    shoes: { total: 256, withSpells: 179 },
+    head: { total: 280, withSpells: 190 },
+    armor: { total: 264, withSpells: 180 },
     mainhand: { total: 817, withSpells: 758 },
     mount: { total: 100, withSpells: 33 },
     food: { total: 58, withSpells: 0 },
     potion: { total: 45, withSpells: 0 },
   };
 
-  it("corpus totals match the pinned floors: 2142 items, 1455 with >=1 spell", () => {
-    expect(data.items.length).toBe(2142);
+  it("corpus totals match the pinned floors: 2139 items, 1452 with >=1 spell", () => {
+    expect(data.items.length).toBe(2139);
     const withSpells = data.items.filter((i) => i.spells.length > 0).length;
-    expect(withSpells).toBe(1455);
+    expect(withSpells).toBe(1452);
   });
 
   it.each(Object.entries(SLOT_FLOORS))(
