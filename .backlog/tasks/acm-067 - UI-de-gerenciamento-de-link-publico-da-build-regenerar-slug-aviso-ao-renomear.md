@@ -3,10 +3,10 @@ id: ACM-067
 title: >-
   UI de gerenciamento de link publico da build (regenerar slug, aviso ao
   renomear)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 20:32'
-updated_date: '2026-09-09 14:15'
+updated_date: '2026-09-09 14:22'
 labels: []
 milestone: m-6
 dependencies: []

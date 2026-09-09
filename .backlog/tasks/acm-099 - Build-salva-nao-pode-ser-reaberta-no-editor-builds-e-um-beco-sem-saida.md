@@ -1,10 +1,10 @@
 ---
 id: ACM-099
 title: 'Build salva nao pode ser reaberta no editor: /builds e um beco sem saida'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-09 02:42'
-updated_date: '2026-09-09 14:18'
+updated_date: '2026-09-09 14:35'
 labels: []
 milestone: m-2
 dependencies: []
@@ -56,4 +56,20 @@ Outros pontos verificados, sem finding:
 Dívida (não bloqueante): PR não adiciona nenhum teste novo (0 arquivos de teste tocados) para getBuildForEdit/IDOR, a rota /build/[id]/edit, BuildsListManager ou DeleteBuildDialog — os únicos testes que cobrem esse fluxo crítico de segurança e UX ainda não existem.
 
 Veredito: BLOCKED: 1 finding (HIGH).
+
+Re-review PR #81 pós-fix (commit 67ccfdc): LGTM.
+
+Fix: BuildEditor.tsx useEffect de mount agora chama actions.reset() no ramo 'else' (mode: new), espelhando actions.hydrate() no ramo 'edit'. Store singleton não vaza mais estado de /build/<id>/edit para /build/new via navegação client-side.
+
+Teste de regressão novo (src/__tests__/build-new-page.test.tsx, describe 'clears leftover state from a previous edit session (ACM-099 bugfix)'): popula o store como se viesse de uma sessão de edit (name/role/mainhand), chama renderPage() sem reload, e afirma que name==='' , role==='' , slots.mainhand===null e que 'Tank Grovekeeper' não aparece na tela. Esse teste falharia sem o reset() — prova o comportamento, não apenas espelha a implementação.
+
+Testes pré-existentes: ajuste correto, não gambiarra — passaram a envolver as mutações diretas no store (useBuildStore.getState().actions.setItem/...) em act() e movê-las para depois de renderPage(), porque agora o reset() no mount apagaria qualquer estado seedado antes do render. Não há enfraquecimento de asserts, só reordenação necessária pela nova ordem de efeitos.
+
+Rodei npx vitest run nos dois arquivos afetados: 34/34 passando.
+
+ACs originais seguem cobertos (AC#1-5 já verificados na rodada anterior, IDOR/getBuildForEdit e /builds actions intactos neste diff).
+
+Dívida não bloqueante mantida: PR ainda sem testes para getBuildForEdit/IDOR e para BuildsListManager/DeleteBuildDialog — registrar como follow-up, não bloqueia este PR.
+
+Veredito: LGTM.
 <!-- SECTION:NOTES:END -->

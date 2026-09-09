@@ -3,10 +3,10 @@ id: ACM-071
 title: >-
   server-only-boundary test sinaliza import type-only como violacao
   (over-strict)
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 20:50'
-updated_date: '2026-09-09 14:13'
+updated_date: '2026-09-09 14:22'
 labels: []
 dependencies: []
 priority: low

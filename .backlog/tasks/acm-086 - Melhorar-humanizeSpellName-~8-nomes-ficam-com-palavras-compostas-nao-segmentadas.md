@@ -3,10 +3,10 @@ id: ACM-086
 title: >-
   Melhorar humanizeSpellName: ~8 nomes ficam com palavras compostas nao
   segmentadas
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-08 13:42'
-updated_date: '2026-09-09 14:11'
+updated_date: '2026-09-09 14:22'
 labels: []
 dependencies: []
 priority: low

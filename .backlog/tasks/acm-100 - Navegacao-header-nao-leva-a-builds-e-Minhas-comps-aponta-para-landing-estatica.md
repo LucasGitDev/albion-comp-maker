@@ -3,10 +3,10 @@ id: ACM-100
 title: >-
   Navegacao: header nao leva a /builds e 'Minhas comps' aponta para landing
   estatica
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-09 02:42'
-updated_date: '2026-09-09 14:18'
+updated_date: '2026-09-09 14:22'
 labels: []
 milestone: m-3
 dependencies: []

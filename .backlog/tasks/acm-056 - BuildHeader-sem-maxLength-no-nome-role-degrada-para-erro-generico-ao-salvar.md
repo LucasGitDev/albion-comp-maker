@@ -1,10 +1,10 @@
 ---
 id: ACM-056
 title: BuildHeader sem maxLength no nome/role degrada para erro generico ao salvar
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 19:26'
-updated_date: '2026-09-09 14:12'
+updated_date: '2026-09-09 14:22'
 labels: []
 milestone: m-2
 dependencies:

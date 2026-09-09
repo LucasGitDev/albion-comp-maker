@@ -3,10 +3,10 @@ id: ACM-076
 title: >-
   Remover asserção decorativa de 'never touches public-content' no teste de
   throttle do proxy
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-08 00:10'
-updated_date: '2026-09-09 14:15'
+updated_date: '2026-09-09 14:22'
 labels: []
 dependencies:
   - ACM-063

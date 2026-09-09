@@ -3,10 +3,10 @@ id: ACM-061
 title: >-
   Backup de migracao usa caminho fixo — risco de restore errado com workers
   concorrentes
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 20:07'
-updated_date: '2026-09-09 14:14'
+updated_date: '2026-09-09 14:22'
 labels: []
 dependencies: []
 priority: low

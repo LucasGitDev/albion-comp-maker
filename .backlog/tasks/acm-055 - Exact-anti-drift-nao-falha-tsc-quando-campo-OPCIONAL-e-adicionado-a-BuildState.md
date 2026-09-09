@@ -3,10 +3,10 @@ id: ACM-055
 title: >-
   Exact<> anti-drift nao falha tsc quando campo OPCIONAL e adicionado a
   BuildState
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-07 19:26'
-updated_date: '2026-09-09 14:12'
+updated_date: '2026-09-09 14:22'
 labels: []
 dependencies: []
 priority: low
