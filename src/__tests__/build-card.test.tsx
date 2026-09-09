@@ -165,24 +165,42 @@ describe("BuildCard", () => {
 });
 
 /**
- * ACM-092 ui-reviewer HIGH finding: `BuildCard` is the single source for both
- * the editor preview and the exported PNG (no separate "export mode"), so any
- * text rendered here ships inside the artifact posted to Discord. A build
- * with zero slots filled is an explicitly supported state (AC#1 says
- * "inclusive zero") and must render the same placeholder grid as a partially
- * filled build — never an editor-directed instruction like "escolha a mão
- * principal", in any of the 4 layouts.
+ * ACM-092 (revised spec): a zero-slots build never reaches the exported card
+ * at all anymore — `EditorActionBar` gates Save/Export until at least one
+ * item with its selectable spells filled is equipped. This block still
+ * exercises the empty-build render path directly (bypassing the gate,
+ * exactly like a future caller could) because `BuildCard` itself must never
+ * depend on the gate to stay instruction-free: it is the single source for
+ * both the editor preview and the exported PNG, so any text it renders ships
+ * inside the artifact.
+ *
+ * The previous version of this guard asserted against a hardcoded list of
+ * literal strings that were already known to have leaked ("Escolha a mão
+ * principal", etc). That is a false sense of safety — it passed even after a
+ * *new* editor-style instruction ("Nenhum item equipado ainda — comece pela
+ * mão principal.") was introduced under the same review round, because the
+ * new sentence didn't match any of the old snippets. This rewrite asserts
+ * the actual intent instead: the exported card must never contain
+ * imperative, second-person-directed copy (the grammatical signature of an
+ * editor CTA/hint) anywhere in its rendered text, regardless of wording.
  */
-describe("BuildCard zero-slots export never leaks an editor instruction (ACM-092 review)", () => {
+describe("BuildCard zero-slots render never leaks an editor instruction (ACM-092)", () => {
   const layouts = ["vertical", "grid", "compressed", "list"] as const;
-  const EDIT_HINT_SNIPPETS = ["Escolha a mão principal", "para ver o card", "para montar a build"];
 
-  it.each(layouts)("%s: never contains an editor-instruction string for a zero-slots build", (layout) => {
+  /**
+   * Portuguese imperative verbs used across this codebase's editor CTAs/hints
+   * (SlotCard, SlotPickerPopover, EditorActionBar, and the two prior leaks
+   * fixed under ACM-092: "Escolha..." and "...comece pela mão principal.").
+   * Matches the verb regardless of what follows it, so a differently-worded
+   * future instruction built from the same imperative mood still trips it.
+   */
+  const IMPERATIVE_INSTRUCTION_PATTERN =
+    /\b(escolha|comece|monte|selecione|clique|arraste|adicione|preencha|equipe|configure)\b/i;
+
+  it.each(layouts)("%s: renders no imperative instructional copy for a zero-slots build", (layout) => {
     const state = createEmptyBuild();
     const { container } = render(<BuildCard state={state} layout={layout} />);
-    for (const snippet of EDIT_HINT_SNIPPETS) {
-      expect(container.textContent).not.toContain(snippet);
-    }
+    expect(container.textContent ?? "").not.toMatch(IMPERATIVE_INSTRUCTION_PATTERN);
   });
 
   it.each(layouts)("%s: renders the full 10-slot placeholder grid for a zero-slots build", (layout) => {

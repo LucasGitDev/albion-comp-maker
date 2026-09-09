@@ -178,12 +178,19 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     mockSaveBuild.mockResolvedValue({ id: "b1" });
     useBuildStore.getState().actions.setName("Bruiser de Frontline");
     useBuildStore.getState().actions.setRole("Tank");
+    // T4_MAIN_SWORD (mocked catalogue) rather than an item absent from it:
+    // the ACM-092 revised gate reads selectable spell groups off the loaded
+    // catalogue via `spellCandidatesBySlot`, so an itemId the catalogue
+    // doesn't know about would never satisfy "hasReadyItem" no matter what
+    // its `spells` record holds.
     useBuildStore.getState().actions.setItem(
       "mainhand",
-      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
-      8,
+      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+      4,
       0
     );
+    useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+    useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
 
     render(<NewBuildPage />);
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
@@ -195,7 +202,7 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     expect(payload.role).toBe("Tank");
     expect(JSON.parse(payload.content)).toMatchObject({
       name: "Bruiser de Frontline",
-      slots: { mainhand: { itemId: "T8_2H_HAMMER" } },
+      slots: { mainhand: { itemId: "T4_MAIN_SWORD" } },
     });
 
     // This assertion fails against a no-op `handleSave`: the previous
@@ -210,10 +217,12 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     useBuildStore.getState().actions.setName("Bruiser de Frontline");
     useBuildStore.getState().actions.setItem(
       "mainhand",
-      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
-      8,
+      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+      4,
       0
     );
+    useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+    useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
 
     render(<NewBuildPage />);
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
@@ -221,6 +230,74 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("Não deu para salvar.")).toBeInTheDocument();
     expect(screen.queryByText("Build salva.")).not.toBeInTheDocument();
+  });
+});
+
+describe("/build/new — Salvar/Exportar require ≥1 item with selectable spells filled (ACM-092 revised spec)", () => {
+  it("disables Salvar and Exportar on a completely empty build", () => {
+    mockSession(true);
+    useBuildStore.getState().actions.setName("Bruiser de Frontline");
+
+    render(<NewBuildPage />);
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Exportar PNG" })).toBeDisabled();
+    expect(screen.getByText("Equipe pelo menos um item com as habilidades preenchidas")).toBeInTheDocument();
+  });
+
+  it("keeps Salvar and Exportar disabled with only a non-selectable item (bag) equipped", () => {
+    mockSession(true);
+    useBuildStore.getState().actions.setName("Bruiser de Frontline");
+    // T4_BAG resolves zero spells in the mocked catalogue — bags never
+    // expose a selectable group post-ACM-090, so equipping only this must
+    // not satisfy the gate.
+    useBuildStore.getState().actions.setItem(
+      "bag",
+      { uniquename: "T4_BAG", twohanded: false, maxEnchant: 0 },
+      4,
+      0
+    );
+
+    render(<NewBuildPage />);
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Exportar PNG" })).toBeDisabled();
+  });
+
+  it("enables Salvar and Exportar once the mainhand weapon has every selectable spell filled", () => {
+    mockSession(true);
+    useBuildStore.getState().actions.setName("Bruiser de Frontline");
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+      4,
+      0
+    );
+    useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+    useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
+
+    render(<NewBuildPage />);
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "false");
+    expect(screen.getByRole("button", { name: "Exportar PNG" })).not.toBeDisabled();
+  });
+
+  it("keeps Salvar disabled while the mainhand weapon has a selectable spell still unfilled", () => {
+    mockSession(true);
+    useBuildStore.getState().actions.setName("Bruiser de Frontline");
+    useBuildStore.getState().actions.setItem(
+      "mainhand",
+      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+      4,
+      0
+    );
+    // Only Q filled — W (the sword's other selectable group) is still null.
+    useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+
+    render(<NewBuildPage />);
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Exportar PNG" })).toBeDisabled();
   });
 });
 
@@ -376,10 +453,12 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
     useBuildStore.getState().actions.setName("Bruiser de Frontline");
     useBuildStore.getState().actions.setItem(
       "mainhand",
-      { uniquename: "T8_2H_HAMMER", twohanded: true, maxEnchant: 4 },
-      8,
+      { uniquename: "T4_MAIN_SWORD", twohanded: false, maxEnchant: 4 },
+      4,
       0
     );
+    useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
+    useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
 
     render(<NewBuildPage />);
 
