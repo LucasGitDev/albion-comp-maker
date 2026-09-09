@@ -3,10 +3,10 @@ id: ACM-076
 title: >-
   Remover asserção decorativa de 'never touches public-content' no teste de
   throttle do proxy
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-08 00:10'
-updated_date: '2026-09-09 03:07'
+updated_date: '2026-09-09 14:15'
 labels: []
 dependencies:
   - ACM-063
@@ -24,3 +24,9 @@ Achado MEDIUM da review da ACM-063 (PR #47). Em src/__tests__/public-read-thrott
 <!-- AC:BEGIN -->
 - [ ] #1 Asserção decorativa removida ou o teste renomeado para refletir que a garantia é arquitetural e não testada por unit test do proxy,As 4 asserções de byte-identidade da resposta 429 entre slug existente e inexistente permanecem intactas,make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Review: diff limitado a src/__tests__/public-read-throttle-proxy.test.ts (sem scope creep). Asserção decorativa expect(getPublicBuildBySlug).not.toHaveBeenCalled() e a cláusula 'never touches public-content' no nome do teste removidas (AC#1). As 4 asserções reais de identidade de resposta 429 (status/body/headers) entre slug existente e inexistente permanecem intactas (AC#2). Rodei pnpm test na branch: 722/722 passam. Rodei pnpm run build: exit 0 — o warning de Next.js filesystem-tracing em src/lib/uploads.ts (/api/background) é apenas warning (não falha), arquivo não tocado por este diff, confirmado pre-existente e não relacionado a esta task (AC#3 ok). Veredito: LGTM.
+<!-- SECTION:NOTES:END -->

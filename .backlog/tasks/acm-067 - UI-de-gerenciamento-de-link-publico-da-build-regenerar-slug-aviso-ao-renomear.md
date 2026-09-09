@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-07 20:32'
-updated_date: '2026-09-09 03:25'
+updated_date: '2026-09-09 14:15'
 labels: []
 milestone: m-6
 dependencies: []
@@ -29,3 +29,15 @@ AC#4 da ACM-021, descopado durante a implementacao e confirmado pelo reviewer co
 - [ ] #5 Rate limit aplicado a regeneracao de slug
 - [ ] #6 make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Review PR #78: LGTM.
+
+ACs: #1 link visível/copiável (BuildShareStatus, condicional a isPublic) OK. #2 regenerar slug com confirmação explícita e aviso 'link atual vai parar de funcionar imediatamente' antes de confirmar OK. #3 aviso persistente de que renomear não muda o link, sempre visível (não há UI de rename nesta PR ainda, o aviso cobre o caso preventivamente) OK. #4 owner-only: getBuild e regenerateBuildSlug chamam requireSession() + loadOwnedBuild/where userId=session.user.id, teste 'user B cannot read/regenerate user A's build' cobre IDOR retornando BuildNotFoundError, e a página /builds/[id] mapeia esse erro para notFound() (404), nunca vaza dados) OK. #5 checkWriteRateLimit reaproveitado (mesmo limiter 30/min de todas as outras mutations), teste cobre estouro do limite OK.
+
+Colisão de slug: novo slug usa generateSlug (nome + nanoid(8) random), mesmo padrão já usado em saveBuild/duplicate — não há checagem de unicidade explícita, mas é o padrão pré-existente no repo, não uma regressão introduzida por esta task.
+
+Sem findings bloqueantes. CI verde.
+<!-- SECTION:NOTES:END -->

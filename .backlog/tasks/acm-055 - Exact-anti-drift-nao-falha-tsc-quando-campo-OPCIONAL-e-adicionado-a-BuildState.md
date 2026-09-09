@@ -3,10 +3,10 @@ id: ACM-055
 title: >-
   Exact<> anti-drift nao falha tsc quando campo OPCIONAL e adicionado a
   BuildState
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 19:26'
-updated_date: '2026-09-09 03:25'
+updated_date: '2026-09-09 14:12'
 labels: []
 dependencies: []
 priority: low
@@ -25,3 +25,11 @@ Achado MEDIUM da review da ACM-049 (PR #33), verificado empiricamente pelo revie
 - [ ] #2 Teste ou check de CI que prove a direcao escolhida
 - [ ] #3 make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+PR opened: #72
+
+Review PR#72: AC#1 verificado empiricamente — adicionei 'notes?: string' a BuildState num worktree isolado e npx tsc --noEmit falhou em build-schema.ts:174 com o Equal<> novo (confirma fix correto). AC#3 (make check) não rodado neste review, mas tsc isolado passa. FINDING (MEDIUM, não bloqueante): AC#2 pede 'teste ou check de CI que prove a direção escolhida' — não há teste/fixture permanente no repo comprovando a proteção; a única evidência é a verificação manual descrita no PR body (feita e revertida localmente). Recomendo follow-up: adicionar teste type-level dedicado (ex: fixture com @ts-expect-error ou lib tsd) para não depender de verificação manual não repetível. Achado adicional fora de escopo (não bloqueia): src/lib/theme-schema.ts:47 tem o MESMO Exact<> ingênuo (mutual-extends) com o bug original — não foi corrigido nesta PR, mesma falsa garantia permanece lá. Vale abrir task de acompanhamento.
+<!-- SECTION:NOTES:END -->
