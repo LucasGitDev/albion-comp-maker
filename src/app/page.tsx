@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { listMyCompsWithStatus } from "@/actions/comps";
 import { auth } from "@/auth/config";
 import { CompCard } from "@/components/comp/CompCard";
 import { CompListErrorRetry } from "@/components/comp/CompListErrorRetry";
+import { CompListSkeleton } from "@/components/comp/CompListSkeleton";
 
 /**
  * `/` splits by session (ACM-096): no session renders the landing hero with
@@ -15,6 +17,21 @@ import { CompListErrorRetry } from "@/components/comp/CompListErrorRetry";
  * variant computes). `auth()` is read directly (not just relying on
  * `src/proxy.ts`) because the two states render entirely different markup,
  * not just a redirect.
+ *
+ * The list is fetched inside `<CompsList>`, an async Server Component
+ * wrapped in a local `<Suspense>` — instead of an `app/loading.tsx` file. A
+ * root `loading.tsx` is the Suspense boundary for the *entire* `src/app`
+ * subtree (Next.js App Router), so it would leak this comp-card skeleton
+ * into every other route's navigation (e.g. `/build/new`, `/builds`,
+ * `/comps`) that doesn't define its own `loading.tsx`. Scoping the fallback
+ * to this component keeps the skeleton on `/` only, and also lets the page
+ * shell (title, CTAs) paint immediately while just the list suspends —
+ * Next.js streams `<CompsList>`'s resolved markup in once
+ * `listMyCompsWithStatus()` settles. `<CompsList>` is exported so
+ * `home-page.test.tsx` can await and assert on its resolved output
+ * directly: plain `react-dom` (used by `@testing-library/react` outside of
+ * Next.js's RSC runtime) cannot execute an async component through
+ * `<Suspense>` the way Next.js's streaming renderer does.
  */
 export default async function Home(): Promise<React.JSX.Element> {
   const session = await auth();
@@ -42,14 +59,6 @@ export default async function Home(): Promise<React.JSX.Element> {
     );
   }
 
-  let items: Awaited<ReturnType<typeof listMyCompsWithStatus>> | null = null;
-  let loadFailed = false;
-  try {
-    items = await listMyCompsWithStatus();
-  } catch {
-    loadFailed = true;
-  }
-
   return (
     <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">
       <section className="flex flex-1 flex-col gap-4 px-6 py-12">
@@ -71,38 +80,51 @@ export default async function Home(): Promise<React.JSX.Element> {
           </div>
         </div>
 
-        {loadFailed && <CompListErrorRetry />}
-
-        {!loadFailed && items && items.length === 0 && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] py-16 text-center">
-            <p className="text-base font-medium text-foreground">Sua primeira comp</p>
-            <p className="max-w-sm text-sm text-foreground/60">
-              Monte a composição da sua guilda e exporte o PNG pronto pro Discord.
-            </p>
-            <Link
-              href="/comp/new"
-              className="mt-2 rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
-            >
-              Criar comp
-            </Link>
-          </div>
-        )}
-
-        {!loadFailed && items && items.length > 0 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map(({ comp, buildCount }) => (
-              <CompCard
-                key={comp.id}
-                id={comp.id}
-                name={comp.name}
-                buildCount={buildCount}
-                isPublic={comp.isPublic}
-                updatedAt={comp.updatedAt}
-              />
-            ))}
-          </div>
-        )}
+        <Suspense fallback={<CompListSkeleton />}>
+          <CompsList />
+        </Suspense>
       </section>
     </main>
+  );
+}
+
+export async function CompsList(): Promise<React.JSX.Element> {
+  let items: Awaited<ReturnType<typeof listMyCompsWithStatus>>;
+  try {
+    items = await listMyCompsWithStatus();
+  } catch {
+    return <CompListErrorRetry />;
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] py-16 text-center">
+        <p className="text-base font-medium text-foreground">Sua primeira comp</p>
+        <p className="max-w-sm text-sm text-foreground/60">
+          Monte a composição da sua guilda e exporte o PNG pronto pro Discord.
+        </p>
+        <Link
+          href="/comp/new"
+          className="mt-2 rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
+        >
+          Criar comp
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map(({ comp, buildCount }) => (
+        <CompCard
+          key={comp.id}
+          id={comp.id}
+          name={comp.name}
+          buildCount={buildCount}
+          isPublic={comp.isPublic}
+          updatedAt={comp.updatedAt}
+        />
+      ))}
+    </div>
   );
 }
