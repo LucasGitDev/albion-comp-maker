@@ -24,6 +24,7 @@ declare module "next-auth" {
  * table for WebAuthn, which we do not define or use (Discord OAuth only).
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   adapter: DrizzleAdapter(getDb(), {
     usersTable: schema.users,
     accountsTable: schema.accounts,
