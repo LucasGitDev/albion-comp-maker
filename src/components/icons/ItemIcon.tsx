@@ -92,6 +92,7 @@ export function ItemIcon({
         </span>
       )}
       {isValidId && src !== null && (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={src}
           alt={displayAlt}

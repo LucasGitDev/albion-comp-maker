@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import { Header } from "@/components/layout/Header";
 import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { getRequestLocale } from "@/lib/i18n/server-locale";
@@ -43,6 +44,7 @@ export default async function RootLayout({
           </a>
           <Header />
           {children}
+          <Toaster position="bottom-right" />
         </LocaleProvider>
       </body>
     </html>
