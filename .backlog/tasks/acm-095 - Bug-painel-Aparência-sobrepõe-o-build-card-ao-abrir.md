@@ -1,10 +1,14 @@
 ---
 id: ACM-095
 title: 'Bug: painel Aparência sobrepõe o build card ao abrir'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-09 02:31'
+<<<<<<< Updated upstream
 updated_date: '2026-09-09 03:27'
+=======
+updated_date: '2026-09-09 12:58'
+>>>>>>> Stashed changes
 labels: []
 milestone: m-3
 dependencies: []
@@ -111,4 +115,21 @@ Tabela de larguras (painel aberto), coluna preview clientWidth vs scrollWidth vs
 Painel fechado, em todas as larguras: clientWidth = 960 = scrollWidth (card cabe perfeitamente, sem scroll) — confirma que a regressão só existe com o painel aberto.
 
 Recomendação (não implementar, apenas registro): a coluna de preview precisa usar flex/grid responsivo real com base no espaço remanescente (viewport - largura do aside), não um valor fixo; e/ou reduzir a escala do BuildCard (transform: scale) quando o espaço disponível for menor que 960px, com indicação visual clara de scroll caso o scroll continue sendo necessário.
+
+Review (round 3, post-merge audit) — SHA auditado 14eaa0d (origin/main).
+
+Verifiquei de fato as alegações do round 2 contra o código mergeado (worktree ../albion-builds-task-95, commit 81dc614/merge de 5d216a4):
+
+1. Math do scale-to-fit confere: em 1024px o dockedScale calculado é 616/960=0.6417 < MIN_DOCK_SCALE(0.7) -> overlay; em 1280px 872/960=0.908 -> docked; em 1440/1920px clamp em 1. Bate com a tabela do implementer.
+2. resolveCaptureNode (EditorActionBar.tsx:43-46) faz querySelector('#capture-root') dentro do container passado via captureNodeRef — ou seja, a captura sempre resolve o nó real do card (960px, sem transform), não o wrapper com scale. Ancestor com transform:scale não é lido por html-to-image (ele usa o próprio offsetWidth/height do node capturado). Confirma que o export PNG não é afetado pelo scale visual — consistente com decision-010.
+3. Testes ACM-095 (5) rodados isoladamente: todos passando (jsdom innerWidth=1024 default exercita overlay; 1440 stub exercita docked; teste de scale no ancestor não vaza pro capture-root).
+4. tsc --noEmit: limpo no worktree da task.
+5. Nenhum conflito de z-index: overlay do painel usa z-40, SlotPickerPopover usa z-50 (fluxos mutuamente exclusivos na prática, sem overlap real).
+6. Escopo: mudanças concentradas em page.tsx + teste, nenhuma extração de componente compartilhado, nenhum arquivo fora do esperado.
+
+Não encontrei findings bloqueantes novos. Os 2 HIGH do round 1 (card cortado em 1024px sem affordance, falta de verificação manual) foram endereçados no round 2 com evidência (tabela Playwright reprovando/aprovando e passos manuais documentados). MEDIUM de citação de doc incorreta foi corrigido na nota do round 2.
+
+Observação MEDIUM residual (não bloqueante): cobertura de teste para o modo overlay depende do valor padrão de window.innerWidth do jsdom (1024) em vez de setá-lo explicitamente como o teste docked faz — funciona hoje mas é frágil a mudanças de config global do jsdom; sugestão de dívida técnica, não bloqueia.
+
+VEREDITO: LGTM. PR #66 já estava merged (state=MERGED) no momento desta revisão; comentário LGTM registrado no PR para o histórico.
 <!-- SECTION:NOTES:END -->

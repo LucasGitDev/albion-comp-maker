@@ -1,10 +1,10 @@
 ---
 id: ACM-098
 title: 'Pagina de gerenciamento da comp: listar, adicionar, reordenar e remover builds'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-09 02:42'
-updated_date: '2026-09-09 03:20'
+updated_date: '2026-09-09 13:05'
 labels: []
 milestone: m-6
 dependencies: []
@@ -82,4 +82,27 @@ Autenticação: sem provider de credenciais (Discord OAuth only, database sessio
 ## Veredito: BLOQUEADO
 
 Motivos de bloqueio: itens 1 (overflow em nome longo, quebra visual em qualquer viewport) e 2 (focus trap ausente, falha de acessibilidade de teclado real e verificada) são suficientes para bloquear por si só. Itens 4, 6 e 7 são divergências de spec/AC que precisam de decisão explícita (aceitar como está, ou implementar) antes de Done.
+
+Code review (PR #69, SHA 8fc3fef): LGTM.
+
+Verifiquei os 7 ACs contra o diff e os testes (src/__tests__/comp-builds-manager.test.tsx, comps-actions.test.ts) — cada AC tem teste nomeado cobrindo caminho feliz e erro/rollback, incluindo AC#3 com confirmação (não chama removeBuildFromComp sem confirmar) e AC#7 (IDOR: não-dono recebe o mesmo CompNotFoundError que id inexistente).
+
+Blockers da revisão visual anterior (design-ui-review) confirmados corrigidos no diff atual:
+- Overflow de nome longo: CompBuildRow.tsx agora usa min-w-0 + truncate no container e nos spans.
+- Focus trap ausente: AddBuildDialog.tsx implementa trap manual (Tab/Shift+Tab cycle) + restauração de foco ao elemento que abriu o dialog no unmount/Escape.
+- Sem confirmação de remoção: CompBuildRow agora tem estado isConfirmingRemove com botões Confirmar remoção/Cancelar.
+- AC#6 (texto do estado vazio): agora menciona explicitamente que o link público não funciona sem builds.
+- aria-live adicionado para anúncio de reordenação (span sr-only).
+- Race de rollback otimista: reconciliação por compBuildId via setEntries(prev => ...), nunca overwrite do array inteiro — testado em 'reconciliation: a failed reorder swaps only the two moved entries back'.
+
+Divergências de spec ainda presentes mas justificadas/aceitas:
+- Rota /comps/[id] em vez de /comp/[id]/edit — decision-027 documenta e justifica.
+- Preview via texto (nome+papel+label+count) em vez de BuildCardCompressed — decisão de produto não registrada formalmente como decision, mas é MEDIUM (dívida de reconhecimento visual em comps com nomes parecidos), não bloqueante.
+- Sem skeleton de loading dedicado (isPending só desabilita botões) — MEDIUM, dívida de UX, não bloqueia AC.
+
+reorderCompBuilds em src/actions/comps.ts usa staged two-phase update (posições negativas -> finais) dentro de uma transaction para contornar o unique index (comp_id, position) sem DEFERRABLE no SQLite — correto e testado. Ownership re-checada no WHERE de todo update/delete (defesa contra TOCTOU).
+
+make check verde na branch (task/98-comp-management, worktree albion-builds-task-98): lint, tsc, build e 708 testes passando.
+
+Veredito: LGTM. Findings 5 (preview sem BuildCardCompressed) e 9 (sem skeleton de loading) ficam registrados como dívida MEDIUM, não bloqueiam merge.
 <!-- SECTION:NOTES:END -->
