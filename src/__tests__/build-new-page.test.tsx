@@ -80,7 +80,13 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
 
   it("selecting an item writes it into the store and closes the picker", async () => {
     render(<NewBuildPage />);
-    const headSlot = document.querySelector('[data-slot="head"][data-slot-state="empty"]')!;
+    // Scoped to `[data-testid="slot-grid"]` so this doesn't accidentally match
+    // the read-only build-card preview tile, which shares the same
+    // `data-slot`/`data-slot-state` attributes (ACM-092 always renders the
+    // full placeholder grid there too, even for a zero-slots build) but never
+    // renders a clickable slot of any kind.
+    const slotGrid = document.querySelector('[data-testid="slot-grid"]')!;
+    const headSlot = slotGrid.querySelector('[data-slot="head"][data-slot-state="empty"]')!;
     fireEvent.click(headSlot);
 
     await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());

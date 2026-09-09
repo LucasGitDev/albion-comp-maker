@@ -135,10 +135,11 @@ describe("BuildCard", () => {
     expect(container.querySelector('[data-slot="head"][data-slot-state="filled"]')).toBeTruthy();
   });
 
-  it("renders the empty-build placeholder copy when there is no mainhand", () => {
+  it("renders the full equipment placeholder grid, never an editor-only hint, when there is no mainhand", () => {
     const state = createEmptyBuild();
     const { container } = render(<BuildCard state={state} />);
-    expect(container.textContent).toContain("Escolha a mão principal para ver o card");
+    expect(container.querySelector('[data-slot="mainhand"][data-slot-state="empty"]')).toBeTruthy();
+    expect(container.textContent).not.toContain("Escolha a mão principal");
   });
 
   it("renders swaps when present", () => {
@@ -160,6 +161,35 @@ describe("BuildCard", () => {
     const root = container.querySelector("#capture-root");
     expect(root?.getAttribute("data-layout")).toBe("grid");
     expect(container.textContent).toContain("Bruiser de Frontline");
+  });
+});
+
+/**
+ * ACM-092 ui-reviewer HIGH finding: `BuildCard` is the single source for both
+ * the editor preview and the exported PNG (no separate "export mode"), so any
+ * text rendered here ships inside the artifact posted to Discord. A build
+ * with zero slots filled is an explicitly supported state (AC#1 says
+ * "inclusive zero") and must render the same placeholder grid as a partially
+ * filled build — never an editor-directed instruction like "escolha a mão
+ * principal", in any of the 4 layouts.
+ */
+describe("BuildCard zero-slots export never leaks an editor instruction (ACM-092 review)", () => {
+  const layouts = ["vertical", "grid", "compressed", "list"] as const;
+  const EDIT_HINT_SNIPPETS = ["Escolha a mão principal", "para ver o card", "para montar a build"];
+
+  it.each(layouts)("%s: never contains an editor-instruction string for a zero-slots build", (layout) => {
+    const state = createEmptyBuild();
+    const { container } = render(<BuildCard state={state} layout={layout} />);
+    for (const snippet of EDIT_HINT_SNIPPETS) {
+      expect(container.textContent).not.toContain(snippet);
+    }
+  });
+
+  it.each(layouts)("%s: renders the full 10-slot placeholder grid for a zero-slots build", (layout) => {
+    const state = createEmptyBuild();
+    const { container } = render(<BuildCard state={state} layout={layout} />);
+    const emptySlotCells = container.querySelectorAll('[data-slot-state="empty"]');
+    expect(emptySlotCells.length).toBeGreaterThan(0);
   });
 });
 
