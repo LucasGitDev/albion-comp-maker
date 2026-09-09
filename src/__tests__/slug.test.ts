@@ -9,7 +9,7 @@ describe("generateSlug", () => {
 
   it("falls back to the bare suffix when the name has no sluggable characters", () => {
     const slug = generateSlug("!!!");
-    expect(slug).not.toContain("-");
+    // length=8 proves no "base-" prefix was prepended (nanoid alphabet includes '-')
     expect(slug.length).toBe(8);
   });
 });

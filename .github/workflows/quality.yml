@@ -30,10 +30,10 @@ jobs:
           OUTPUT=$(pnpm lint 2>&1)
           EXIT=$?
           echo "$OUTPUT"
-          ISSUES=$(echo "$OUTPUT" | grep -cE "^\s+[0-9]+:[0-9]+\s+(error|warning)" 2>/dev/null || echo 0)
-          ASYNC=$(echo "$OUTPUT" | grep -c "no-floating-promises\|no-misused-promises" 2>/dev/null || echo 0)
-          echo "issues=${ISSUES:-0}" >> "$GITHUB_OUTPUT"
-          echo "async_issues=${ASYNC:-0}" >> "$GITHUB_OUTPUT"
+          ISSUES=$(printf '%s' "$OUTPUT" | grep -cE "^\s+[0-9]+:[0-9]+" || true)
+          ASYNC=$(printf '%s' "$OUTPUT" | grep -c "no-floating-promises\|no-misused-promises" || true)
+          printf 'issues=%s\n' "${ISSUES:-0}" >> "$GITHUB_OUTPUT"
+          printf 'async_issues=%s\n' "${ASYNC:-0}" >> "$GITHUB_OUTPUT"
           exit $EXIT
 
   typecheck:
