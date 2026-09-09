@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-09 02:41'
-updated_date: '2026-09-09 03:16'
+updated_date: '2026-09-09 03:24'
 labels: []
 milestone: m-6
 dependencies: []
@@ -44,4 +44,19 @@ Componente novo: CompCard — justificativa: BuildCard renderiza o card de jogo 
 
 <!-- SECTION:NOTES:BEGIN -->
 Implementado: '/' agora le auth() diretamente e ramifica: sem sessao renderiza a landing (hero + 'Entrar com Discord' via /api/auth/signin), com sessao renderiza o dashboard 'Minhas comps'. Reusa listMyCompsWithStatus() (nao listMyComps()) porque os cards precisam de buildCount + badge Publica/Privada, que so a variante WithStatus calcula (mesma Server Action que /comps ja usa). Componente novo CompCard (src/components/comp/CompCard.tsx): nome, 'N builds', badge Publica/Privada, data relativa (novo helper src/lib/relative-time.ts, Intl.RelativeTimeFormat pt-BR hardcoded — i18n fica para ACM-101). Estado vazio real ('Sua primeira comp' + CTA 'Criar comp' -> /comp/new). Erro recuperavel via componente client novo CompListErrorRetry.tsx com botao 'Tentar de novo' (router.refresh(), sem redirect). Loading: src/app/loading.tsx com skeleton de 3 cards, delegado ao Suspense automatico do Next enquanto o Server Component resolve auth()+listMyCompsWithStatus(). 'Nova build' virou link secundario de texto; 'Nova comp' e a acao primaria, conforme o design da task. Testes novos em src/__tests__/home-page.test.tsx cobrindo os 5 ACs. Ajuste necessario em src/__tests__/skip-link.test.tsx: esse teste renderizava <Home/> sem mockar auth/comps e sem await — como Home() agora e async e le @/auth/config de verdade, isso puxava o next-auth real e batia num bug de resolucao ESM extensionless (next/server) do next-auth 5.0.0-beta.32 sob vitest; mockei @/auth/config e @/actions/comps la (estado nao-autenticado, condizente com as asserts existentes) e troquei para 'await Home()'. make check verde (697 testes, build e lint ok).
+
+Regressão corrigida (tentativa 2/3): src/app/loading.tsx na raiz era a boundary de Suspense da subárvore INTEIRA de src/app, não só de "/", e vazava o skeleton de 3 cards de comp para /build/new, /builds, /comps, /comp/[slug], /comps/[id] e /build/[slug].
+
+Correção: opção 1 do plano — extraído CompsList (Server Component async) de Home, envolvido em <Suspense fallback={<CompListSkeleton/>}> só dentro de src/app/page.tsx. O shell da home (título "Minhas comps", CTAs "Nova build"/"Nova comp") pinta imediatamente; só a lista suspende. Deletado src/app/loading.tsx.
+
+Verificação manual (npm run dev, porta 3001 por conflito com outro worktree):
+- GET /build/new -> 200, sem markup aria-label="Carregando" nem animate-pulse (grep confirmou 0 ocorrências)
+- GET /builds -> 302 (redirect não-autenticado), sem skeleton
+- GET /comps -> 302 (redirect não-autenticado), sem skeleton
+- GET / (não-autenticado) -> 200, landing hero, sem skeleton (esperado, ramo sem sessão nem chama listMyCompsWithStatus)
+Não foi possível logar via Discord OAuth neste ambiente para observar o skeleton da home autenticada ao vivo; a cobertura desse caminho fica no teste automatizado abaixo (home-page.test.tsx, describe "loading skeleton is scoped to the comp list, not app-wide"), que verifica estruturalmente que o único <Suspense> da árvore de Home envolve <CompsList/> com fallback <CompListSkeleton/>, e que o shell da página fica fora dessa boundary.
+
+Testes: adicionado src/__tests__/root-loading-boundary.test.ts (guarda que src/app/loading.tsx não existe mais na raiz). home-page.test.tsx reescrito: CompsList (agora exportado de page.tsx) é testado diretamente via await CompsList() para os casos de conteúdo (AC#1/4, AC#3, AC#5), já que react-dom puro (usado pelo @testing-library/react fora do runtime RSC do Next.js) não consegue executar um Server Component async através de <Suspense> como o Next faz em produção — só Home() continua testado via render completo para o ramo não-autenticado e para a asserção estrutural do Suspense.
+
+make check verde (lint, tsc, build, 699 testes).
 <!-- SECTION:NOTES:END -->
