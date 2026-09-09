@@ -19,6 +19,7 @@ vi.mock("@/components/editor/use-item-catalogue", () => {
 // `next/server` import that vitest's ESM resolution can't follow.
 vi.mock("@/auth/config", () => ({ auth: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/actions/comps", () => ({ listMyCompsWithStatus: vi.fn().mockResolvedValue([]) }));
+vi.mock("@/lib/i18n/server-locale", () => ({ getRequestLocale: vi.fn().mockResolvedValue("pt-BR") }));
 
 import Home from "@/app/page";
 import BuildsPage from "@/app/builds/page";

@@ -19,6 +19,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
+vi.mock("@/lib/i18n/server-locale", () => ({
+  getRequestLocale: vi.fn().mockResolvedValue("pt-BR"),
+}));
+
 function makeCompListItem(overrides: Partial<{ id: string; name: string; buildCount: number; isPublic: boolean }> = {}) {
   const id = overrides.id ?? "comp-1";
   return {

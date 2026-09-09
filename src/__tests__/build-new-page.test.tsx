@@ -8,6 +8,8 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ refresh: vi.fn(), push: mockRouterPush })),
 }));
 
+vi.mock("@/lib/i18n/server-locale", () => ({ getRequestLocale: vi.fn().mockResolvedValue("pt-BR") }));
+
 vi.mock("@/components/editor/use-item-catalogue", () => {
   const items: AOItem[] = [
     {
@@ -55,7 +57,7 @@ import { useBuildStore } from "@/store/build-store";
 
 function renderPage() {
   return render(
-    <LocaleProvider initialLocale="en-US">
+    <LocaleProvider initialLocale="pt-BR">
       <NewBuildPage />
     </LocaleProvider>
   );
