@@ -22,3 +22,7 @@ jobs:
           tags: |
             lucasgitdev/albion-comp-maker:latest
             lucasgitdev/albion-comp-maker:${{ github.sha }}
+
+      - name: Trigger EasyPanel deploy
+        run: |
+          curl -fsSL -X POST "${{ secrets.EASYPANEL_WEBHOOK_URL }}"
