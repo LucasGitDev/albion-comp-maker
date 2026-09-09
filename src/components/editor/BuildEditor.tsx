@@ -76,19 +76,21 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
   const [triggerElement, setTriggerElement] = useState<HTMLElement | null>(null);
 
   /**
-   * The store is a module-level singleton (one instance for the whole app).
-   * "new" never seeds it here — pre-ACM-099, `/build/new` relied on whatever
-   * the store already held at mount (tests rely on this too, seeding via
-   * `useBuildStore.getState().actions...` before rendering), and that is
-   * out of this task's scope to change. "edit" (ACM-099) does need to seed
-   * the store with the loaded build's content: the `/build/[id]/edit` page
-   * wrapper renders this component with `key={row.id}`, so switching which
-   * build is being edited always remounts a fresh instance — this effect
-   * then hydrates it exactly once per mount, never again on every keystroke.
+   * The store is a module-level singleton (one instance for the whole app)
+   * that survives client-side navigations. "edit" seeds it with the loaded
+   * build's content: the `/build/[id]/edit` page wrapper renders this
+   * component with `key={row.id}`, so switching which build is being edited
+   * always remounts a fresh instance — this effect then hydrates it exactly
+   * once per mount, never again on every keystroke. "new" must reset the
+   * singleton instead of leaving it untouched (bugfix ACM-099 follow-up):
+   * navigating from `/build/<id>/edit` to `/build/new` without a reset left
+   * the previous build's data pre-filled in the "new" editor.
    */
   useEffect(() => {
     if (props.mode === "edit") {
       actions.hydrate(props.initialBuild);
+    } else {
+      actions.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per mount only (see doc comment above); `props`/`actions` intentionally excluded.
   }, []);
