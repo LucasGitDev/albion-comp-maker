@@ -1,10 +1,10 @@
 ---
 id: ACM-098
 title: 'Pagina de gerenciamento da comp: listar, adicionar, reordenar e remover builds'
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-09 02:42'
-updated_date: '2026-09-09 03:14'
+updated_date: '2026-09-09 03:16'
 labels: []
 milestone: m-6
 dependencies: []
@@ -62,4 +62,26 @@ Decisões não-óbvias:
 Testes: src/__tests__/comp-builds-manager.test.tsx (client component, cobre AC#1-6 incl. rollback em erro) e novos casos em src/__tests__/comps-actions.test.ts para listCompBuildsDetailed (ordenação, join, IDOR).
 
 make check verde: lint, tsc, build, vitest (703 testes).
+
+AUDITORIA DE SEGURANCA (read-only) - PR #69, SHA 43471e6, branch task/98-comp-management
+
+VEREDITO: SEGURO. Nenhum finding CRITICAL/HIGH. Merge nao bloqueado por este auditor.
+
+1. IDOR em /comps/[id] - SEGURO. src/app/comps/[id]/page.tsx chama getComp/getCompPublishState/listCompBuildsDetailed, cada uma via requireSession()+loadOwnedComp (src/actions/comps.ts:65-77, 154-157, 172-195). Nao-dono ou id inexistente -> CompNotFoundError -> notFound() identico (page.tsx:44-49). Checagem e' 100% server-side, nao so na renderizacao.
+
+2. listCompBuildsDetailed - SEGURO. src/actions/comps.ts:180 chama loadOwnedComp(session.user.id, compId) ANTES do join; WHERE eq(compBuilds.compId, compId) so' e' alcancado apos ownership check (linhas 190-195). Nao ha' forma de listar builds de comp alheia so' com o compId.
+
+3. addBuildToComp - vetor de vazamento cruzado - SEGURO. src/actions/comps.ts:373-378: apos carregar a build por id, valida `!build.isPublic && build.userId !== session.user.id` -> lanca CompBuildRefNotFoundError com a MESMA forma de erro de "nao existe". So' e' possivel anexar build propria OU build publica de terceiro; build privada alheia nunca entra na comp e portanto nunca aparece via listCompBuildsDetailed. Comentario no codigo (ACM-016) documenta explicitamente esse cuidado.
+
+4. removeBuildFromComp / reorderCompBuilds - SEGURO. removeBuildFromComp (comps.ts:426-440) usa loadOwnedCompBuild, que primeiro chama loadOwnedComp e so' entao valida compBuildId pertence aquele compId; delete tambem refiltra por compId no WHERE. reorderCompBuilds (comps.ts:496-533) chama loadOwnedComp antes de tudo, e valida que orderedCompBuildIds e' permutacao EXATA dos ids existentes daquele comp (existingIds vem de query filtrada por comp.id) - id de outra comp e' rejeitado por CompBuildReorderInvalidError. Nao ha' como destruir/reordenar dado de outro usuario.
+
+5. Diferenca de erro (enumeracao) - SEGURO. loadOwnedComp (comps.ts:65-77) usa deliberadamente o MESMO CompNotFoundError tanto para id inexistente quanto para comp de outro dono (comentario explicito no codigo). addBuildToComp usa a mesma logica para build privada-nao-dono vs build inexistente (CompBuildRefNotFoundError). Nao ha' diferenca de status/mensagem observavel; nao avaliei diferenca de TIMING (fora do escopo de leitura de codigo estatico) - risco residual LOW de timing side-channel entre "0 linhas retornadas" vs "linha existe mas filtrada", comum em qualquer app com este padrao e nao especifico deste PR.
+
+6. Exposicao de campo - SEGURO. listCompBuildsDetailed seleciona explicitamente so' {id, name, role, slug, isPublic} de builds (comps.ts:158-166, select object em 183-189) - nunca content/themeJson. isPublic=false de build alheia so' pode aparecer se essa build ja foi anexada por addBuildToComp, que ja' garante que so' builds proprias ou publicas passam por ali (item 3) - logo nao ha' vazamento de isPublic=false alheio.
+
+7. Auth ausente - SEGURO. Toda action (listMyComps, listMyCompsWithStatus, getComp, listCompBuilds, listCompBuildsDetailed, createComp, updateComp, toggleCompPublic, getCompPublishState, deleteComp, addBuildToComp, removeBuildFromComp, updateCompBuild, reorderCompBuilds) chama requireSession() como primeira linha, antes de qualquer query. requireSession (src/auth/session.ts) lanca se nao houver session.user.id.
+
+8. Validacao de input - SEGURO/LOW. ids (compId/buildId/compBuildId) sao strings usadas em queries drizzle parametrizadas (eq()) - sem risco de injecao SQL. Nao ha' validacao de formato (ex.: uuid regex) antes da query, mas isso e' inofensivo pois drizzle parametriza e a query so' retorna linha se o id combinar E o ownership bater; um id malformado apenas resulta em "nao encontrado". LOW: poderia adicionar z.string().uuid() na borda por defesa em profundidade/DX, mas nao e' uma vulnerabilidade de seguranca.
+
+Nenhum finding bloqueante. Nenhuma exploracao entre usuarios encontrada nos vetores auditados.
 <!-- SECTION:NOTES:END -->
