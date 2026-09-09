@@ -82,8 +82,8 @@ describe("public build page honors the acm_locale cookie in SSR (ACM-093)", () =
     mockCookiesGet.mockReturnValue({ value: "pt-BR" });
     mockGetPublicBuildBySlug.mockResolvedValue(makePublicBuild());
 
-    const { default: PublicBuildPage } = await import("@/app/build/[slug]/page");
-    const element = await PublicBuildPage({ params: Promise.resolve({ slug: "broadsword-abc123" }) });
+    const { default: PublicBuildPage } = await import("@/app/build/[id]/page");
+    const element = await PublicBuildPage({ params: Promise.resolve({ id: "broadsword-abc123" }) });
     const { container } = render(element);
 
     expect(container.textContent).toContain("Espada Larga");
@@ -94,8 +94,8 @@ describe("public build page honors the acm_locale cookie in SSR (ACM-093)", () =
     mockCookiesGet.mockReturnValue(undefined);
     mockGetPublicBuildBySlug.mockResolvedValue(makePublicBuild());
 
-    const { default: PublicBuildPage } = await import("@/app/build/[slug]/page");
-    const element = await PublicBuildPage({ params: Promise.resolve({ slug: "broadsword-abc123" }) });
+    const { default: PublicBuildPage } = await import("@/app/build/[id]/page");
+    const element = await PublicBuildPage({ params: Promise.resolve({ id: "broadsword-abc123" }) });
     const { container } = render(element);
 
     expect(container.textContent).toContain("Espada Larga");

@@ -42,9 +42,9 @@ function makePublicBuild(overrides: Partial<PublicBuild> = {}): PublicBuild {
 describe("public build page (ACM-021)", () => {
   it("renders a public build by slug", async () => {
     mockGetPublicBuildBySlug.mockResolvedValue(makePublicBuild());
-    const { default: PublicBuildPage } = await import("@/app/build/[slug]/page");
+    const { default: PublicBuildPage } = await import("@/app/build/[id]/page");
 
-    const element = await PublicBuildPage({ params: Promise.resolve({ slug: "fire-staff-abc123" }) });
+    const element = await PublicBuildPage({ params: Promise.resolve({ id: "fire-staff-abc123" }) });
     const { container } = render(element);
 
     expect(mockGetPublicBuildBySlug).toHaveBeenCalledWith("fire-staff-abc123");
@@ -53,9 +53,9 @@ describe("public build page (ACM-021)", () => {
 
   it("returns notFound() for a private/nonexistent/invalid slug", async () => {
     mockGetPublicBuildBySlug.mockResolvedValue(null);
-    const { default: PublicBuildPage } = await import("@/app/build/[slug]/page");
+    const { default: PublicBuildPage } = await import("@/app/build/[id]/page");
 
-    await expect(PublicBuildPage({ params: Promise.resolve({ slug: "private-or-missing" }) })).rejects.toMatchObject(
+    await expect(PublicBuildPage({ params: Promise.resolve({ id: "private-or-missing" }) })).rejects.toMatchObject(
       { digest: "NEXT_HTTP_ERROR_FALLBACK;404" },
     );
   });

@@ -8,7 +8,7 @@ import { getRequestLocale } from "@/lib/i18n/server-locale";
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ id: string }>;
 };
 
 /**
@@ -29,8 +29,8 @@ type PageProps = {
  * this route without one.
  */
 export default async function PublicBuildPage({ params }: PageProps): Promise<React.JSX.Element> {
-  const { slug } = await params;
-  const build = await getPublicBuildBySlug(slug);
+  const { id } = await params;
+  const build = await getPublicBuildBySlug(id);
 
   if (!build) {
     notFound();
