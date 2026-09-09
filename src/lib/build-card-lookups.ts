@@ -7,12 +7,10 @@ import type { AOData, AOItem } from "@/data/ao-data.d";
 import { groupSpellsForItem } from "@/components/editor/spell-groups";
 import type { BuildCardLookups } from "@/components/build-card/types";
 import type { BuildState, SpellGroup } from "@/types/build";
-import { pickLocalizedName } from "@/lib/localized-name";
+import { resolveLocalizedName } from "@/lib/localized-name";
+import type { Locale } from "@/lib/i18n/locales";
 
 const ARTIFACT_PATH = path.join(process.cwd(), "src", "data", "ao-data.json");
-
-/** UI locale used for public pages, matching the editor's own default (ACM-012). */
-const LOCALE = "en-US";
 
 let cachedItemsByUniquename: Map<string, AOItem> | null = null;
 let inflight: Promise<Map<string, AOItem>> | null = null;
@@ -71,7 +69,10 @@ function collectItemIds(state: BuildState): Set<string> {
  * falls back to the raw uniquename/all spell groups when a lookup entry is
  * absent, so the page still renders, just with less friendly labels.
  */
-export async function buildCardLookupsFor(state: BuildState): Promise<BuildCardLookups> {
+export async function buildCardLookupsFor(
+  state: BuildState,
+  locale: Locale
+): Promise<BuildCardLookups> {
   let itemsByUniquename: Map<string, AOItem>;
   try {
     itemsByUniquename = await loadItemsByUniquename();
@@ -87,7 +88,7 @@ export async function buildCardLookupsFor(state: BuildState): Promise<BuildCardL
     const item = itemsByUniquename.get(itemId);
     if (!item) continue;
 
-    itemNames[itemId] = pickLocalizedName(item.localizedNames, LOCALE) ?? item.uniquename;
+    itemNames[itemId] = resolveLocalizedName(item.localizedNames, locale) ?? item.uniquename;
 
     // ACM-090: `groupSpellsForItem` (not the raw `groupItemSpells`) applies
     // the cape/bag/mount/food/potion "passive is never selectable"
@@ -96,7 +97,7 @@ export async function buildCardLookupsFor(state: BuildState): Promise<BuildCardL
     // `BuildState.spells.passive` set before this exclusion existed:
     // "passive" simply never appears in `spellGroupsByItem` for these
     // slots, so `SpellRow` never gets a group to render one for.
-    const grouped = groupSpellsForItem(item, LOCALE);
+    const grouped = groupSpellsForItem(item, locale);
     spellGroupsByItem[itemId] = Object.keys(grouped) as SpellGroup[];
 
     for (const candidates of Object.values(grouped)) {

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import type { AOItem, Slot } from "@/data/ao-data.d";
 import { buildItemIndex, searchItems, type ItemIndex } from "@/lib/item-index";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
 import { ItemSearchInput } from "./item-search-input";
 import { ItemResultList } from "./item-result-list";
 
@@ -22,8 +24,13 @@ export type ItemPickerProps = {
    * sites keep working unchanged.
    */
   value?: string | null;
-  /** Active UI locale used for display and primary ranking. Defaults to "en-US". */
-  locale?: string;
+  /**
+   * Active UI locale used for display and primary ranking. Optional and
+   * overrides the ambient `LocaleProvider` context when passed explicitly
+   * (existing suites pass it directly); falls back to `useLocale()`
+   * otherwise (ACM-093).
+   */
+  locale?: Locale;
   label?: string;
   className?: string;
 };
@@ -57,10 +64,12 @@ export function ItemPicker({
   onSelect,
   onClose,
   value = null,
-  locale = "en-US",
+  locale: localeProp,
   label,
   className,
 }: ItemPickerProps): React.JSX.Element {
+  const contextLocale = useOptionalLocale();
+  const locale = localeProp ?? contextLocale ?? DEFAULT_LOCALE;
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);

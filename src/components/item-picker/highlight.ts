@@ -1,21 +1,19 @@
 /**
  * Pure, DOM-free helpers for ItemPicker result-row display (ACM-028 /
  * doc-002 section 3.2). Deliberately duplicates the small tier/enchant
- * token regexes and locale list from src/lib/item-index.ts rather than
- * importing internals, to keep this task's file scope inside
- * src/components/item-picker/** (see ACM-008 review notes on tierOf()).
+ * token regexes from src/lib/item-index.ts rather than importing internals,
+ * to keep this task's file scope inside src/components/item-picker/** (see
+ * ACM-008 review notes on tierOf()). The locale list itself is NOT
+ * duplicated (ACM-093) — `SUPPORTED_LOCALES`/`otherLocaleOf` are imported
+ * from `@/lib/i18n/locales`, the single source of truth once a real
+ * language toggle exists.
  */
 
 const TIER_PATTERN = /^t([1-8])$/i;
 const TIER_ENCHANT_PATTERN = /^([1-8])\.([0-4])$/;
 const ENCHANT_PATTERN = /^[@.]([0-4])$/;
 
-/** Locales always searched together, mirrors item-index.ts's SEARCHED_LOCALES. */
-export const SEARCHED_LOCALES = ["en-US", "pt-BR"] as const;
-
-export function otherLocaleOf(locale: string): string | undefined {
-  return SEARCHED_LOCALES.find((candidate) => candidate !== locale);
-}
+export { otherLocaleOf } from "@/lib/i18n/locales";
 
 /**
  * Splits a raw query into its text tokens, dropping tier/enchant filter

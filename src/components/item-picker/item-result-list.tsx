@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 import type { AOItem } from "@/data/ao-data.d";
 import { ItemIcon } from "@/components/icons/ItemIcon";
-import { pickLocalizedName } from "@/lib/localized-name";
+import { resolveLocalizedName } from "@/lib/localized-name";
+import type { Locale } from "@/lib/i18n/locales";
 import {
   extractTextTokens,
   findMatchRanges,
@@ -18,7 +19,7 @@ export type ItemResultListProps = {
   label: string;
   items: AOItem[];
   activeIndex: number;
-  locale: string;
+  locale: Locale;
   /** Raw (debounced) query, used to derive <mark> highlight ranges. */
   query: string;
   /** Uniquename of the item currently equipped in this slot, or null/undefined when empty. */
@@ -129,8 +130,8 @@ export function ItemResultList({
       )}
       {visibleItems.map((item, localIndex) => {
         const index = startIndex + localIndex;
-        const activeName = pickLocalizedName(item.localizedNames, locale) ?? item.uniquename;
-        const otherName = otherLocale ? pickLocalizedName(item.localizedNames, otherLocale) : undefined;
+        const activeName = resolveLocalizedName(item.localizedNames, locale) ?? item.uniquename;
+        const otherName = otherLocale ? resolveLocalizedName(item.localizedNames, otherLocale) : undefined;
         const tier = tierOf(item.uniquename);
         const isActive = index === activeIndex;
         const isEquipped = value != null && item.uniquename === value;

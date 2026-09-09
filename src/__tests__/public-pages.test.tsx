@@ -18,6 +18,14 @@ vi.mock("@/lib/build-card-lookups", () => ({
   buildCardLookupsFor: vi.fn(async () => ({ itemNames: {}, spellNames: {}, spellGroupsByItem: {} })),
 }));
 
+// `getRequestLocale` calls next/headers' `cookies()`, which throws outside a
+// real request scope — mocked here since this suite isolates the page
+// component, not the locale resolution itself (covered by
+// `locale-toggle.test.tsx` and the SSR-locale case in this same file).
+vi.mock("@/lib/i18n/server-locale", () => ({
+  getRequestLocale: vi.fn(async () => "en-US"),
+}));
+
 function makePublicBuild(overrides: Partial<PublicBuild> = {}): PublicBuild {
   const content = createEmptyBuild();
   content.name = overrides.content?.name ?? "Fire Staff";
