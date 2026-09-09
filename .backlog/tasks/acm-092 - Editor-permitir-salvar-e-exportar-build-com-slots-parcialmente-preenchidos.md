@@ -1,10 +1,10 @@
 ---
 id: ACM-092
 title: 'Editor: permitir salvar e exportar build com slots parcialmente preenchidos'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-09 02:28'
+updated_date: '2026-09-09 02:32'
 labels: []
 milestone: m-3
 dependencies: []
@@ -91,4 +91,42 @@ CI verde em 4a6b222. 639 testes passando.
 A tentativa 3/3 foi consumida por um diagnostico errado do revisor, nao por falha do implementer. Nenhuma mudanca de codigo foi necessaria nesta rodada.
 
 LICAO DE HARNESS: o revisor precisa fixar o commit auditado (git fetch + git log do head) e reportar o SHA revisado junto com o veredito. Sem isso, review de PR com push concorrente gera falso positivo caro — aqui custou uma tentativa inteira do budget e quase mandou a task de volta para To Do sem motivo.
+
+REVISOR — re-auditoria do commit correto (origin/task/92-partial-slots @ 4a6b222), lido via `git show`, não via diff cacheado. As duas rodadas anteriores (uma auditando f6a2b85 desatualizado, outra achando o gate removido) NÃO se aplicam mais: o commit atual restaura e corrige o gate.
+
+Verificação item a item:
+
+1. hasReadyItem (src/app/(editor)/build/new/page.tsx:217-224) — CORRETO. Itera SLOT_ORDER, exige slot equipado E `spellCandidatesBySlot[slot]` com >=1 grupo selecionável E todos esses grupos preenchidos (`equipped.spells[group] !== null`). `spellCandidatesBySlot` vem de `groupSpellsForItem` (ACM-090), que já exclui cape/bag/mount/food/potion (nenhum grupo selecionável -> `selectableGroups.length === 0` -> `return false`). Cenário testado e coberto por teste real (build-new-page.test.tsx: "keeps Salvar and Exportar disabled with only a non-selectable item (bag) equipped"): bag sozinho não satisfaz o gate. Não encontrei furo — nenhum item sem spell group conta como pronto.
+
+2. EditorActionBar.tsx:106 `canSave = buildName.trim() !== "" && hasReadyItem` e :156 `exportDisabled = !hasReadyItem || saving || exporting` — ambos corretamente gateados por `hasReadyItem`, que por sua vez exige o AC#1 completo. AC#2 satisfeito: build 100% vazia (hasReadyItem=false) mantém os dois botões desabilitados, testado em editor-action-bar.test.tsx e build-new-page.test.tsx ("disables Salvar and Exportar on a completely empty build").
+
+3. Guard-test IMPERATIVE_INSTRUCTION_PATTERN (build-card.test.tsx:197-198) — regex `/\b(escolha|comece|monte|selecione|clique|arraste|adicione|preencha|equipe|configure)\b/i` roda contra os 4 layouts (vertical/grid/compressed/list) para build zero-slots. Verifiquei que a string antiga "Nenhum item equipado ainda — comece pela mão principal." foi REMOVIDA por completo dos 3 layouts que a continham (BuildCardVertical, BuildCardCompressed, BuildCardList — diff de 33 linhas removidas, sem substituição por nova copy), então o teste passa por ausência real do problema, não por furo no regex. Testei a cobertura de placeholder separadamente: `data-slot-state="empty"` existe em BuildCardVertical, BuildCardGrid (nativo), e é emitido pelos subcomponentes CompressedTile e ListRow para Compressed/List — os 4 layouts têm o atributo, então o teste "renders the full 10-slot placeholder grid" é válido para todos e não é falso-positivo.
+
+4. AC#3 (placeholder em caso parcial) — não há branch condicional de isEmpty restante nos 4 layouts; a grade completa de slots (incluindo vazios com data-slot-state="empty") sempre renderiza, então o caso parcial se beneficia do mesmo caminho de código testado para zero-slots. Sem regressão encontrada.
+
+5. Regressão da remoção de `isEmpty` — busquei outros usos de `isEmpty` nos 3 arquivos alterados; não sobrou nenhuma referência morta nem efeito colateral em caminho não-export (swaps, meta panel, spell headers continuam condicionados a `hasAnySpell`/`hasMeta`, variáveis distintas de `isEmpty`, não afetadas).
+
+6. `make check` rodado na worktree ../albion-builds-task-92 em 4a6b222: verde, 639 testes, build Next.js ok.
+
+Nenhum finding CRITICAL/HIGH novo nesta rodada. Findings de rodadas anteriores sobre remoção indevida do gate e sobre a copy imperativa estão RESOLVIDOS neste commit e não devem ser reabertos.
+
+Pendência de produto pré-existente (não bloqueia este PR, registrar apenas): layouts Compressed e List continuam inalcançáveis por qualquer rota real do app (/build/new usa vertical, /comp/[slug] usa grid) — cobertura de teste para esses dois layouts é só unitária, nunca exercitada em fluxo de usuário real. Sugestão: task futura para expor seletor de layout ou remover os layouts mortos do escopo de export.
+
+Veredito: LGTM.
+
+REVIEWER re-review no SHA correto 4a6b222: LGTM.
+
+Confirmado por leitura de codigo real e execucao de testes (nao por alegacao do implementer):
+- hasReadyItem (build/new/page.tsx:217-223): exige slot equipado + >=1 grupo selecionavel em spellCandidatesBySlot + todos os grupos preenchidos. Cape/bag/mount/food/potion nunca satisfazem sozinhos (zero grupos selecionaveis pos-ACM-090). Coberto por teste dedicado com T4_BAG.
+- Edge case arma com Q/W e so um preenchido: coberto por teste (T4_MAIN_SWORD com so 'q' setado mantem Salvar desabilitado).
+- Copy imperativa REMOVIDA de producao (grep zero ocorrencias), nao reformulada.
+- Guard-test agora protege por INTENCAO (regex de verbos imperativos PT-BR) e nao por lista de strings literais obsoletas — as frases das rodadas 1 e 2 seriam ambas pegas.
+- Reescopo de testes pre-existentes preserva todas as assercoes originais byte-a-byte; delta e so o fixture + setSpell, necessario porque o novo gate bloqueia Salvar sem habilidades.
+- AC#3: data-slot-state='empty' presente nos 4 layouts.
+
+Observacao nao-bloqueante registrada: botao desabilitado e gate de UX, nao de seguranca — o server action ainda aceita build vazia se chamado fora da UI. Os ACs falam de 'botoes desabilitados', nao de validacao de servidor, entao esta dentro do escopo; fica registrado caso a leitura mude.
+
+Divida tecnica separada (fora do escopo desta task): layouts Compressed e List continuam inalcancaveis por rota real do app.
+
+MERGE: PR #62 mergeado em 2026-09-09T02:31Z (commit 2856129). Conflito no proprio arquivo de backlog resolvido tomando a versao da main. make check verde na main pos-merge (639 testes).
 <!-- SECTION:NOTES:END -->
