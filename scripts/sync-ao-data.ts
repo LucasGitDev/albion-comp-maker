@@ -190,6 +190,24 @@ const MAX_TIER = 8;
 const HUMANIZE_STRIP_PREFIXES = ["PASSIVE_", "ACTIVE_", "TOGGLE_", "VANITY_"];
 
 /**
+ * Explicit overrides for the closed set of uniquenames where a generic
+ * `_`-split leaves an unsegmented compound word (the upstream uniquename
+ * never had an underscore at the word boundary), see ACM-086. Keyed on the
+ * uniquename after prefix stripping (see HUMANIZE_STRIP_PREFIXES) so both
+ * `PASSIVE_SMITE_AOE` and `SMITE_AOE` resolve the same way.
+ */
+const HUMANIZE_OVERRIDES: Record<string, string> = {
+  REJUVMUSHROOM_GRENADE: "Rejuv Mushroom Grenade",
+  ICEROCK_EXPLODE: "Ice Rock Explode",
+  SMITE_AOE: "Smite (AoE)",
+  SPEEDARCHER_KITE: "Speed Archer Kite",
+  CURSEDHANDS_STACKUP: "Cursed Hands Stack Up",
+  CROSSSTEP_ROUNDHOUSE: "Cross Step Roundhouse",
+  TRIPLECOMBO_DIVEKICK: "Triple Combo Dive Kick",
+  FROSTBOMB_CASTSLOW: "Frost Bomb Cast Slow",
+};
+
+/**
  * Last-resort display name for a spell with no upstream translation anywhere
  * in the TMX dump (decision-021): title-cased words from the uniquename,
  * instead of surfacing the raw uniquename to the end user.
@@ -199,6 +217,10 @@ export function humanizeSpellName(uniquename: string): string {
   for (const prefix of HUMANIZE_STRIP_PREFIXES) {
     if (rest.startsWith(prefix)) { rest = rest.slice(prefix.length); break; }
   }
+
+  const override = HUMANIZE_OVERRIDES[rest];
+  if (override) return override;
+
   return rest
     .split("_")
     .filter(Boolean)

@@ -3,9 +3,10 @@ id: ACM-100
 title: >-
   Navegacao: header nao leva a /builds e 'Minhas comps' aponta para landing
   estatica
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-09-09 02:42'
+updated_date: '2026-09-09 14:18'
 labels: []
 milestone: m-3
 dependencies: []
@@ -35,3 +36,11 @@ Design:
 - [ ] #4 CTA primario do header e 'Nova comp' e aponta para o fluxo de criacao de comp
 - [ ] #5 Dentro do editor de uma build pertencente a uma comp, o breadcrumb mostra a trilha comp -> build e o link volta para a comp
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+PR opened: #80 (https://github.com/LucasGitDev/albion-comp-maker/pull/80). Header now gates nav links (/, /builds) on authenticated session, mobile disclosure works, primary CTA is Nova comp -> /comp/new. Breadcrumb extended with optional comp trail; wired via /build/new query params (?comp=&compName=) and a new 'Nova build' link in CompBuildsManager. Note: creating a build via that link does not yet auto-attach it to the comp (still requires 'Adicionar build' afterwards) -- out of scope for this navigation task.
+
+Review: PR #80 aprovado. ACs #1-#5 verificados no diff e no worktree task-100 (commit 377174d): nav /, /builds só aparece autenticado com aria-current correto (AC1); links de área logada ausentes em loading/unauthenticated, não só escondidos via CSS (AC2); disclosure mobile abre com as 2 entradas e Escape fecha devolvendo foco ao trigger (AC3); CTA primário 'Nova comp' -> /comp/new em desktop e mobile (AC4); breadcrumb comp->build funcionando via query params comp/compName lidos em /build/new (AC5). Segurança: comp/compName só são usados como texto React ou em href='/comps/${compId}' — nunca dangerouslySetInnerHTML; prefixo literal '/comps/' impede URL protocol-relative ou javascript:; sem XSS. Rodei os 3 arquivos de teste tocados no worktree: 22/22 passando. Escopo respeitado, sem arquivos fora do necessário. Limitação já documentada pelo implementer (build criada via link não auto-anexa à comp) — aceitável, fora do escopo desta task de navegação. Veredito: LGTM.
+<!-- SECTION:NOTES:END -->

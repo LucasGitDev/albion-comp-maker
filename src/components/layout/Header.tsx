@@ -52,10 +52,20 @@ export function Header(): React.JSX.Element {
   const isEditorRoute = pathname?.startsWith("/build") ?? false;
   const locale = useLocale();
   const account = useAccountState(t(locale, "account.fallbackLabel"));
-  const navLinks: ReadonlyArray<{ href: string; label: string }> = [
-    { href: "/", label: t(locale, "nav.myComps") },
-    { href: "/comps", label: t(locale, "nav.share") },
-  ];
+  /**
+   * `/` and `/builds` both redirect unauthenticated visitors away (ACM-100
+   * AC#2 — `src/proxy.ts` already guards `/builds`), so linking to them
+   * before the session resolves would be a UX error (dead link that bounces
+   * straight to a redirect). Nav is empty while `account.kind` is
+   * `"loading"` or `"unauthenticated"`, not just visually hidden.
+   */
+  const navLinks: ReadonlyArray<{ href: string; label: string }> =
+    account.kind === "authenticated"
+      ? [
+          { href: "/", label: t(locale, "nav.myComps") },
+          { href: "/builds", label: t(locale, "nav.myBuilds") },
+        ]
+      : [];
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const mobileNavTriggerRef = useRef<HTMLButtonElement | null>(null);
   const mobileNavPanelRef = useRef<HTMLDivElement | null>(null);
@@ -155,18 +165,22 @@ export function Header(): React.JSX.Element {
             )}
           </div>
         ) : (
+          // ACM-100 AC#4: the product is comp-first, so the header's global
+          // primary CTA creates a comp, not a build — "Nova build" is a
+          // secondary shortcut that only makes sense inside /builds itself
+          // (see the `/builds` page's own CTA).
           <Link
-            href="/build/new"
+            href="/comp/new"
             className="hidden rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none md:inline-block"
           >
-            {t(locale, "account.newBuild")}
+            {t(locale, "account.newComp")}
           </Link>
         )}
 
         {!isEditorRoute && (
           <Link
-            href="/build/new"
-            aria-label={t(locale, "account.newBuildAriaLabel")}
+            href="/comp/new"
+            aria-label={t(locale, "account.newCompAriaLabel")}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-accent)] text-lg font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none md:hidden"
           >
             +

@@ -226,3 +226,21 @@ total). `zod` nao esta no bundle cliente hoje.
 sempre funcionou no `make check`/CI real. O que faltava era um sinal visivel
 e independente de peculiaridades de shell/ambiente, que agora existe como
 teste dedicado.
+
+## Adendo (ACM-071): `import type` nao e violacao de boundary
+
+O walker de `server-only-boundary.test.ts` (adendo ACM-069 acima) tratava
+qualquer import textual — inclusive `import type { X } from "@/lib/build-schema"`
+— como cruzamento de fronteira. Isso e over-strict: `import type` (e
+especificadores inline `type` num named import, ex.
+`import { type X, y } from "..."`) e apagado inteiramente pelo TypeScript em
+build time; nada do modulo server-only chega ao bundle cliente. O caso real de
+exposicao e exclusivamente **import de valor**.
+
+Regra aplicada em `extractImportSpecifiers`/`isTypeOnlyImport`: um import e
+ignorado pelo walker quando (a) e `import type ... from` / `export type ... from`
+inteiro, ou (b) e um named import onde **todo** especificador tem o modificador
+`type` inline. Um default/namespace import, ou um named import com **pelo menos
+um** especificador de valor (`import { type X, y } from "..."`), continua sendo
+seguido normalmente — `y` e valor real e deve ser sinalizado se alcancar um
+modulo server-only.

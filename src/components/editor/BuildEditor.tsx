@@ -62,6 +62,25 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
   const build = useBuildStore(selectBuild);
   const actions = useBuildStore(selectActions);
   const locale = useLocale();
+  /**
+   * ACM-100 AC#5: when this build is being created/edited from within a
+   * comp's own page (`/comps/[id]`), that page links here with `comp`/
+   * `compName` so the breadcrumb can show the comp -> build trail and link
+   * back to it. Both params are required together — a bare `comp` id with
+   * no display name isn't enough to render a link label without another
+   * fetch, which this client route deliberately avoids. Read directly from
+   * `window.location` (not `useSearchParams`) so this route never opts out
+   * of static rendering / needs a `<Suspense>` boundary just for two rarely
+   * present params. A lazy `useState` initializer (not an effect) reads it
+   * once on mount — these params never change without a full navigation.
+   */
+  const [compTrail] = useState<{ name: string; href: string } | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const params = new URLSearchParams(window.location.search);
+    const compId = params.get("comp");
+    const compName = params.get("compName");
+    return compId && compName ? { name: compName, href: `/comps/${compId}` } : undefined;
+  });
   const { items, loading, failed, failedReason, retry } = useItemCatalogue();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   /**
@@ -407,7 +426,7 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
       tabIndex={-1}
       className={`mx-auto flex min-w-0 flex-col gap-6 p-8 pb-24 outline-none md:pb-8 ${themePanelOpen ? "max-w-[1600px]" : "max-w-6xl"}`}
     >
-      <Breadcrumb current={build.name.trim() || "Nova build"} />
+      <Breadcrumb current={build.name.trim() || "Nova build"} comp={compTrail} />
       <EditorActionBar
         buildName={build.name}
         filledCount={filledCount}

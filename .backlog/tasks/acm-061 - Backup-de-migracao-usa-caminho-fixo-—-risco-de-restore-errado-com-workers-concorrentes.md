@@ -3,10 +3,10 @@ id: ACM-061
 title: >-
   Backup de migracao usa caminho fixo — risco de restore errado com workers
   concorrentes
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 20:07'
-updated_date: '2026-09-09 03:07'
+updated_date: '2026-09-09 14:14'
 labels: []
 dependencies: []
 priority: low
@@ -26,3 +26,9 @@ Achado MEDIUM da review da ACM-050 (PR #39). src/db/migrate.ts grava o snapshot 
 - [ ] #3 Teste cobrindo o cenario concorrente
 - [ ] #4 make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Review PR #75: LGTM. backupFilePath() suffixed with process.pid + crypto.randomUUID() (src/db/migrate.ts), path computed once per call and threaded through to restore/cleanup — no shared file between concurrent workers, no race. Test added simulates two interleaved workers snapshotting/restoring and confirms no cross-contamination. ACs 1-3 met.
+<!-- SECTION:NOTES:END -->

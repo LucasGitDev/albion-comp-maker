@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 
 import { addBuildToComp, removeBuildFromComp, reorderCompBuilds, updateCompBuild } from "@/actions/comps";
 import { AddBuildDialog } from "./AddBuildDialog";
@@ -30,6 +31,8 @@ export type MyBuildOption = {
 
 export type CompBuildsManagerProps = {
   compId: string;
+  /** Used to build the "Nova build" link's `compName` query param (ACM-100 AC#5). */
+  compName: string;
   initialEntries: CompBuildEntry[];
   myBuilds: MyBuildOption[];
 };
@@ -71,7 +74,13 @@ function swapEntriesById(list: CompBuildEntry[], idA: string, idB: string): Comp
  * so a bug in that gating (or any future action added without it) still
  * fails safe instead of destroying already-persisted edits.
  */
-export function CompBuildsManager({ compId, initialEntries, myBuilds }: CompBuildsManagerProps): React.JSX.Element {
+export function CompBuildsManager({
+  compId,
+  compName,
+  initialEntries,
+  myBuilds,
+}: CompBuildsManagerProps): React.JSX.Element {
+  const newBuildHref = `/build/new?comp=${encodeURIComponent(compId)}&compName=${encodeURIComponent(compName)}`;
   const [entries, setEntries] = useState<CompBuildEntry[]>(initialEntries);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState<ActionError | null>(null);
@@ -193,16 +202,24 @@ export function CompBuildsManager({ compId, initialEntries, myBuilds }: CompBuil
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-foreground">Builds da comp</h2>
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() => setIsDialogOpen(true)}
-          className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:transition-none"
-        >
-          Adicionar build
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={newBuildHref}
+            className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-[var(--color-accent)] focus-visible:transition-none"
+          >
+            Nova build
+          </Link>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => setIsDialogOpen(true)}
+            className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:transition-none"
+          >
+            Adicionar build
+          </button>
+        </div>
       </div>
 
       {error && (

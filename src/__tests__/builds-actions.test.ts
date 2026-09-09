@@ -513,4 +513,71 @@ describe("build Server Actions (ACM-018)", () => {
       await expect(saveBuild({ name: "User B Build", content: validBuildContent() })).resolves.toBeDefined();
     });
   });
+
+  describe("getBuild (ACM-067)", () => {
+    it("returns the owner's build", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, getBuild } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Holy Healer", content: validBuildContent() });
+
+      const loaded = await getBuild(build.id);
+      expect(loaded.id).toBe(build.id);
+    });
+
+    it("user B cannot read user A's build via getBuild", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, getBuild } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Holy Healer", content: validBuildContent() });
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+      await expect(getBuild(build.id)).rejects.toThrow("Build not found");
+    });
+
+    it("rejects unauthenticated calls", async () => {
+      mockRequireSession.mockRejectedValueOnce(new Error("Unauthorized"));
+      const { getBuild } = await import("@/actions/builds");
+      await expect(getBuild("x")).rejects.toThrow("Unauthorized");
+    });
+  });
+
+  describe("regenerateBuildSlug (ACM-067)", () => {
+    it("replaces the slug in place so the old value no longer resolves", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, regenerateBuildSlug } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Holy Healer", content: validBuildContent() });
+
+      const regenerated = await regenerateBuildSlug(build.id);
+
+      expect(regenerated.slug).not.toBe(build.slug);
+      expect(regenerated.slug.startsWith("holy-healer-")).toBe(true);
+      expect(regenerated.id).toBe(build.id);
+    });
+
+    it("user B cannot regenerate user A's build slug", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, regenerateBuildSlug } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Holy Healer", content: validBuildContent() });
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+      await expect(regenerateBuildSlug(build.id)).rejects.toThrow("Build not found");
+    });
+
+    it("rejects unauthenticated calls", async () => {
+      mockRequireSession.mockRejectedValueOnce(new Error("Unauthorized"));
+      const { regenerateBuildSlug } = await import("@/actions/builds");
+      await expect(regenerateBuildSlug("x")).rejects.toThrow("Unauthorized");
+    });
+
+    it("is subject to the shared write rate limit", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, regenerateBuildSlug } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Holy Healer", content: validBuildContent() });
+
+      for (let i = 0; i < 29; i += 1) {
+        await regenerateBuildSlug(build.id);
+      }
+
+      await expect(regenerateBuildSlug(build.id)).rejects.toThrow(/Too many requests/);
+    });
+  });
 });

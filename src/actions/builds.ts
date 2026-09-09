@@ -92,6 +92,12 @@ export async function getBuildForEdit(id: string): Promise<BuildRow> {
   return loadOwnedBuild(session.user.id, id);
 }
 
+/** Loads a single build owned by the current user, for share/slug management UI (ACM-067). */
+export async function getBuild(id: string): Promise<BuildRow> {
+  const session = await requireSession();
+  return loadOwnedBuild(session.user.id, id);
+}
+
 /** Lists every build owned by the current user, most recently updated first. */
 export async function listMyBuilds(): Promise<BuildRow[]> {
   const session = await requireSession();
@@ -268,6 +274,33 @@ export async function toggleBuildPublic(id: string): Promise<BuildRow> {
   const [row] = await db
     .update(builds)
     .set({ isPublic: !current.isPublic, updatedAt: new Date() })
+    .where(and(eq(builds.id, id), eq(builds.userId, session.user.id)))
+    .returning();
+
+  if (!row) {
+    throw new BuildNotFoundError();
+  }
+  return row;
+}
+
+/**
+ * Regenerates an owned build's slug (ACM-067 AC#2/AC#4/AC#5): the old slug
+ * stops resolving immediately since `slug` is overwritten in place, not
+ * appended alongside — there is no redirect/alias kept for it. Reuses
+ * `checkWriteRateLimit`, the same fixed-window limiter every other
+ * mutation here goes through, so regeneration cannot be hammered to
+ * enumerate slugs or thrash the unique index.
+ */
+export async function regenerateBuildSlug(id: string): Promise<BuildRow> {
+  const session = await requireSession();
+  checkWriteRateLimit(session.user.id);
+
+  const current = await loadOwnedBuild(session.user.id, id);
+
+  const db = getDb();
+  const [row] = await db
+    .update(builds)
+    .set({ slug: generateSlug(current.name), updatedAt: new Date() })
     .where(and(eq(builds.id, id), eq(builds.userId, session.user.id)))
     .returning();
 

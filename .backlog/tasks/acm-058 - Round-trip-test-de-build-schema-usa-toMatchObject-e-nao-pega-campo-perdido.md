@@ -1,10 +1,10 @@
 ---
 id: ACM-058
 title: Round-trip test de build-schema usa toMatchObject e nao pega campo perdido
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-09-07 19:48'
-updated_date: '2026-09-09 03:25'
+updated_date: '2026-09-09 14:12'
 labels: []
 dependencies: []
 priority: low
@@ -23,3 +23,11 @@ Achado LOW da review final da ACM-031 (PR #34). O teste de round-trip em src/__t
 - [ ] #2 O teste falha se qualquer campo do payload for perdido no round-trip leitura->escrita
 - [ ] #3 make check verde
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+PR opened: #72
+
+Review PR#72: AC#1 e AC#2 atendidos — o teste de round-trip em src/__tests__/build-schema.test.ts agora usa toEqual com o objeto mainhand completo (itemId, tier, enchant, maxEnchant, spells, twohanded), então um campo perdido no round-trip leitura->escrita quebra o teste. Sem findings bloqueantes para esta task.
+<!-- SECTION:NOTES:END -->
