@@ -397,4 +397,195 @@ describe("comp Server Actions (ACM-019)", () => {
       await expect(createComp({ name: "Comp 31" })).rejects.toThrow(/Too many requests/);
     });
   });
+
+  describe("toggleCompPublic (ACM-066, decision-025)", () => {
+    it("flips isPublic false -> true -> false", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, toggleCompPublic } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Toggle Me" });
+      expect(comp.isPublic).toBe(false);
+
+      const flipped = await toggleCompPublic(comp.id);
+      expect(flipped.isPublic).toBe(true);
+
+      const flippedBack = await toggleCompPublic(comp.id);
+      expect(flippedBack.isPublic).toBe(false);
+    });
+
+    it("a non-owner gets the same CompNotFoundError as a nonexistent id (IDOR)", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, toggleCompPublic } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Owned By A" });
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+      await expect(toggleCompPublic(comp.id)).rejects.toThrow("Comp not found");
+      await expect(toggleCompPublic("does-not-exist")).rejects.toThrow("Comp not found");
+    });
+
+    it("is rate-limited like any other write", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, toggleCompPublic } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Rate Limited" });
+
+      // createComp above already used 1 of the 30 writes allowed per minute.
+      for (let i = 0; i < 29; i += 1) {
+        await toggleCompPublic(comp.id);
+      }
+
+      await expect(toggleCompPublic(comp.id)).rejects.toThrow(/Too many requests/);
+    });
+
+    it("rejects without a session", async () => {
+      mockRequireSession.mockRejectedValue(new Error("Unauthorized"));
+      const { toggleCompPublic } = await import("@/actions/comps");
+
+      await expect(toggleCompPublic("x")).rejects.toThrow("Unauthorized");
+    });
+  });
+
+  describe("getCompPublishState (ACM-066, decision-025)", () => {
+    it("classifies a build the caller owns but has not published as private-own", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const [ownBuild] = await db
+        .insert(builds)
+        .values({ userId: "user-a", name: "My Private Build", slug: "my-private-build", content: "{}" })
+        .returning();
+
+      const { createComp, addBuildToComp, toggleCompPublic, getCompPublishState } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Comp With Blockers" });
+      await addBuildToComp({ compId: comp.id, buildId: ownBuild.id });
+      await toggleCompPublic(comp.id);
+
+      const state = await getCompPublishState(comp.id);
+
+      expect(state.isPublic).toBe(true);
+      expect(state.isReachable).toBe(false);
+      expect(state.hasNoBuilds).toBe(false);
+      expect(state.blockers).toHaveLength(1);
+      expect(state.blockers[0]).toMatchObject({
+        buildId: ownBuild.id,
+        buildName: "My Private Build",
+        reason: "private-own",
+        ownedByMe: true,
+      });
+    });
+
+    it("classifies another user's private build as private-foreign, unowned", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+      const [foreignBuild] = await db
+        .insert(builds)
+        .values({ userId: "user-b", name: "Foreign Build", slug: "foreign-build", content: "{}", isPublic: true })
+        .returning();
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, addBuildToComp, toggleCompPublic, getCompPublishState } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Comp With Foreign Build" });
+      await addBuildToComp({ compId: comp.id, buildId: foreignBuild.id });
+      await toggleCompPublic(comp.id);
+
+      // The foreign build's owner later makes it private, breaking the
+      // comp's link without user-a being able to do anything about it.
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+      const { toggleBuildPublic } = await import("@/actions/builds");
+      await toggleBuildPublic(foreignBuild.id);
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const state = await getCompPublishState(comp.id);
+
+      expect(state.isReachable).toBe(false);
+      expect(state.blockers).toHaveLength(1);
+      expect(state.blockers[0]).toMatchObject({
+        buildId: foreignBuild.id,
+        reason: "private-foreign",
+        ownedByMe: false,
+      });
+    });
+
+    it("classifies a build with content that fails parseBuildContent as invalid-content", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const [invalidBuild] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Invalid Content Build",
+          slug: "invalid-content-build",
+          content: "not valid json {{{",
+          isPublic: true,
+        })
+        .returning();
+
+      const { createComp, addBuildToComp, toggleCompPublic, getCompPublishState } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Comp With Invalid Build" });
+      await addBuildToComp({ compId: comp.id, buildId: invalidBuild.id });
+      await toggleCompPublic(comp.id);
+
+      const state = await getCompPublishState(comp.id);
+
+      expect(state.isReachable).toBe(false);
+      expect(state.blockers).toHaveLength(1);
+      expect(state.blockers[0]).toMatchObject({ buildId: invalidBuild.id, reason: "invalid-content" });
+    });
+
+    it("marks isReachable true once every build is public and valid and the comp itself is public", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const validContent = JSON.stringify({
+        schemaVersion: 1,
+        name: "Ready Build",
+        role: "dps",
+        accent: "#3f8f4a",
+        slots: {
+          mainhand: null,
+          offhand: null,
+          head: null,
+          armor: null,
+          shoes: null,
+          cape: null,
+          bag: null,
+          mount: null,
+          food: null,
+          potion: null,
+        },
+        swaps: [],
+      });
+      const [publicBuild] = await db
+        .insert(builds)
+        .values({
+          userId: "user-a",
+          name: "Ready Build",
+          slug: "ready-build",
+          content: validContent,
+          isPublic: true,
+        })
+        .returning();
+
+      const { createComp, addBuildToComp, toggleCompPublic, getCompPublishState } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Ready Comp" });
+      await addBuildToComp({ compId: comp.id, buildId: publicBuild.id });
+      await toggleCompPublic(comp.id);
+
+      const state = await getCompPublishState(comp.id);
+
+      expect(state.isPublic).toBe(true);
+      expect(state.hasNoBuilds).toBe(false);
+      expect(state.blockers).toHaveLength(0);
+      expect(state.isReachable).toBe(true);
+    });
+
+    it("a non-owner cannot read another user's comp publish state (IDOR)", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "Owned By A" });
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+      const { getCompPublishState } = await import("@/actions/comps");
+      await expect(getCompPublishState(comp.id)).rejects.toThrow("Comp not found");
+    });
+
+    it("rejects without a session", async () => {
+      mockRequireSession.mockRejectedValue(new Error("Unauthorized"));
+      const { getCompPublishState } = await import("@/actions/comps");
+
+      await expect(getCompPublishState("x")).rejects.toThrow("Unauthorized");
+    });
+  });
 });

@@ -71,4 +71,20 @@ describe("Header (ACM-037 AC#1, AC#3, AC#4)", () => {
     expect(screen.getAllByRole("link", { name: "New build" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "My comps" })).toBeInTheDocument();
   });
+
+  it("keeps the /comps share link in the nav in pt-BR (ACM-066)", () => {
+    vi.mocked(usePathname).mockReturnValue("/");
+    renderHeader();
+    expect(screen.getByRole("link", { name: "Compartilhar" })).toHaveAttribute("href", "/comps");
+  });
+
+  it("keeps the /comps share link in the nav in en-US (ACM-066)", () => {
+    vi.mocked(usePathname).mockReturnValue("/");
+    render(
+      <LocaleProvider initialLocale="en-US">
+        <Header />
+      </LocaleProvider>
+    );
+    expect(screen.getByRole("link", { name: "Share" })).toHaveAttribute("href", "/comps");
+  });
 });
