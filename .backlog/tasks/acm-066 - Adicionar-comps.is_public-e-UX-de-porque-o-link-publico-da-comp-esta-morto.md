@@ -1,9 +1,10 @@
 ---
 id: ACM-066
 title: Adicionar comps.is_public e UX de porque o link publico da comp esta morto
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-07 20:32'
+updated_date: '2026-09-09 02:25'
 labels: []
 dependencies: []
 ordinal: 66000
