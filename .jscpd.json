@@ -1,0 +1,7 @@
+{
+  "threshold": 15,
+  "reporters": ["console"],
+  "ignore": ["**/*.test.*", "**/*.spec.*", "node_modules/**", ".next/**"],
+  "languages": ["typescript", "javascript"],
+  "gitignore": true
+}

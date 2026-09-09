@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "sync:ao": "tsx scripts/sync-ao-data.ts",
-    "build:fixture": "tsx scripts/build-test-fixture.ts"
+    "build:fixture": "tsx scripts/build-test-fixture.ts",
+    "quality": "bash scripts/quality.sh"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
@@ -36,10 +37,13 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^5.0.0",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "jscpd": "^5.2.0",
     "jsdom": "^30.0.1",
+    "knip": "^6.35.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5",

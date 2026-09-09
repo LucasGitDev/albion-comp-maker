@@ -120,7 +120,7 @@ export function useItemCatalogue(): UseItemCatalogueResult {
   useEffect(() => {
     if (cached) return;
     let cancelled = false;
-    loadCatalogue().then((loaded) => {
+    void loadCatalogue().then((loaded) => {
       if (!cancelled) setState(loaded);
     });
     return () => {

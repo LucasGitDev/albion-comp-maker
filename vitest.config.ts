@@ -9,6 +9,13 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
     setupFiles: ["./vitest.setup.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
+      include: ["src/**"],
+      exclude: ["src/**/*.test.*", "src/**/*.spec.*"],
+    },
   },
   resolve: {
     alias: {
