@@ -43,7 +43,7 @@ export function SlotGrid({
   onSpellChange,
 }: SlotGridProps): React.JSX.Element {
   return (
-    <div className="flex flex-col gap-5 md:flex-row md:flex-wrap md:gap-8">
+    <div data-testid="slot-grid" className="flex flex-col gap-5 md:flex-row md:flex-wrap md:gap-8">
       {SLOT_COLUMNS.map((column) => {
         const groupCategory = SLOT_CATEGORY[column.slots[0]];
         return (
