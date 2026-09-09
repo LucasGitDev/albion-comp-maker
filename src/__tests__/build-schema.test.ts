@@ -270,7 +270,14 @@ describe("build-schema (ACM-049 / decision-013)", () => {
       if (!read.ok) return;
 
       const rewritten = validateBuildContentForWrite(JSON.stringify(read.data));
-      expect(JSON.parse(rewritten).slots.mainhand).toMatchObject({ enchant: 2, maxEnchant: 4 });
+      expect(JSON.parse(rewritten).slots.mainhand).toEqual({
+        itemId: "T4_HEAD_PLATE_SET1",
+        tier: 4,
+        enchant: 2,
+        maxEnchant: 4,
+        spells: { q: null, w: null, e: null, passive: null },
+        twohanded: false,
+      });
     });
   });
 });
