@@ -4,7 +4,7 @@ title: 'i18n: toggle de idioma EN/PT-BR para nomes de itens e UI'
 status: In Review
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-09 02:54'
+updated_date: '2026-09-09 02:55'
 labels: []
 milestone: m-7
 dependencies: []
@@ -296,4 +296,44 @@ Consumidores reapontados: src/lib/localized-name.ts (resolveLocalizedName) -> FA
 Testes ajustados/adicionados: src/__tests__/locales.test.ts (asserts diretos DEFAULT_LOCALE=pt-BR, FALLBACK_NAME_LOCALE=en-US), src/__tests__/server-locale-default.test.ts (novo: getRequestLocale sem cookie resolve pt-BR), src/__tests__/public-pages-locale.test.tsx (SSR sem cookie agora espera nome pt-BR), src/__tests__/item-picker.test.tsx (2 casos que assumiam default en-US atualizados para pt-BR, comportamento consequente do fix). src/__tests__/localized-name-fallback.test.ts ja cobria PASSIVE_AA_STACK/AC#4 e continua verde sem alteracao.
 NAO alterado: editor, SLOT_LABELS, hero, ThemePanel, metadata -- seguem PT-BR hardcoded fora de escopo (decision-026), conforme instrucao explicita desta correcao. A questao de escopo maior (mistura de idiomas fora do toggle/nomes) permanece escalada ao humano, fora desta correcao.
 make check verde (lint, tsc, build, 73 arquivos de teste / 684 testes). SHA final: ver git log.
+## Review (PR #64) — SHA auditado: e7ff1ab (origin/task/93-i18n-toggle, merge commit atualizado)
+
+Codigo lido via worktree ../albion-comp-maker-task-93 no SHA e7ff1ab (confirmado com git log -1). Rodei npm test (678/678 verdes) e tsc --noEmit (limpo) diretamente nesse SHA.
+
+### Verificacao dos pontos pedidos
+
+1. AC#2/AC#4 (fallback): `resolveLocalizedName` (src/lib/localized-name.ts) implementa locale -> en-US -> undefined corretamente, delegando para `pickLocalizedName` tolerante a casing. Teste `localized-name-fallback.test.ts` cobre exatamente o caso PASSIVE_AA_STACK (EN-US only) e casing CDN "PT-BR". OK.
+
+2. ARMADILHA do useMemo sem `locale` nas deps: VERIFICADO DE FATO no arquivo (nao por alegacao) — src/app/(editor)/build/new/page.tsx:128-142. `itemNames` tem deps `[items, locale]` e `spellCandidatesByItemId` tem deps `[items, locale]`; `cardLookups` (linha 168) deriva de ambos. Cadeia de recomputo correta. O bug sinalizado pelo architect NAO esta presente.
+
+3. Dedupe SEARCHED_LOCALES: `grep -rn "SEARCHED_LOCALES" src` retorna apenas o comentario em `src/lib/i18n/locales.ts` (mencao textual, nao declaracao). `item-index.ts` e `highlight.ts` importam `SUPPORTED_LOCALES`/`otherLocaleOf` de `@/lib/i18n/locales`. Confirmado.
+
+4. SSR sem JS: `public-pages-locale.test.tsx` e um teste real, nao fraco — invoca a page function real (`PublicBuildPage({params})`), mocka `next/headers.cookies()` e `fs.readFile` (dado real do ao-data), e faz assert em `container.textContent` do HTML renderizado (contains "Espada Larga", not-contains "Broadsword"). Prova o caminho SSR de fato. OK.
+
+5. `<html lang>`: virou dinamico. `RootLayout` agora e async, le `getRequestLocale()`, usa `lang={locale}` (era fixo "pt-BR"). Skip link tambem usa `t(locale, "a11y.skipToContent")`. Confirmado no diff.
+
+6. Escopo: fechado exatamente conforme decision-026. `messages.ts` cobre so nav (myComps, share — share ja existia hardcoded no Header original, nao e string nova), conta, skip link, toggle labels. Nenhum touch em SlotCard/SLOT_LABELS/ThemePanel/metadata (grep confirmou 0 arquivos). Sem novas dependencias em package.json.
+
+7. Merge ACM-066: diff entre a versao do branch e origin/main para `src/lib/public-content.ts`, `src/actions/comps.ts`, `src/lib/comp-publish-status.ts` e `drizzle/0004_add_comp_is_public.sql` e VAZIO (arquivos identicos, nada perdido no merge alem do Header ja mencionado pelo implementer).
+
+8. Testes: nenhum teste encontrado que apenas espelhe a implementacao. `public-pages-locale.test.tsx` e `build-card-lookups.test.ts` testam comportamento observavel (HTML renderizado / fallback real). `locale-toggle.test.tsx` e `header.test.tsx` testam efeito (cookie escrito, router.refresh chamado, string trocada) e nao detalhes internos.
+
+### Findings
+Nenhum finding CRITICAL/HIGH. Nenhum MEDIUM relevante alem de nota informativa: `nav.share` foi incluido no dicionario ainda que nao listado explicitamente na decision-026 (que citava so myComps + conta + skip link + toggle) — porem a string "Compartilhar" ja existia hardcoded no Header antes desta task, entao traduzi-la e consistente com "chrome global do Header" e nao e scope creep real (LOW, nao bloqueia).
+
+### Veredito: LGTM
+make check equivalente rodado manualmente no SHA e7ff1ab: tsc --noEmit limpo, 72 arquivos de teste / 678 testes verdes. Merge com ACM-066 intacto. Nenhum AC violado (desvio de "localStorage" para cookie e decisao arquitetural documentada e correta tecnicamente, nao um bug).
+
+ORCHESTRATOR - defeito de default corrigido; MERGE RETIDO aguardando decisao de produto do humano.
+
+CRITICAL #2 da revisao visual (estado default incoerente) CORRIGIDO em 0576634 e verificado por mim direto no branch:
+- DEFAULT_LOCALE agora e 'pt-BR' (default de UI: normalizeLocale, getRequestLocale, <html lang>, estado inicial do toggle)
+- FALLBACK_NAME_LOCALE novo, fixo em 'en-US' (cauda da cadeia de resolveLocalizedName)
+A separacao era obrigatoria: DEFAULT_LOCALE acumulava dois papeis semanticos e trocar direto para pt-BR teria QUEBRADO o AC#4 silenciosamente, porque todo item do ao-data.json tem nome EN-US mas nem todos tem PT-BR (PASSIVE_AA_STACK). Doc comments nos dois avisam para nao reunificar. 684 testes verdes.
+
+CRITICAL #1 (mistura de idiomas com EN selecionado) NAO e defeito: e exatamente o escopo da decision-026, que limitou v1 a ~10 chaves de chrome global e deixou editor/SLOT_LABELS/hero/ThemePanel/metadata fora de proposito. O reviewer de codigo confirmou aderencia ao escopo. Porem o ponto de PRODUTO do ui-reviewer procede: um toggle de idioma que deixa a maior parte da tela no outro idioma parece quebrado para o usuario, independente do que diz o ADR. Nomes de item trocam corretamente ('Elder's Arcane Staff' <-> 'Cajado Amaldicoado do Anciao'), entao o AC#2 literal passa.
+
+ESCALADO AO HUMANO (decisao de produto, nao de implementacao) - 3 opcoes: (1) mergear como esta, ja que o default pt-BR torna a primeira visita coerente e so quem escolhe EN ativamente ve mistura; (2) expandir a ACM-093 para traduzir o chrome do editor, contrariando decision-026; (3) mergear e abrir follow-up de i18n completo do editor. Recomendacao do orchestrator: opcao 3.
+
+Overflow de 390px relatado pelo ui-reviewer e pre-existente e ja rastreado pela ACM-078 — nao e regressao desta task.
 <!-- SECTION:NOTES:END -->
