@@ -98,6 +98,8 @@ export function ThemePanel({
 }: ThemePanelProps): React.JSX.Element {
   const [upload, setUpload] = useState<UploadState>({ kind: "idle" });
   const [accentDraft, setAccentDraft] = useState(accent);
+  /** doc-007 §11: announced via the `aria-live="polite"` region below whenever the preset or background changes. */
+  const [announcement, setAnnouncement] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const titleId = useId();
 
@@ -111,6 +113,7 @@ export function ThemePanel({
   const handlePresetClick = useCallback(
     (preset: NamedThemePreset) => {
       onChange({ ...theme, preset });
+      setAnnouncement(`Preset alterado para ${PRESET_LABELS[preset]}.`);
     },
     [theme, onChange]
   );
@@ -138,6 +141,7 @@ export function ThemePanel({
         const imageId = await uploadBackground(file);
         onChange(markCustomIfNamed({ ...theme, background: { imageId, blur: 0, darken: 0.4, scale: 1 } }));
         setUpload({ kind: "idle" });
+        setAnnouncement("Imagem de fundo aplicada.");
       } catch (error) {
         setUpload({ kind: "error", message: error instanceof Error ? error.message : "Não deu para enviar a imagem." });
       }
@@ -147,6 +151,7 @@ export function ThemePanel({
 
   const handleRemoveBackground = useCallback(() => {
     onChange(markCustomIfNamed({ ...theme, background: null }));
+    setAnnouncement("Imagem de fundo removida.");
   }, [theme, onChange]);
 
   const handleAccentCommit = useCallback(
@@ -168,10 +173,17 @@ export function ThemePanel({
   const contentSummary = `${theme.showItemNames ? "nomes visíveis" : "nomes ocultos"} · ${ASPECT_LABELS[theme.aspectRatio]}`;
 
   return (
-    <aside aria-labelledby={titleId} className="flex w-80 shrink-0 flex-col gap-6 rounded-lg border border-[var(--color-border)] p-4">
+    <aside
+      aria-labelledby={titleId}
+      className="flex w-full flex-col gap-6 rounded-lg border border-[var(--color-border)] p-4 md:w-80 md:shrink-0"
+    >
       <h2 id={titleId} className="text-sm font-semibold text-foreground">
         Aparência
       </h2>
+
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
+      </div>
 
       <section aria-label="Preset de tema">
         <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-foreground/70">Preset</h3>

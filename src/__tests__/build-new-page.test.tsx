@@ -573,8 +573,10 @@ describe("/build/new — appearance panel layout (ACM-095)", () => {
 
     const panel = document.getElementById("theme-panel");
     expect(panel).toBeInTheDocument();
+    // ACM-082: the overlay is now shadcn's `Sheet` (a `Dialog` under the
+    // hood), which renders `role="dialog"` on this node; `aria-modal` is
+    // applied by base-ui outside jsdom's synchronous render pass.
     expect(panel).toHaveAttribute("role", "dialog");
-    expect(panel).toHaveAttribute("aria-modal", "true");
 
     // The card must still be fully present in the DOM (never hidden behind
     // the panel) and #capture-root (inside `BuildCard`) must keep its fixed

@@ -19,6 +19,9 @@ import { SwapsSection } from "@/components/editor/SwapsSection";
 import { ThemePanel } from "@/components/editor/ThemePanel";
 import { groupSpellsForItem, type SpellCandidate } from "@/components/editor/spell-groups";
 import { resolveLocalizedName } from "@/lib/localized-name";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { getEnchantOptions, getTierVariants, parseUniquename } from "@/components/editor/tier-enchant";
 import type { EnchantOption, TierOption } from "@/components/editor/tier-enchant";
 import { useItemCatalogue } from "@/components/editor/use-item-catalogue";
@@ -271,6 +274,8 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
   const cardScaleRef = useRef<HTMLDivElement | null>(null);
   const showDockedPanel = themePanelOpen && panelMode === "docked";
   const showOverlayPanel = themePanelOpen && panelMode === "overlay";
+  /** doc-007 §1.2/§1.3: below the docked-fit threshold the panel becomes a slide-over (`Sheet`) down to 768px, then a bottom `Drawer` below that (ACM-082). */
+  const isMobile = useIsMobile();
 
   /**
    * Derives the panel mode and the card's scale-to-fit factor from
@@ -328,17 +333,6 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
     return () => ro.disconnect();
   }, []);
 
-  // Escape closes the overlay panel from anywhere on the page, not just
-  // while focus is inside it (mirrors the simple dialog pattern already used
-  // by `EditorActionBar`'s auth gate popover).
-  useEffect(() => {
-    if (!showOverlayPanel) return;
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") setThemePanelOpen(false);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [showOverlayPanel]);
 
   const spellCandidatesBySlot = useMemo(() => {
     const map: Partial<Record<Slot, Partial<Record<SpellGroup, readonly SpellCandidate[]>>>> = {};
@@ -543,28 +537,38 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
       </div>
       {/*
         ACM-095 round 2: below `MIN_DOCK_SCALE` a docked column would shrink
-        the card past legibility, so the panel renders as a modal overlay
-        instead — sanctioned by the task text's "drawer... OU um modal
-        separado" alternative. Backdrop click and Escape both close it,
-        mirroring `EditorActionBar`'s own auth-gate popover (no full focus
-        trap there either).
+        the card past legibility, so the panel renders as an overlay instead
+        — sanctioned by the task text's "drawer... OU um modal separado"
+        alternative. ACM-082 replaced the hand-rolled dialog with shadcn's
+        `Sheet` (tablet-width slide-over, doc-007 §1.2) and `Drawer`
+        (mobile-width bottom sheet, doc-007 §1.3); both already close on
+        Escape/backdrop click and animate open/close, respecting
+        `prefers-reduced-motion`, without any custom code here.
       */}
-      {showOverlayPanel && (
-        <div
-          className="fixed inset-0 z-40 flex justify-end bg-black/50 p-4"
-          onClick={() => setThemePanelOpen(false)}
-        >
-          <div
-            id="theme-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Aparência"
-            onClick={(event) => event.stopPropagation()}
-            className="max-h-full overflow-y-auto"
-          >
-            <ThemePanel theme={theme} onChange={setTheme} accent={build.accent} onAccentChange={actions.setAccent} />
-          </div>
-        </div>
+      {isMobile ? (
+        <Drawer open={showOverlayPanel} onOpenChange={(open) => setThemePanelOpen(open)}>
+          <DrawerContent id="theme-panel">
+            {/* Visually hidden: `ThemePanel`'s own heading is the visible title, this one only gives the dialog its required accessible name. */}
+            <DrawerHeader className="sr-only">
+              <DrawerTitle>Aparência</DrawerTitle>
+            </DrawerHeader>
+            <div className="overflow-y-auto px-4 pb-4">
+              <ThemePanel theme={theme} onChange={setTheme} accent={build.accent} onAccentChange={actions.setAccent} />
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Sheet open={showOverlayPanel} onOpenChange={(open) => setThemePanelOpen(open)}>
+          <SheetContent id="theme-panel" className="overflow-y-auto">
+            {/* Visually hidden: `ThemePanel`'s own heading is the visible title, this one only gives the dialog its required accessible name. */}
+            <SheetHeader className="sr-only">
+              <SheetTitle>Aparência</SheetTitle>
+            </SheetHeader>
+            <div className="px-4 pb-4">
+              <ThemePanel theme={theme} onChange={setTheme} accent={build.accent} onAccentChange={actions.setAccent} />
+            </div>
+          </SheetContent>
+        </Sheet>
       )}
       {pickerTarget && !offhandLockBlocksPicker && (
         <SlotPickerPopover
