@@ -158,6 +158,49 @@ describe("EditorActionBar (ACM-037 AC#2, AC#5, AC#6)", () => {
     expect(screen.getByTestId("slot-count").className).toMatch(/hidden/);
   });
 
+  describe("save error messages (ACM-056)", () => {
+    it("surfaces the captured message for a known, allowlisted failure instead of the generic copy", async () => {
+      mockSession(true);
+      const onSave = vi.fn().mockRejectedValue(new Error("Too many requests. Try again in a minute."));
+      render(
+        <EditorActionBar
+          buildName="Bruiser de Frontline"
+          filledCount={1}
+          totalSlots={9}
+          hasReadyItem={true}
+          captureNodeRef={createRef()}
+          onSave={onSave}
+        />
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+      expect(await screen.findByText("Muitas tentativas. Aguarde um instante.")).toBeInTheDocument();
+      expect(screen.queryByText("Não deu para salvar.")).not.toBeInTheDocument();
+    });
+
+    it("falls back to the generic copy for an unrecognized message, never rendering the raw text (allowlist, not denylist)", async () => {
+      mockSession(true);
+      const rawInternalMessage = 'duplicate key value violates unique constraint "builds_slug_unique" on column "slug"';
+      const onSave = vi.fn().mockRejectedValue(new Error(rawInternalMessage));
+      render(
+        <EditorActionBar
+          buildName="Bruiser de Frontline"
+          filledCount={1}
+          totalSlots={9}
+          hasReadyItem={true}
+          captureNodeRef={createRef()}
+          onSave={onSave}
+        />
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+      expect(await screen.findByText("Não deu para salvar.")).toBeInTheDocument();
+      expect(screen.queryByText(rawInternalMessage)).not.toBeInTheDocument();
+    });
+  });
+
   describe("structural invariant: never a positioned ancestor of #capture-root", () => {
     it("is rendered as a sibling of the preview wrapper, not a wrapper around it", () => {
       const { container } = renderBar();

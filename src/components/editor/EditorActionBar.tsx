@@ -46,6 +46,46 @@ function resolveCaptureNode(container: HTMLElement | null): HTMLElement | null {
   return container.querySelector<HTMLElement>("#capture-root");
 }
 
+/**
+ * ACM-056: `saveBuild`/`updateBuild` (`src/actions/builds.ts`) throw plain
+ * `Error`s (or subclasses, but Server Action error serialization strips the
+ * subclass and leaves only `.message`) whose text is written for developers,
+ * not end users — and some paths (a `parseBuildContent`/Zod failure, a raw DB
+ * error) could in principle carry schema/column detail that must never reach
+ * the UI. Rather than trying to sanitize an arbitrary string (a denylist,
+ * which is exactly the kind of thing that misses the one case that matters),
+ * this is an allowlist: only messages we recognize as originating from a
+ * known, safe-to-explain failure get translated to PT-BR copy. Anything
+ * else — including a message we don't recognize at all — falls back to the
+ * generic copy below, same as before this fix.
+ */
+const KNOWN_SAVE_ERROR_MESSAGES: ReadonlyArray<{ test: RegExp; message: string }> = [
+  { test: /^Unauthorized$/, message: "Sua sessão expirou. Entre novamente." },
+  { test: /^Too many requests/i, message: "Muitas tentativas. Aguarde um instante." },
+  { test: /^Build not found$/, message: "Não encontramos essa build. Ela pode ter sido removida." },
+  {
+    test: /^The referenced background image does not belong to you$/,
+    message: "A imagem de fundo selecionada não é válida. Escolha outra e tente novamente.",
+  },
+  {
+    test: /^Build content exceeds the \d+-byte limit$/,
+    message: "O conteúdo da build é grande demais para salvar.",
+  },
+  { test: /^theme_json exceeds the \d+-byte limit$/, message: "O tema é grande demais para salvar." },
+  {
+    test: /^Source build content is invalid or from an unsupported legacy format$/,
+    message: "Não foi possível salvar: o conteúdo de origem é inválido.",
+  },
+];
+
+const GENERIC_SAVE_ERROR_MESSAGE = "Não deu para salvar.";
+
+function resolveSaveErrorMessage(rawMessage: string | undefined): string {
+  if (rawMessage === undefined) return GENERIC_SAVE_ERROR_MESSAGE;
+  const known = KNOWN_SAVE_ERROR_MESSAGES.find(({ test }) => test.test(rawMessage));
+  return known ? known.message : GENERIC_SAVE_ERROR_MESSAGE;
+}
+
 type SaveStatus =
   | { kind: "idle"; dirty: boolean }
   | { kind: "saving" }
@@ -125,7 +165,7 @@ export function EditorActionBar({
     } catch (error) {
       setSaveStatus({
         kind: "error",
-        message: error instanceof Error ? error.message : "Não deu para salvar.",
+        message: resolveSaveErrorMessage(error instanceof Error ? error.message : undefined),
       });
     }
   }, [canSave, onSave, saveStatus.kind, scheduleSavedReset]);
@@ -158,7 +198,7 @@ export function EditorActionBar({
   let statusMessage: string;
   let statusIsError = false;
   if (saveStatus.kind === "error") {
-    statusMessage = "Não deu para salvar.";
+    statusMessage = saveStatus.message;
     statusIsError = true;
   } else if (exportStatus.kind === "error") {
     statusMessage = exportStatus.message;
