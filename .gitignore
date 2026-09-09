@@ -45,8 +45,10 @@ next-env.d.ts
 # AO data cache (raw CDN dumps, up to ~100 MB)
 .cache/
 
-# processed data artifact (generated — committed only after full pipeline)
-src/data/ao-data.json
+# src/data/ao-data.json is INTENTIONALLY TRACKED, not ignored (see decision-023):
+# no CI/deploy step regenerates and ships it, and runtime reads it via fs in
+# dynamic server components, so the committed artifact is the only way the
+# app gets real data in production.
 
 # local SQLite database file (DATABASE_PATH default)
 /data/

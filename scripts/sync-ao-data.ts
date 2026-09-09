@@ -44,8 +44,27 @@ const FORCE      = process.argv.includes("--force");
 // exited 0. See decision-004.
 const MIN_ITEMS = 1500;
 
-// Only equippable categories are emitted as comp items.
-const EQUIPPABLE_CATEGORIES = new Set(["weapon", "equipmentitem", "mount", "transformationweapon"]);
+// Categories emitted as comp items: equippables, plus consumableitem (food/
+// potion) filtered further by isEmittedConsumable — see decision-022.
+const EMITTED_CATEGORIES = new Set([
+  "weapon",
+  "equipmentitem",
+  "mount",
+  "transformationweapon",
+  "consumableitem",
+]);
+
+// Only food and potion consumables are comp-relevant; raw fish
+// (shopcategory=crafting) and vanity fireworks (shopsubcategory1=other) are
+// excluded. See decision-022.
+const CONSUMABLE_SUBCATEGORIES = new Set(["food", "potions"]);
+
+export function isEmittedConsumable(item: {
+  "@shopcategory"?: string;
+  "@shopsubcategory1"?: string;
+}): boolean {
+  return item["@shopcategory"] === "consumables" && CONSUMABLE_SUBCATEGORIES.has(item["@shopsubcategory1"] ?? "");
+}
 
 // ─── maxEnchant ───────────────────────────────────────────────────────────────
 
@@ -318,7 +337,11 @@ async function emit(): Promise<void> {
 
   for (const [id, item] of itemIndex) {
     const category = categoryOf.get(id);
-    if (!category || !EQUIPPABLE_CATEGORIES.has(category)) { skipped++; continue; }
+    if (!category || !EMITTED_CATEGORIES.has(category)) { skipped++; continue; }
+    if (category === "consumableitem" && !isEmittedConsumable(item as { "@shopcategory"?: string; "@shopsubcategory1"?: string })) {
+      skipped++;
+      continue;
+    }
 
     const slot = item["@slottype"];
     if (!slot) { skipped++; continue; }
@@ -353,6 +376,15 @@ async function emit(): Promise<void> {
     throw new Error(
       `[fatal] only ${items.length} items emitted (minimum ${MIN_ITEMS}) — pipeline is likely broken, see decision-004`,
     );
+  }
+
+  for (const requiredSlot of ["food", "potion"] as const) {
+    const count = items.filter((it) => (it as { slot: string }).slot === requiredSlot).length;
+    if (count === 0) {
+      throw new Error(
+        `[fatal] no items emitted for slot "${requiredSlot}" — consumable classification is broken, see decision-022`,
+      );
+    }
   }
 
   const hasPassiveSpell = items.some((it) =>
