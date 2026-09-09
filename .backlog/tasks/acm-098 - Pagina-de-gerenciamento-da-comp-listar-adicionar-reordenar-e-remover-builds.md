@@ -4,7 +4,7 @@ title: 'Pagina de gerenciamento da comp: listar, adicionar, reordenar e remover 
 status: In Review
 assignee: []
 created_date: '2026-09-09 02:42'
-updated_date: '2026-09-09 03:16'
+updated_date: '2026-09-09 03:17'
 labels: []
 milestone: m-6
 dependencies: []
@@ -84,4 +84,44 @@ VEREDITO: SEGURO. Nenhum finding CRITICAL/HIGH. Merge nao bloqueado por este aud
 8. Validacao de input - SEGURO/LOW. ids (compId/buildId/compBuildId) sao strings usadas em queries drizzle parametrizadas (eq()) - sem risco de injecao SQL. Nao ha' validacao de formato (ex.: uuid regex) antes da query, mas isso e' inofensivo pois drizzle parametriza e a query so' retorna linha se o id combinar E o ownership bater; um id malformado apenas resulta em "nao encontrado". LOW: poderia adicionar z.string().uuid() na borda por defesa em profundidade/DX, mas nao e' uma vulnerabilidade de seguranca.
 
 Nenhum finding bloqueante. Nenhuma exploracao entre usuarios encontrada nos vetores auditados.
+
+## Review (SHA 43471e6, branch task/98-comp-management)
+
+Veredito: BLOQUEADO: 1 finding HIGH, 2 findings MEDIUM, 1 LOW/nota.
+
+### AC por AC
+- AC#1 (listar em ordem de position): OK. listCompBuildsDetailed faz orderBy(compBuilds.position) e a page.tsx mapeia 1:1 pra CompBuildEntry.
+- AC#2 (adicionar cria via addBuildToComp e aparece na lista): OK, testado (comp-builds-manager.test.tsx).
+- AC#3 (remover chama removeBuildFromComp sem reload): OK, testado.
+- AC#4 (reordenar persiste e sobrevive a refresh): reorderCompBuilds é chamado com a ordem correta; persistência em si é responsabilidade de uma action pré-existente (fora do diff), não retestada aqui — aceitável.
+- AC#5 (editar label/count persiste): OK no caminho feliz, testado. Sem teste do caminho de erro/rollback (ver finding MEDIUM abaixo).
+- AC#6 (estado vazio): OK, testado, mensagem confere com o texto pedido na task.
+- AC#7 (not-found sem revelar existência): OK. getCompPublishState/getComp/listCompBuildsDetailed/listMyBuilds compartilham loadOwnedComp -> CompNotFoundError -> notFound() na page; owner errado e id inexistente são indistinguíveis. Testado em comps-actions.test.ts (IDOR).
+
+### Finding HIGH — rollback otimista pode descartar uma edição bem-sucedida (race real)
+src/components/comp/CompBuildRow.tsx:112-122 — os botões "Salvar"/"Cancelar" do painel de edição NÃO recebem `disabled={disabled}` (diferente de Mover/Editar/Remover, que são gateados por `isPending`).
+Cenário de falha concreto:
+1. Lista [A, B]. Usuário abre "Editar" em B e digita um novo label (estado local, ainda não commitado ao pai).
+2. Usuário clica "↓" em A → reorderCompBuilds dispara, `isPending=true`, `previous` capturado em CompBuildsManager.tsx:100 = [A,B] (snapshot pré-reorder).
+3. Enquanto o reorder está em voo, o painel de edição de B continua aberto (Salvar/Cancelar não são desabilitados por `isPending`) — usuário clica "Salvar". handleSaveEntry (CompBuildsManager.tsx:117) dispara updateCompBuild concorrentemente com o reorder, capturando seu próprio `previous` (já com o reorder aplicado).
+4. Se reorderCompBuilds falhar (rede instável) e updateCompBuild tiver sucesso: o catch do reorder (linha ~108) faz `setEntries(previous)` com o snapshot de ANTES do label ter sido salvo — isso sobrescreve cegamente o estado atual e apaga visualmente a edição de label que já foi persistida no servidor com sucesso. UI e servidor ficam inconsistentes até o próximo full reload.
+Causa raiz: `previous` é um valor capturado por closure (não um updater funcional) e o rollback faz `setEntries(previous)` incondicionalmente, sem levar em conta mutações concorrentes que tenham ocorrido depois. Isso é agravado por Salvar/Cancelar não estarem sob o mesmo gate de `isPending` que todos os outros botões mutantes.
+Ação corretiva: gatear Salvar/Cancelar por `disabled` (serializa via UI, como já é feito para add/remove/move), E/OU trocar os rollbacks de `setEntries(previous)` por um updater funcional que reverta apenas a mutação que falhou (ex.: reconciliar por compBuildId em vez de substituir o array inteiro).
+
+### Finding MEDIUM — testes de rollback incompletos
+comp-builds-manager.test.tsx cobre rollback de erro para add (AC#2) e remove (AC#3), mas não para reorder (AC#4) nem para save de label/count (AC#5). Dado que o finding HIGH acima é justamente uma interação entre save e reorder, a ausência de teste de rollback nesses dois caminhos é a lacuna que deixou o bug passar.
+
+### Finding MEDIUM — dados otimistas falsos em handleAdd
+CompBuildsManager.tsx (handleAdd) monta a entrada otimista com `slug: ""` e `isPublic: true` hardcoded, em vez dos valores reais da build selecionada (disponíveis em `myBuilds`/na resposta do dialog). Hoje não é renderizado, mas é estado deliberadamente incorreto sobrevivendo até o próximo refresh — qualquer uso futuro de `entry.build.slug`/`isPublic` logo após um add vai ler lixo.
+
+### Finding LOW — AddBuildDialog sem focus trap e sem restauração de foco
+AddBuildDialog.tsx: role="dialog" + aria-modal="true" + foco inicial no botão fechar + Escape fecha — mas não há focus trap (Tab pode sair do modal para o conteúdo por trás do overlay) nem restauração de foco ao fechar (fecha para <body>, perde a posição do usuário de teclado/leitor de tela). Não bloqueante pelos ACs (nenhum AC pede a11y completa do dialog), mas registrado como dívida.
+
+### Não-findings / desvios aceitos
+- listCompBuildsDetailed confirmado selecionando só id/name/role/slug/isPublic de builds, nunca content/themeJson (src/actions/comps.ts).
+- Desvio de não usar BuildCardCompressed: aceito. Nenhum AC exige o card completo; justificativa de custo (carregar content por linha) é razoável e documentada.
+- Escopo: diff toca só os arquivos esperados (comps.ts, comps/[id]/page.tsx, CompBuildsManager/CompBuildRow/AddBuildDialog, 2 arquivos de teste). Não tocou page.tsx raiz, build/new/page.tsx, ThemePanel.tsx nem package.json.
+- `npx tsc --noEmit`: sem erros. `npm test`: 703/703 passando (mas ver lacuna de cobertura acima).
+
+Reprovado por 1 HIGH (race de rollback otimista com perda silenciosa de edição confirmada por servidor). Devolver ao implementer: gatear Salvar/Cancelar por `disabled` e/ou tornar o rollback não-destrutivo para mutações concorrentes; adicionar testes de rollback para reorder e save.
 <!-- SECTION:NOTES:END -->
