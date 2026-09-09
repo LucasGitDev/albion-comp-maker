@@ -259,6 +259,43 @@ Verificacao manual executada (pnpm dev, porta 3001 pois 3000 estava ocupada por 
 Nao tocado: editor body, SLOT_LABELS, ThemePanel, metadata (fora de escopo, decision-026).
 Conflito ACM-066 (Header.tsx): alteracao cirurgica, sem tocar em NAV_LINKS/rotas alem de renomear para navLinks e tornar dinamico com t().
 
+Merge de origin/main resolvido em Header.tsx: mantida a estrutura navLinks por-render (t(locale, ...)) do ACM-093 e preservado o link /comps do ACM-066 (que havia sido introduzido via NAV_LINKS órfão). Rótulo 'Compartilhar' virou chave i18n nav.share (EN: Share, PT-BR: Compartilhar) em src/lib/i18n/messages.ts. Removido bloco NAV_LINKS órfão e comentário desatualizado sobre navLinks ter só uma entrada. Estendido src/__tests__/header.test.tsx com 2 casos cobrindo o link /comps nos dois idiomas. make check verde (build, lint, tsc, 678 testes). SHA final: e7ff1ab719fae75e28b197b4d765449c7d627fa2, push feito em task/93-i18n-toggle (PR #64 atualiza sozinho).
+
+UI REVIEW (PR #64, commit e7ff1ab) — screenshots em /private/tmp/claude-501/-Users-lucas-dev-lucas-side-albion-builds/bcc6bdc6-303e-4ca4-acb6-9b71f4705c65/scratchpad/acm093/
+
+VEREDITO: BLOQUEADO. AC#2 falha parcialmente e a home page tem mistura de idiomas incoerente com o estado do toggle.
+
+Findings:
+
+[CRITICAL] Home (/) não traduz o conteúdo principal. Com cookie acm_locale=en-US, o toggle mostra "EN" ativo e a nav (My comps/Share/New build) muda para inglês, mas o hero ("Monte comps de Albion Online prontas para o Discord"), subtítulo, botão "Nova build", título "Minhas comps" e empty-state "Nenhuma comp ainda" permanecem em PT-BR. Isso é uma mistura de idiomas visível na mesma tela — pior que não traduzir nada. Screenshots: home-en-US.png vs home-pt-BR.png (toggle igual "EN" ativo nos dois casos de teste com "Sem cookie" e "en-US").
+
+[CRITICAL] Estado padrão (sem cookie) é inconsistente: servidor renderiza toggle "EN" como ativo (aria-pressed=true) mas todo o corpo da página /build/new está em PT-BR ("Detalhes da build", "Papel", "Armas", "Adicionar" etc.), exceto a nav. Ou seja, o default não corresponde a nenhum dos dois idiomas de forma coerente.
+
+[HIGH] Na tela /build/new (AC#2, editor), TODOS os labels e textos de UI (Detalhes da build, Nome do build, Papel, Armas, Armadura, Utilidade, Consumíveis, Swaps, Adicionar, Salvar, Exportar PNG, Aparência, "Dê um nome pra build", breadcrumb "Minhas comps") permanecem fixos em PT-BR independente do cookie/toggle. Só a nav (My comps/Share/Sign in) e — ponto positivo — os NOMES DOS ITENS no seletor de equipamento realmente trocam (confirmado: "Elder's Arcane Staff" com en-US vs "Cajado Amaldiçoado do Ancião" com pt-BR). Ou seja, o requisito literal do AC#2 (nomes de item traduzem) passa, mas o toggle dá a falsa impressão de que troca o idioma da tela inteira quando na really only nav + nomes de item mudam.
+
+[MEDIUM] /build/new em 390px tem overflow horizontal real: document.scrollWidth=1024px vs clientWidth=390px (confirmado via script). O card de equipamento e a linha "Nome do build / Papel" vazam para fora da viewport (ver mobile-buildnew.png — coluna "Botas" cortada, "Papel 0/50" cortado). O header/toggle em si (ACM, Sign in, EN/PT, kebab) NÃO estoura em 390px — isso está ok tanto na home quanto no editor. Não está claro se este overflow do corpo da página é regressão desta task ou pré-existente (fora do escopo do ACM-093/i18n) — reportando como achado pois afeta a usabilidade da tela onde o toggle deveria ser testado.
+
+[OK] Persistência: clicar no toggle PT define cookie acm_locale=pt-BR (Lax, path=/, non-httpOnly) corretamente; após reload, o botão PT continua com aria-pressed=true. AC#3 passa.
+
+[OK] Sem FOUC: o HTML já vem com lang="en-US" ou lang="pt-BR" correto no <html> desde a resposta do servidor (curl confirmado), consistente com a decisão de usar cookie lido no servidor.
+
+[OK] Toggle no header cabe em 390px tanto na home quanto no editor; no menu kebab mobile "My comps"/"Share" aparecem traduzidos corretamente sem quebrar layout (mobile-kebab-menu.png).
+
+[LOW] Acessibilidade do toggle: botões têm aria-pressed correto (true/false) e nome acessível via texto visível ("EN"/"PT"), mas nenhum aria-label mais descritivo (ex.: "Switch to English"/"Mudar para português") — aceitável mas não ideal para leitores de tela, já que "EN"/"PT" sozinhos podem não ser anunciados de forma clara por todos os AT. Contraste do texto inativo (~70% opacity de quase-branco sobre fundo quase-preto) aparenta ok, não medido com ferramenta de contraste formal.
+
+Screenshots relevantes:
+- 01-desktop-home-default.png, home-en-US.png, home-pt-BR.png
+- buildnew-en-US.png, buildnew-pt-BR.png (fullPage)
+- picker-open.png, picker-en-US.png, picker-pt-BR.png (nomes de item corretos)
+- mobile-home.png, mobile-buildnew.png, mobile-buildnew-full.png (overflow), mobile-kebab-menu.png
+
+FIX (default-locale defect, escopo restrito): DEFAULT_LOCALE (src/lib/i18n/locales.ts) estava en-US, causando toggle "EN" ativo sobre pagina inteiramente PT-BR sem cookie. Separadas as duas semanticas antes conflated na mesma constante:
+- DEFAULT_LOCALE: Locale = "pt-BR" -- default de UI (normalizeLocale/getRequestLocale), usado por <html lang> e estado inicial do toggle.
+- FALLBACK_NAME_LOCALE: Locale = "en-US" -- cauda fixa do fallback de resolveLocalizedName (src/lib/localized-name.ts), independente do default de UI, porque ao-data.json garante nome EN-US em todo item/spell mas nao PT-BR (ex. PASSIVE_AA_STACK). AC#4 permanece intacto.
+Consumidores reapontados: src/lib/localized-name.ts (resolveLocalizedName) -> FALLBACK_NAME_LOCALE. src/components/item-picker/ItemPicker.tsx mantido em DEFAULT_LOCALE (default de UI correto quando sem locale prop/context).
+Testes ajustados/adicionados: src/__tests__/locales.test.ts (asserts diretos DEFAULT_LOCALE=pt-BR, FALLBACK_NAME_LOCALE=en-US), src/__tests__/server-locale-default.test.ts (novo: getRequestLocale sem cookie resolve pt-BR), src/__tests__/public-pages-locale.test.tsx (SSR sem cookie agora espera nome pt-BR), src/__tests__/item-picker.test.tsx (2 casos que assumiam default en-US atualizados para pt-BR, comportamento consequente do fix). src/__tests__/localized-name-fallback.test.ts ja cobria PASSIVE_AA_STACK/AC#4 e continua verde sem alteracao.
+NAO alterado: editor, SLOT_LABELS, hero, ThemePanel, metadata -- seguem PT-BR hardcoded fora de escopo (decision-026), conforme instrucao explicita desta correcao. A questao de escopo maior (mistura de idiomas fora do toggle/nomes) permanece escalada ao humano, fora desta correcao.
+make check verde (lint, tsc, build, 73 arquivos de teste / 684 testes). SHA final: ver git log.
 ## Review (PR #64) — SHA auditado: e7ff1ab (origin/task/93-i18n-toggle, merge commit atualizado)
 
 Codigo lido via worktree ../albion-comp-maker-task-93 no SHA e7ff1ab (confirmado com git log -1). Rodei npm test (678/678 verdes) e tsc --noEmit (limpo) diretamente nesse SHA.

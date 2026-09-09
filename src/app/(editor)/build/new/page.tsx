@@ -17,21 +17,13 @@ import { SlotPickerPopover } from "@/components/editor/SlotPickerPopover";
 import { SwapsSection } from "@/components/editor/SwapsSection";
 import { ThemePanel } from "@/components/editor/ThemePanel";
 import { groupSpellsForItem, type SpellCandidate } from "@/components/editor/spell-groups";
-import { pickLocalizedName } from "@/lib/localized-name";
+import { resolveLocalizedName } from "@/lib/localized-name";
 import { getEnchantOptions, getTierVariants, parseUniquename } from "@/components/editor/tier-enchant";
 import type { EnchantOption, TierOption } from "@/components/editor/tier-enchant";
 import { useItemCatalogue } from "@/components/editor/use-item-catalogue";
 import type { SpellGroup } from "@/types/build";
 import { selectActions, selectBuild, useBuildStore } from "@/store/build-store";
-
-/**
- * UI locale used for display and spell resolution (ACM-012, matches
- * ItemPicker's own default). The `ao-data.json` artifact keys
- * `localizedNames` in the CDN's own casing (e.g. `"EN-US"`), so every
- * lookup against it must go through `pickLocalizedName` rather than a
- * plain `[LOCALE]` index (ACM-040 review round 2).
- */
-const LOCALE = "en-US";
+import { useLocale } from "@/components/i18n/LocaleProvider";
 
 type PickerTarget = { origin: "main"; slot: Slot } | { origin: "swap"; swapId: string; slot: Slot };
 
@@ -42,6 +34,7 @@ type PickerTarget = { origin: "main"; slot: Slot } | { origin: "swap"; swapId: s
 export default function NewBuildPage(): React.JSX.Element {
   const build = useBuildStore(selectBuild);
   const actions = useBuildStore(selectActions);
+  const locale = useLocale();
   const { items, loading, failed, failedReason, retry } = useItemCatalogue();
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   /**
@@ -135,18 +128,18 @@ export default function NewBuildPage(): React.JSX.Element {
   const itemNames = useMemo(() => {
     const map: Record<string, string> = {};
     for (const item of items) {
-      map[item.uniquename] = pickLocalizedName(item.localizedNames, LOCALE) ?? item.uniquename;
+      map[item.uniquename] = resolveLocalizedName(item.localizedNames, locale) ?? item.uniquename;
     }
     return map;
-  }, [items]);
+  }, [items, locale]);
 
   const spellCandidatesByItemId = useMemo(() => {
     const map: Record<string, Partial<Record<SpellGroup, readonly SpellCandidate[]>>> = {};
     for (const item of items) {
-      map[item.uniquename] = groupSpellsForItem(item, LOCALE);
+      map[item.uniquename] = groupSpellsForItem(item, locale);
     }
     return map;
-  }, [items]);
+  }, [items, locale]);
 
   /**
    * `SlotGrid` (and the `SlotCard`s it renders) index item name and spell

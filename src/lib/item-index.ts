@@ -1,5 +1,6 @@
 import type { AOItem, Slot } from "@/data/ao-data.d";
 import { pickLocalizedName } from "@/lib/localized-name";
+import { otherLocaleOf, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/locales";
 
 /**
  * Pure, DOM-free search index over the item catalogue. See doc-002
@@ -10,9 +11,6 @@ import { pickLocalizedName } from "@/lib/localized-name";
 const TIER_PATTERN = /^t([1-8])$/i;
 const TIER_ENCHANT_PATTERN = /^([1-8])\.([0-4])$/;
 const ENCHANT_PATTERN = /^[@.]([0-4])$/;
-
-/** Locales always searched together, regardless of active UI language. */
-const SEARCHED_LOCALES = ["en-US", "pt-BR"] as const;
 
 export type IndexedItem = {
   item: AOItem;
@@ -29,7 +27,7 @@ export type ItemIndex = {
 
 export type SearchOptions = {
   slot?: Slot;
-  locale: string;
+  locale: Locale;
   limit?: number;
 };
 
@@ -57,7 +55,7 @@ function extractEnchant(uniquename: string): number {
 
 function buildIndexedItem(item: AOItem): IndexedItem {
   const names: Record<string, string> = {};
-  for (const locale of SEARCHED_LOCALES) {
+  for (const locale of SUPPORTED_LOCALES) {
     const raw = pickLocalizedName(item.localizedNames, locale);
     if (raw) names[locale] = normalize(raw);
   }
@@ -137,10 +135,10 @@ function parseQuery(query: string): ParsedQuery {
 function scoreToken(
   token: string,
   entry: IndexedItem,
-  activeLocale: string
+  activeLocale: Locale
 ): number | null {
   const activeName = entry.names[activeLocale];
-  const otherLocale = SEARCHED_LOCALES.find((locale) => locale !== activeLocale);
+  const otherLocale = otherLocaleOf(activeLocale);
   const otherName = otherLocale ? entry.names[otherLocale] : undefined;
 
   if (activeName === token) return 0;

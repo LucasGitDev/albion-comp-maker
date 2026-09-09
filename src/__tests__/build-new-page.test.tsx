@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AOItem } from "@/data/ao-data.d";
 
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(() => ({ refresh: vi.fn() })),
+}));
+
 vi.mock("@/components/editor/use-item-catalogue", () => {
   const items: AOItem[] = [
     {
@@ -44,7 +48,16 @@ vi.mock("@/actions/builds", () => ({
 }));
 
 import NewBuildPage from "@/app/(editor)/build/new/page";
+import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { useBuildStore } from "@/store/build-store";
+
+function renderPage() {
+  return render(
+    <LocaleProvider initialLocale="en-US">
+      <NewBuildPage />
+    </LocaleProvider>
+  );
+}
 
 function mockSession(authenticated: boolean) {
   vi.stubGlobal(
@@ -67,19 +80,19 @@ afterEach(() => {
 
 describe("/build/new — ItemPicker wiring (ACM-034)", () => {
   it("does not show any picker UI before a slot is clicked", () => {
-    render(<NewBuildPage />);
+    renderPage();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("opens the picker when an empty slot is clicked", () => {
-    render(<NewBuildPage />);
+    renderPage();
     fireEvent.click(screen.getAllByText("Adicionar")[0]);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
 
   it("selecting an item writes it into the store and closes the picker", async () => {
-    render(<NewBuildPage />);
+    renderPage();
     // Scoped to `[data-testid="slot-grid"]` so this doesn't accidentally match
     // the read-only build-card preview tile, which shares the same
     // `data-slot`/`data-slot-state` attributes (ACM-092 always renders the
@@ -99,7 +112,7 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
   });
 
   it("Escape closes the picker without mutating the slot", async () => {
-    render(<NewBuildPage />);
+    renderPage();
     fireEvent.click(screen.getAllByText("Adicionar")[0]);
     const input = screen.getByRole("combobox");
     fireEvent.keyDown(input, { key: "Escape" });
@@ -108,7 +121,7 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
   });
 
   it("clicking the backdrop closes the picker without mutating the slot", async () => {
-    render(<NewBuildPage />);
+    renderPage();
     fireEvent.click(screen.getAllByText("Adicionar")[0]);
     fireEvent.click(screen.getByTestId("item-picker-backdrop"));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -122,7 +135,7 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
       8,
       0,
     );
-    render(<NewBuildPage />);
+    renderPage();
     expect(screen.getByText("Ocupada por arma de duas mãos")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -137,7 +150,7 @@ describe("/build/new — tier/enchant selectors are actually reachable (ACM-031 
       0
     );
 
-    render(<NewBuildPage />);
+    renderPage();
 
     const enchantSelect = await screen.findByRole("combobox", { name: "Encantamento de Cabeça" });
     fireEvent.change(enchantSelect, { target: { value: "3" } });
@@ -154,7 +167,7 @@ describe("/build/new — tier/enchant selectors are actually reachable (ACM-031 
       0
     );
 
-    render(<NewBuildPage />);
+    renderPage();
 
     // The mocked catalogue only carries T4_HEAD_PLATE_SET1, so the tier
     // selector has a single option, but its mere presence proves
@@ -166,7 +179,7 @@ describe("/build/new — tier/enchant selectors are actually reachable (ACM-031 
   });
 
   it("does not render either selector for a slot with no options (empty slot)", () => {
-    render(<NewBuildPage />);
+    renderPage();
     expect(screen.queryByRole("combobox", { name: /Encantamento de/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: /Tier de/ })).not.toBeInTheDocument();
   });
@@ -192,7 +205,7 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
     useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
 
-    render(<NewBuildPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
@@ -224,7 +237,7 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
     useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
 
-    render(<NewBuildPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => expect(mockSaveBuild).toHaveBeenCalledTimes(1));
@@ -238,7 +251,7 @@ describe("/build/new — Salvar/Exportar require ≥1 item with selectable spell
     mockSession(true);
     useBuildStore.getState().actions.setName("Bruiser de Frontline");
 
-    render(<NewBuildPage />);
+    renderPage();
 
     expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button", { name: "Exportar PNG" })).toBeDisabled();
@@ -258,7 +271,7 @@ describe("/build/new — Salvar/Exportar require ≥1 item with selectable spell
       0
     );
 
-    render(<NewBuildPage />);
+    renderPage();
 
     expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button", { name: "Exportar PNG" })).toBeDisabled();
@@ -276,7 +289,7 @@ describe("/build/new — Salvar/Exportar require ≥1 item with selectable spell
     useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
     useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
 
-    render(<NewBuildPage />);
+    renderPage();
 
     expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "false");
     expect(screen.getByRole("button", { name: "Exportar PNG" })).not.toBeDisabled();
@@ -294,7 +307,7 @@ describe("/build/new — Salvar/Exportar require ≥1 item with selectable spell
     // Only Q filled — W (the sword's other selectable group) is still null.
     useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
 
-    render(<NewBuildPage />);
+    renderPage();
 
     expect(screen.getByRole("button", { name: "Salvar" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button", { name: "Exportar PNG" })).toBeDisabled();
@@ -310,7 +323,7 @@ describe("/build/new — main slot grid shows ability slots and item names (ACM-
       0
     );
 
-    render(<NewBuildPage />);
+    renderPage();
 
     const mainhandCard = document.querySelector('[data-slot="mainhand"]')!;
     expect(mainhandCard.querySelector('[data-testid="spell-picker"]')).toBeInTheDocument();
@@ -328,7 +341,7 @@ describe("/build/new — main slot grid shows ability slots and item names (ACM-
     );
     useBuildStore.getState().actions.setItem("bag", { uniquename: "T4_BAG", twohanded: false, maxEnchant: 0 }, 4, 0);
 
-    render(<NewBuildPage />);
+    renderPage();
 
     // Scoped to `[data-testid="slot-grid"]` so this doesn't accidentally
     // match the read-only build-card preview tile, which shares the same
@@ -352,7 +365,7 @@ describe("/build/new — main slot grid shows ability slots and item names (ACM-
       0
     );
 
-    render(<NewBuildPage />);
+    renderPage();
 
     const mainhandCard = document.querySelector('[data-slot="mainhand"]')!;
     expect(mainhandCard).toHaveTextContent("Broadsword");
@@ -362,7 +375,7 @@ describe("/build/new — main slot grid shows ability slots and item names (ACM-
 
 describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
   it("renders the empty state and adding a swap via the real route reaches the store", () => {
-    render(<NewBuildPage />);
+    renderPage();
 
     expect(screen.getByText("Nenhum swap definido")).toBeInTheDocument();
 
@@ -374,7 +387,7 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
   });
 
   it("picking an item for a swap through the real ItemPicker writes it into the swap's slot", async () => {
-    render(<NewBuildPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
 
     // The mocked catalogue only carries a head-slot item, so point the swap
@@ -394,7 +407,7 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
   });
 
   it("editing the label of a swap on the real route writes it into the store", () => {
-    render(<NewBuildPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
 
     const [swap] = useBuildStore.getState().build.swaps;
@@ -405,7 +418,7 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
   });
 
   it("removing a swap on the real route removes it from the store", () => {
-    render(<NewBuildPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
     expect(useBuildStore.getState().build.swaps).toHaveLength(1);
 
@@ -416,7 +429,7 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
   });
 
   it("reordering swaps on the real route is stable with no duplicate/gapped positions, including the boundary cases", () => {
-    render(<NewBuildPage />);
+    renderPage();
     const addButton = screen.getByRole("button", { name: "+ Adicionar swap" });
     fireEvent.click(addButton);
     fireEvent.click(addButton);
@@ -460,7 +473,7 @@ describe("/build/new — Swaps section (ACM-012, RF-3)", () => {
     useBuildStore.getState().actions.setSpell("mainhand", "q", "SWORD_Q");
     useBuildStore.getState().actions.setSpell("mainhand", "w", "SWORD_W");
 
-    render(<NewBuildPage />);
+    renderPage();
 
     // Add a swap and never focus/blur its label input.
     fireEvent.click(screen.getByRole("button", { name: "+ Adicionar swap" }));
