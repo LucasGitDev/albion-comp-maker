@@ -255,12 +255,39 @@ type FormattedItem = {
   LocalizedNames?: Record<string, string> | null;
 };
 
-function buildItemNameIndex(raw: unknown): Map<string, Record<string, string>> {
+/**
+ * Minimum number of locales an item's `LocalizedNames` must cover to be
+ * considered released (see decision-024). The SBI localization pipeline is
+ * all-or-nothing: shipped items get all 15 locales at once, while
+ * unreleased/prototype content only ever has `EN-US`. The distribution over
+ * the full corpus (12237 items in `formatted/items.json`) is strictly
+ * bimodal — 0 locales: 846 items, 1 locale: 19 items, 15 locales: 11372
+ * items — with nothing in between, so there is no gray zone for this
+ * threshold to misfire on.
+ */
+export const MIN_LOCALES_FOR_RELEASED = 2;
+
+/**
+ * True when an item's `LocalizedNames` covers at least
+ * `MIN_LOCALES_FOR_RELEASED` locales — the signal decision-024 settled on to
+ * distinguish released content from unreleased/prototype items. Must be
+ * evaluated against the *full* `LocalizedNames` object, before narrowing to
+ * `TARGET_LOCALES` — evaluating after narrowing degenerates the rule into
+ * "missing PT-BR", which decision-024 explicitly rejected (option C).
+ */
+export function isReleasedItem(item: { LocalizedNames?: Record<string, string> | null }): boolean {
+  if (!item.LocalizedNames) return false;
+  return Object.keys(item.LocalizedNames).length >= MIN_LOCALES_FOR_RELEASED;
+}
+
+function buildItemNameIndex(raw: unknown): { index: Map<string, Record<string, string>>; unreleased: number } {
   const index = new Map<string, Record<string, string>>();
   const arr = Array.isArray(raw) ? (raw as FormattedItem[]) : [];
+  let unreleased = 0;
   for (const it of arr) {
     const id = it.UniqueName;
     if (!id || !it.LocalizedNames) continue;
+    if (!isReleasedItem(it)) { unreleased++; continue; }
     const names: Record<string, string> = {};
     for (const locale of TARGET_LOCALES) {
       const v = it.LocalizedNames[locale];
@@ -268,7 +295,7 @@ function buildItemNameIndex(raw: unknown): Map<string, Record<string, string>> {
     }
     if (Object.keys(names).length > 0) index.set(id, names);
   }
-  return index;
+  return { index, unreleased };
 }
 
 // ─── Step 4: Spell classification from spells.json ───────────────────────────
@@ -307,7 +334,10 @@ async function emit(): Promise<void> {
   const rawLocaliz    = JSON.parse(readFileSync(join(CACHE_DIR, "localization.json"), "utf8")) as unknown;
 
   console.log("[emit] indexing item names…");
-  const itemNameIndex = buildItemNameIndex(rawItemNames);
+  const { index: itemNameIndex, unreleased } = buildItemNameIndex(rawItemNames);
+  if (unreleased > 0) {
+    console.log(`[emit] ${unreleased} itens ignorados como nao-lancados (decision-024)`);
+  }
 
   console.log("[emit] indexing spell names…");
   const spellNameIndex = buildTmxNameIndex(rawLocaliz, "@SPELLS_");
