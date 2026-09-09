@@ -2,11 +2,10 @@ import type { IconCategory } from "@/components/icons/category-glyphs";
 import type { Slot } from "@/data/ao-data";
 
 /**
- * Display labels for the List layout's per-row slot label (doc-006 §3.1).
- * Distinct from `CardSlotTile`'s `SLOT_LABELS` (that component is out of
- * scope for this task, doc-006 §5) even though the strings match — keeping
- * a separate copy here means a future change to one layout's labels can't
- * accidentally break the other.
+ * Display labels for per-slot text across layouts (doc-006 §3.1). `CardSlotTile`
+ * used to keep its own copy (doc-006 §5 kept it out of that task's scope);
+ * ACM-092 unified both on this one so the Vertical/Grid layouts' new
+ * empty-slot placeholders can't drift from the List/Compressed labels.
  */
 export const SLOT_LABELS: Record<Slot, string> = {
   mainhand: "Mão principal",
