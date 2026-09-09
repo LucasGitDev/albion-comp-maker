@@ -4,7 +4,7 @@ title: 'Bug: painel Aparência sobrepõe o build card ao abrir'
 status: In Review
 assignee: []
 created_date: '2026-09-09 02:31'
-updated_date: '2026-09-09 03:13'
+updated_date: '2026-09-09 03:27'
 labels: []
 milestone: m-3
 dependencies: []
@@ -60,4 +60,29 @@ Findings:
 - HIGH: Nenhum passo de verificação manual documentado para uma mudança de layout visual, violando CLAUDE.md DoD #3. Ação corretiva: implementer deve adicionar 1-3 passos de verificação manual na task e efetivamente testar em 1024px e 1280px antes de resubmeter.
 - MEDIUM: citação de doc-007 §8 nas implementation notes está desencontrada (§8 é sobre o wrapper de proporção do painel de tema, não sobre a política geral de overflow do layout do editor). Corrigir a nota.
 - MEDIUM: testes ACM-095 em build-new-page.test.tsx espelham className/estrutura DOM em vez de comportamento observável; jsdom não pode validar overlap real. Registrar como dívida — se possível, complementar com teste de dimensão/getBoundingClientRect ou nota explícita de que a cobertura é estrutural, não visual.
+
+Round 2 (post double-block review) — root cause was `<main>`'s `max-w-6xl` (1152px) cap: it froze the preview column at a constant 744px in every viewport once the panel opened, and the round-1 `overflow-x-auto` fallback just moved the cut from vertical to horizontal (hidden behind an unlabelled scrollbar) instead of fixing the fit. Correction, per the review's own worst-case arithmetic (1024 - 64 padding - 320 panel - 24 gap = 616px, still short of the 960px card even with the cap removed):
+
+1. `<main>`'s cap is now conditional: `max-w-6xl` (1152px) closed, `max-w-[1600px]` open — the panel-open case gets real room on 1280/1440/1920 instead of being frozen at 744px.
+2. The card preview is wrapped in a scale-to-fit container (`transform: scale(previewScale)`, `transformOrigin: top left`, never > 1) sized from `window.innerWidth` (NOT the row's own `clientWidth` — see the in-code comment on the `useLayoutEffect`: an earlier attempt measured the row itself and hit a feedback bug confirmed with Playwright — before the first correction runs, the row renders at the card's full unscaled width, which is wider than the viewport, and flexbox's default `min-width: auto` lets the row overflow its own parent instead of shrinking, so the "available width" it reports is already the inflated, overflowing value and the scale never corrects down. `window.innerWidth` can't inflate that way).
+3. Below `MIN_DOCK_SCALE` (0.7) the panel stops docking as a column and renders as a modal overlay with backdrop (`role="dialog"`, `aria-modal`, Escape + backdrop-click to close) instead — sanctioned by the task's own "drawer... OU um modal separado" wording. This only triggers below ~1080px viewport width; 1024px lands in it (measured 0.64).
+
+Remeasured with Playwright (chromium, real layout, `/build/new`, panel open) — card fully inside the viewport, zero overlap with the panel, and no horizontal page overflow (`document.documentElement.scrollWidth === window.innerWidth`) at all four widths, panel open and closed:
+
+| Viewport | Mode | Card rect | Panel rect | Card fits? | Page overflow? |
+|---|---|---|---|---|---|
+| 1024px | overlay | left 32 / right 992 (960px, scale 1) | modal overlay, not in flow | YES | no (scrollWidth 1024) |
+| 1280px | docked | left 32 / right 904 (872px, scale 0.908) | left 928 / right 1248 | YES | no (scrollWidth 1280) |
+| 1440px | docked | left 68 / right 1028 (960px, scale 1) | left 1052 / right 1372 | YES | no (scrollWidth 1440) |
+| 1920px | docked | left 308 / right 1268 (960px, scale 1) | left 1292 / right 1612 | YES | no (scrollWidth 1920) |
+
+`#capture-root` itself keeps its hardcoded 960px logical width in every case (verified both live via Playwright and in `src/__tests__/build-new-page.test.tsx`) — the `transform: scale()` is only ever applied to an ancestor wrapper, never to `#capture-root`'s own node, so it never reaches the exported PNG (`html-to-image`/`export-png.ts` clone `#capture-root`'s own subtree, unaffected by an ancestor's computed transform).
+
+Corrected citation: the previous round's note cited "doc-007 §8" for the editor's overflow policy — that section is actually about the aspect-ratio wrapper *inside* the theme panel, unrelated to this layout. No doc citation needed for this fix; the approach and its trade-offs are recorded here instead.
+
+Manual verification executed (Playwright, chromium, dev server) at 1024/1280/1440/1920px, panel open and closed — see table above. Escape and backdrop-click both close the 1024px overlay; closing the panel at any width restores the single-column layout.
+
+Tests: replaced the round-1 DOM/className-mirroring assertions (`getComputedStyle().position`, `.closest(".overflow-x-auto")` — jsdom doesn't model layout, so they never proved the card was visible) with behavior-level ones: jsdom's default 1024px `window.innerWidth` now exercises the overlay path directly (no stubbing needed), a `window.innerWidth` override exercises the docked path at 1440px, and a dedicated test asserts `#capture-root` keeps its 960px logical width even after forcing a visible `scale(0.6)` on its ancestor wrapper — the guarantee that protects the PNG export.
+
+Out of scope (unchanged): no shared editor component extraction (ACM-099), no touches to `src/app/page.tsx` (ACM-096) or `src/app/comps/[id]/page.tsx` (ACM-098), no `package.json` changes, no string translation (ACM-101).
 <!-- SECTION:NOTES:END -->
