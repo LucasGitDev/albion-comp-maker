@@ -4,7 +4,7 @@ title: 'i18n: toggle de idioma EN/PT-BR para nomes de itens e UI'
 status: In Review
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-09 02:48'
+updated_date: '2026-09-09 02:55'
 labels: []
 milestone: m-7
 dependencies: []
@@ -286,4 +286,17 @@ Nenhum finding CRITICAL/HIGH. Nenhum MEDIUM relevante alem de nota informativa: 
 
 ### Veredito: LGTM
 make check equivalente rodado manualmente no SHA e7ff1ab: tsc --noEmit limpo, 72 arquivos de teste / 678 testes verdes. Merge com ACM-066 intacto. Nenhum AC violado (desvio de "localStorage" para cookie e decisao arquitetural documentada e correta tecnicamente, nao um bug).
+
+ORCHESTRATOR - defeito de default corrigido; MERGE RETIDO aguardando decisao de produto do humano.
+
+CRITICAL #2 da revisao visual (estado default incoerente) CORRIGIDO em 0576634 e verificado por mim direto no branch:
+- DEFAULT_LOCALE agora e 'pt-BR' (default de UI: normalizeLocale, getRequestLocale, <html lang>, estado inicial do toggle)
+- FALLBACK_NAME_LOCALE novo, fixo em 'en-US' (cauda da cadeia de resolveLocalizedName)
+A separacao era obrigatoria: DEFAULT_LOCALE acumulava dois papeis semanticos e trocar direto para pt-BR teria QUEBRADO o AC#4 silenciosamente, porque todo item do ao-data.json tem nome EN-US mas nem todos tem PT-BR (PASSIVE_AA_STACK). Doc comments nos dois avisam para nao reunificar. 684 testes verdes.
+
+CRITICAL #1 (mistura de idiomas com EN selecionado) NAO e defeito: e exatamente o escopo da decision-026, que limitou v1 a ~10 chaves de chrome global e deixou editor/SLOT_LABELS/hero/ThemePanel/metadata fora de proposito. O reviewer de codigo confirmou aderencia ao escopo. Porem o ponto de PRODUTO do ui-reviewer procede: um toggle de idioma que deixa a maior parte da tela no outro idioma parece quebrado para o usuario, independente do que diz o ADR. Nomes de item trocam corretamente ('Elder's Arcane Staff' <-> 'Cajado Amaldicoado do Anciao'), entao o AC#2 literal passa.
+
+ESCALADO AO HUMANO (decisao de produto, nao de implementacao) - 3 opcoes: (1) mergear como esta, ja que o default pt-BR torna a primeira visita coerente e so quem escolhe EN ativamente ve mistura; (2) expandir a ACM-093 para traduzir o chrome do editor, contrariando decision-026; (3) mergear e abrir follow-up de i18n completo do editor. Recomendacao do orchestrator: opcao 3.
+
+Overflow de 390px relatado pelo ui-reviewer e pre-existente e ja rastreado pela ACM-078 — nao e regressao desta task.
 <!-- SECTION:NOTES:END -->
