@@ -1,11 +1,21 @@
+import { count as sqlCount, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth/config";
 import { getDb } from "@/db/client";
 import { backgroundImages } from "@/db/schema";
+import { gcOrphanedBackgroundImages } from "@/lib/gc-background-images";
 import { checkWriteRateLimit, RateLimitError } from "@/lib/rate-limit";
 import { UnsupportedImageError, processBackgroundUpload } from "@/lib/uploads";
 import { BG_MAX_UPLOAD_BYTES } from "@/lib/validation-constants";
+
+/**
+ * Per-user cap on `background_images` rows (ACM-081, decision-018
+ * follow-up). Generous enough for real theming workflows while bounding a
+ * misbehaving/malicious account's storage growth alongside the GC sweep
+ * below.
+ */
+const MAX_BACKGROUND_IMAGES_PER_USER = 20;
 
 /**
  * Uploads a theme background image (ACM-014 AC#1/AC#2, decision-018).
@@ -85,6 +95,21 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const db = getDb();
+
+  // On-demand sweep of this user's own orphaned rows/files ahead of the
+  // quota check below (ACM-081) — frees up quota before rejecting a fresh
+  // upload for a user who simply has stale, unreferenced backgrounds.
+  await gcOrphanedBackgroundImages(db, session.user.id);
+
+  const [{ count: existingCount }] = await db
+    .select({ count: sqlCount(backgroundImages.id) })
+    .from(backgroundImages)
+    .where(eq(backgroundImages.userId, session.user.id));
+
+  if (existingCount >= MAX_BACKGROUND_IMAGES_PER_USER) {
+    return NextResponse.json({ error: "Quota de uploads excedida" }, { status: 429 });
+  }
+
   const [row] = await db
     .insert(backgroundImages)
     .values({

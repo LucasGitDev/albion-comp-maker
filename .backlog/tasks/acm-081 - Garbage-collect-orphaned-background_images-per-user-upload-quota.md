@@ -1,10 +1,10 @@
 ---
 id: ACM-081
 title: Garbage-collect orphaned background_images + per-user upload quota
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-08 01:35'
-updated_date: '2026-09-09 03:07'
+updated_date: '2026-09-09 19:18'
 labels: []
 milestone: m-6
 dependencies: []
@@ -20,6 +20,6 @@ decision-018 flags two follow-ups from ACM-014: (1) background_images rows/files
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Periodic or on-demand GC removes background_images rows/files unreferenced by any build.theme_json, with a grace window for very recent uploads
-- [ ] #2 POST /api/background enforces a per-user quota (row count or total bytes) and returns a clear error when exceeded
+- [x] #1 Periodic or on-demand GC removes background_images rows/files unreferenced by any build.theme_json, with a grace window for very recent uploads
+- [x] #2 POST /api/background enforces a per-user quota (row count or total bytes) and returns a clear error when exceeded
 <!-- AC:END -->

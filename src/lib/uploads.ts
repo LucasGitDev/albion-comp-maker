@@ -166,3 +166,32 @@ export async function readBackgroundFile(fileName: string): Promise<Buffer> {
 
   return fs.promises.readFile(resolvedPath);
 }
+
+/**
+ * Removes a previously processed background file by its stored filename
+ * (ACM-081 GC). Same trusted-filename validation as `readBackgroundFile` —
+ * never trust a single check when the string ultimately reaches `fs`.
+ * Missing-file is not an error: the DB row is the source of truth, and a
+ * sweep must still be able to clean up its row even if the file is already
+ * gone.
+ */
+export async function deleteBackgroundFile(fileName: string): Promise<void> {
+  if (!STORED_FILE_NAME_PATTERN.test(fileName)) {
+    return;
+  }
+
+  const uploadsDir = resolveUploadsDir();
+  const resolvedPath = path.resolve(uploadsDir, fileName);
+  const uploadsDirWithSep = uploadsDir.endsWith(path.sep) ? uploadsDir : `${uploadsDir}${path.sep}`;
+  if (!resolvedPath.startsWith(uploadsDirWithSep)) {
+    return;
+  }
+
+  try {
+    await fs.promises.unlink(resolvedPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+  }
+}
