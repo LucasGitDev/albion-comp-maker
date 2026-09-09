@@ -1,10 +1,10 @@
 ---
 id: ACM-091
 title: 'Bug: seleção de food e potion não funciona no editor'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-08 22:43'
+updated_date: '2026-09-09 01:22'
 labels: []
 milestone: m-2
 dependencies: []

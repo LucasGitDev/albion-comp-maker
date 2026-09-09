@@ -4,7 +4,7 @@ title: 'Editor: remover seletor de passiva para capa, bolsa, montaria e consumí
 status: In Review
 assignee: []
 created_date: '2026-09-08 14:49'
-updated_date: '2026-09-09 01:28'
+updated_date: '2026-09-09 01:35'
 labels: []
 milestone: m-2
 dependencies: []
@@ -58,4 +58,18 @@ src/__tests__/slot-card-no-passive-picker.test.tsx só cobre o caso em que `spel
 ### Verificado sem problema (não-findings)
 - Interação com ACM-089: AUTO_SELECT_GROUPS continua `["e"]` only; o filtro de passive é aplicado antes do efeito de auto-seleção mas nunca havia lógica de auto-select para "passive", então não há regressão no auto-select do E.
 - Regressão em armor/head/shoes: `NON_SELECTABLE_PASSIVE_SLOTS` não inclui essas categorias, e o teste de controle ("still renders the passive row... for armor") confirma que continuam mostrando P quando o item tem passiva selecionável legítima.
+
+RE-REVIEW (PR #60, round 2) — verificado no diff main...HEAD do worktree ../albion-builds-task-90:
+
+1. HIGH (divergência editor/card) — CORRIGIDO. build-card-lookups.ts agora chama groupSpellsForItem(item, LOCALE) em vez de groupItemSpells cru; spellGroupsByItem exclui 'passive' para cape/bag/mount/food/potion. Confirmei via leitura de CardSlotTile/CompressedTile/ListRow/BuildCardVertical que TODOS derivam spellGroups exclusivamente de lookups.spellGroupsByItem (nenhum lê EquippedItem.spells.passive para decidir render), então o badge 'P' vazio some do PNG exportado. Confirmado também por teste real (build-card-lookups.test.ts, caso ACM-090) que passa a real buildCardLookupsFor com fixture de cape com kind:passive e spells.passive já setado no BuildState, e assert spellGroupsByItem === [].
+
+2. MEDIUM (fonte única da exclusão) — CORRIGIDO. NON_SELECTABLE_PASSIVE_SLOTS movido para spell-groups.ts, aplicado dentro de groupSpellsForItem(item.slot). Grep completo do repo por groupItemSpells/groupSpellsForItem: único caller de groupItemSpells é o próprio groupSpellsForItem; os dois únicos consumidores externos (src/app/(editor)/build/new/page.tsx e src/lib/build-card-lookups.ts) usam groupSpellsForItem. SlotCard.tsx não filtra mais nada (apenas renomeia a prop recebida). Sem caminho remanescente que escape do filtro.
+
+3. MEDIUM (testes decorativos) — CORRIGIDO, testes são reais regression guards, não decorativos. Validei manualmente: (a) build-card-lookups.test.ts caso ACM-090 falha se build-card-lookups.ts voltar a usar groupItemSpells cru; (b) card-slot-tile-no-passive-badge.test.tsx tem par positivo/negativo explícito ('regression guard' com spellGroupsByItem manualmente contendo 'passive' produz o badge P, provando que a asserção não é vácua); (c) slot-card-no-passive-picker.test.tsx cobre as 5 non-selectable slots via it.each E tem caso explícito de armor com passiva real permanecendo selecionável — confirma que a regra por-slot não derruba P para todo mundo.
+
+Dado legado: confirmado por leitura de código que CardSlotTile/CompressedTile/ListRow/BuildCardVertical e SpellRow nunca leem EquippedItem.spells.passive para decidir renderização — apenas lookups.spellGroupsByItem. Afirmação do implementer é verdadeira, sem necessidade de migração.
+
+Escopo: diff não toca src/data/** nem scripts/** (branch está atrás da main pós PR#61, sem overlap). make check verde: build ok, 612/612 testes passando.
+
+Nenhum finding novo. VEREDITO: LGTM.
 <!-- SECTION:NOTES:END -->
