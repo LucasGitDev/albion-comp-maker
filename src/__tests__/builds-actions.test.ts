@@ -489,6 +489,69 @@ describe("build Server Actions (ACM-018)", () => {
     });
   });
 
+  describe("TOCTOU races between ownership check and mutation", () => {
+    // These simulate a row vanishing between `loadOwnedBuild`'s read and the
+    // mutation statement itself (e.g. a concurrent delete) by deleting the
+    // row from the real underlying connection right as the mutating query
+    // builder is invoked — exercising the "second query found nothing"
+    // defensive branch that the ownership pre-check alone cannot reach.
+    it("updateBuild throws BuildNotFoundError when the row disappears before the update statement runs", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, updateBuild } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Racy", content: validBuildContent() });
+
+      const originalUpdate = db.update.bind(db);
+      vi.spyOn(db, "update").mockImplementationOnce((table: Parameters<typeof db.update>[0]) => {
+        sqlite.prepare("DELETE FROM builds WHERE id = ?").run(build.id);
+        return originalUpdate(table);
+      });
+
+      await expect(updateBuild({ id: build.id, name: "Renamed" })).rejects.toThrow("Build not found");
+    });
+
+    it("toggleBuildPublic throws BuildNotFoundError when the row disappears before the update statement runs", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, toggleBuildPublic } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Racy", content: validBuildContent() });
+
+      const originalUpdate = db.update.bind(db);
+      vi.spyOn(db, "update").mockImplementationOnce((table: Parameters<typeof db.update>[0]) => {
+        sqlite.prepare("DELETE FROM builds WHERE id = ?").run(build.id);
+        return originalUpdate(table);
+      });
+
+      await expect(toggleBuildPublic(build.id)).rejects.toThrow("Build not found");
+    });
+
+    it("regenerateBuildSlug throws BuildNotFoundError when the row disappears before the update statement runs", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, regenerateBuildSlug } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Racy", content: validBuildContent() });
+
+      const originalUpdate = db.update.bind(db);
+      vi.spyOn(db, "update").mockImplementationOnce((table: Parameters<typeof db.update>[0]) => {
+        sqlite.prepare("DELETE FROM builds WHERE id = ?").run(build.id);
+        return originalUpdate(table);
+      });
+
+      await expect(regenerateBuildSlug(build.id)).rejects.toThrow("Build not found");
+    });
+
+    it("deleteBuild throws BuildNotFoundError when the row disappears before the delete statement runs", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, deleteBuild } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Racy", content: validBuildContent() });
+
+      const originalDelete = db.delete.bind(db);
+      vi.spyOn(db, "delete").mockImplementationOnce((table: Parameters<typeof db.delete>[0]) => {
+        sqlite.prepare("DELETE FROM builds WHERE id = ?").run(build.id);
+        return originalDelete(table);
+      });
+
+      await expect(deleteBuild(build.id)).rejects.toThrow("Build not found");
+    });
+  });
+
   describe("rate limiting", () => {
     it("rejects the 31st write within a minute for the same user", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
