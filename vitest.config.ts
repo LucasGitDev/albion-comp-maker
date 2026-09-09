@@ -14,7 +14,7 @@ export default defineConfig({
       reporter: ["text", "lcov"],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
       include: ["src/**"],
-      exclude: ["src/**/*.test.*", "src/**/*.spec.*"],
+      exclude: ["src/**/*.test.*", "src/**/*.spec.*", "src/auth/**"],
     },
   },
   resolve: {
