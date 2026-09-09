@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { duplicateBuild, toggleBuildPublic, deleteBuild } from "@/actions/builds";
 import { DeleteBuildDialog } from "./DeleteBuildDialog";
@@ -39,6 +40,7 @@ export function BuildsListManager({ initialBuilds }: BuildsListManagerProps): Re
       try {
         const row = await duplicateBuild(build.id);
         setBuilds((prev) => [{ id: row.id, name: row.name, role: row.role, isPublic: row.isPublic }, ...prev]);
+        toast.success(`Build "${build.name}" duplicada.`);
       } catch {
         setError({ message: `Não foi possível duplicar "${build.name}".`, retry: () => handleDuplicate(build) });
       }
@@ -52,6 +54,7 @@ export function BuildsListManager({ initialBuilds }: BuildsListManagerProps): Re
     startTransition(async () => {
       try {
         await toggleBuildPublic(build.id);
+        toast.success(build.isPublic ? `Build "${build.name}" agora é privada.` : `Build "${build.name}" agora é pública.`);
       } catch {
         setBuilds((prev) => prev.map((b) => (b.id === build.id ? { ...b, isPublic: build.isPublic } : b)));
         setError({
@@ -71,6 +74,7 @@ export function BuildsListManager({ initialBuilds }: BuildsListManagerProps): Re
         await deleteBuild(build.id);
         setBuilds((prev) => prev.filter((b) => b.id !== build.id));
         setDeleteTarget(null);
+        toast.success(`Build "${build.name}" excluída.`);
       } catch {
         setDeleteTarget(null);
         setError({ message: `Não foi possível excluir "${build.name}".`, retry: () => setDeleteTarget(build) });

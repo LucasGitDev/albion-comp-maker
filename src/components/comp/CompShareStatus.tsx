@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { toggleBuildPublic } from "@/actions/builds";
 import { toggleCompPublic } from "@/actions/comps";
@@ -45,8 +46,13 @@ export function CompShareStatus({ compId, slug, publicOrigin, initialState }: Co
 
   function handleToggleComp() {
     startTransition(async () => {
-      await toggleCompPublic(compId);
-      router.refresh();
+      try {
+        const row = await toggleCompPublic(compId);
+        toast.success(row.isPublic ? "Comp agora é pública." : "Comp agora é privada.");
+        router.refresh();
+      } catch {
+        toast.error("Não foi possível alterar a visibilidade da comp.");
+      }
     });
   }
 
