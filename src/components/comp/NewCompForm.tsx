@@ -25,6 +25,7 @@ export function NewCompForm(): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const trimmedLength = name.trim().length;
+  const isOverLimit = trimmedLength > COMP_NAME_MAX_LENGTH;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -41,7 +42,9 @@ export function NewCompForm(): React.JSX.Element {
       return;
     }
     if (trimmed.length > COMP_NAME_MAX_LENGTH) {
-      setError(`O nome pode ter no máximo ${COMP_NAME_MAX_LENGTH} caracteres`);
+      setError(
+        `O nome pode ter no máximo ${COMP_NAME_MAX_LENGTH} caracteres (você digitou ${trimmed.length})`,
+      );
       inputRef.current?.focus();
       return;
     }
@@ -86,10 +89,29 @@ export function NewCompForm(): React.JSX.Element {
           ) : (
             <span />
           )}
-          <span data-testid="comp-name-char-count" id="comp-name-char-count" className="text-xs text-foreground/60">
+          <span
+            data-testid="comp-name-char-count"
+            id="comp-name-char-count"
+            className={
+              isOverLimit ? "text-xs font-medium text-red-500" : "text-xs text-foreground/60"
+            }
+          >
             {trimmedLength}/{COMP_NAME_MAX_LENGTH}
           </span>
         </div>
+        {/*
+          Polite live region, separate from the `role="alert"` error above.
+          It stays silent while the user is under the limit (avoiding a
+          chatty per-keystroke announcement) and only speaks once the
+          over-limit threshold is crossed, so screen-reader users learn
+          about it before hitting submit instead of only via the
+          submit-time alert.
+        */}
+        <span role="status" aria-live="polite" className="sr-only">
+          {isOverLimit
+            ? `Nome muito longo: ${trimmedLength} de ${COMP_NAME_MAX_LENGTH} caracteres`
+            : ""}
+        </span>
       </div>
 
       <div className="flex items-center gap-3">
