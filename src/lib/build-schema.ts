@@ -155,7 +155,21 @@ const buildStateReadSchema = z.strictObject({
 // Compile-time anti-drift check (decision-013): if `BuildState` gains or
 // loses a field without a matching change here (or vice versa), this line
 // fails `tsc --noEmit`.
-type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+//
+// A naive mutual-assignability check (`[A] extends [B] ? [B] extends [A] ...`)
+// does NOT catch an *optional* field being added to one side: TypeScript's
+// structural assignability allows a type missing an optional property to be
+// assigned to (and from) a type that has it, so both directions of the
+// mutual-extends check pass even though the shapes differ (ACM-055). `Equal`
+// instead compares the two conditional types themselves via the standard
+// "distributive conditional inside a generic function type" trick (used by
+// type-fest's `IsEqual` / `ts-toolbelt`'s `Equals`): TypeScript only
+// considers `<T>() => T extends A ? 1 : 2` assignable to
+// `<T>() => T extends B ? 1 : 2` when `A` and `B` are the exact same type,
+// including optional-vs-required and readonly-vs-mutable differences.
+type Equal<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+export type Exact<A, B> = Equal<A, B> extends true ? true : never;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _buildSchemaMatchesType: Exact<z.infer<typeof buildStateSchema>, BuildState> = true;
 
