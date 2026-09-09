@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { buildExportFilename, downloadDataUrl, exportNodeToPng } from "@/lib/export-png";
 
 export type EditorActionBarProps = {
@@ -161,6 +162,7 @@ export function EditorActionBar({
     try {
       await onSave();
       setSaveStatus({ kind: "saved" });
+      toast.success("Build salva.");
       scheduleSavedReset();
     } catch (error) {
       setSaveStatus({

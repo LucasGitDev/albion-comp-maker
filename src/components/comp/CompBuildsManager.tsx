@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { addBuildToComp, removeBuildFromComp, reorderCompBuilds, updateCompBuild } from "@/actions/comps";
 import { AddBuildDialog } from "./AddBuildDialog";
@@ -118,6 +119,7 @@ export function CompBuildsManager({
               : entry,
           ),
         );
+        toast.success(`Build "${build.name}" adicionada à comp.`);
       } catch {
         setEntries((prev) => prev.filter((entry) => entry.compBuildId !== tempId));
         setError({ message: "Não foi possível adicionar a build.", retry: () => handleAdd(build) });
@@ -134,6 +136,7 @@ export function CompBuildsManager({
     startTransition(async () => {
       try {
         await removeBuildFromComp(compId, compBuildId);
+        toast.success(removedEntry ? `Build "${removedEntry.build.name}" removida da comp.` : "Build removida da comp.");
       } catch {
         if (removedEntry) {
           setEntries((prev) => {
@@ -165,6 +168,7 @@ export function CompBuildsManager({
           compId,
           next.map((entry) => entry.compBuildId),
         );
+        toast.success("Ordem das builds atualizada.");
       } catch {
         setEntries((prev) => swapEntriesById(prev, movedId, swappedWithId));
         setError({ message: "Não foi possível reordenar as builds.", retry: () => handleMove(index, direction) });
