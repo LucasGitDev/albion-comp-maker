@@ -4,8 +4,11 @@ title: 'Theme panel: responsive forms, a11y polish, and animation pass (doc-007 
 status: To Do
 assignee: []
 created_date: '2026-09-08 01:36'
+updated_date: '2026-09-09 03:07'
 labels: []
+milestone: m-3
 dependencies: []
+priority: medium
 ordinal: 82000
 ---
 

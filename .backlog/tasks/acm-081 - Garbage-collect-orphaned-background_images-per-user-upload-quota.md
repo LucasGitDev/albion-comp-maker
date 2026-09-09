@@ -4,8 +4,11 @@ title: Garbage-collect orphaned background_images + per-user upload quota
 status: To Do
 assignee: []
 created_date: '2026-09-08 01:35'
+updated_date: '2026-09-09 03:07'
 labels: []
+milestone: m-6
 dependencies: []
+priority: medium
 ordinal: 81000
 ---
 

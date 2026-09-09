@@ -4,8 +4,10 @@ title: Overflow horizontal em 390px causado pelo breadcrumb
 status: To Do
 assignee: []
 created_date: '2026-09-08 00:21'
+updated_date: '2026-09-09 03:07'
 labels: []
 dependencies: []
+priority: low
 ordinal: 78000
 ---
 

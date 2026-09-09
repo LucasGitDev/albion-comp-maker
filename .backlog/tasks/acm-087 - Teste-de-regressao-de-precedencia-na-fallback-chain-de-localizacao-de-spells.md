@@ -4,8 +4,10 @@ title: Teste de regressao de precedencia na fallback chain de localizacao de spe
 status: To Do
 assignee: []
 created_date: '2026-09-08 13:42'
+updated_date: '2026-09-09 03:07'
 labels: []
 dependencies: []
+priority: low
 ordinal: 85000
 ---
 
