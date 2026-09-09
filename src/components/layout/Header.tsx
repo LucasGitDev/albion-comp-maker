@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "@/components/i18n/LocaleProvider";
+import { LocaleToggle } from "@/components/i18n/LocaleToggle";
+import { t } from "@/lib/i18n/messages";
 
 type AccountState =
   | { kind: "loading" }
@@ -17,7 +20,7 @@ type AccountState =
  * D3 only requires the *save* action to gate on click, not the header to
  * pre-authenticate on every route).
  */
-function useAccountState(): AccountState {
+function useAccountState(fallbackLabel: string): AccountState {
   const [state, setState] = useState<AccountState>({ kind: "loading" });
 
   useEffect(() => {
@@ -27,7 +30,7 @@ function useAccountState(): AccountState {
       .then((data: { user?: { name?: string | null; email?: string | null } } | null) => {
         if (cancelled) return;
         if (data?.user) {
-          setState({ kind: "authenticated", label: data.user.name ?? data.user.email ?? "Conta" });
+          setState({ kind: "authenticated", label: data.user.name ?? data.user.email ?? fallbackLabel });
         } else {
           setState({ kind: "unauthenticated" });
         }
@@ -38,19 +41,20 @@ function useAccountState(): AccountState {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fallbackLabel only affects a rare fallback and re-running the fetch on locale change would be wasteful; the label is re-derived from the current locale on the next fetch anyway.
   }, []);
 
   return state;
 }
 
-const NAV_LINKS: ReadonlyArray<{ href: string; label: string }> = [
-  { href: "/", label: "Minhas comps" },
-];
-
 export function Header(): React.JSX.Element {
   const pathname = usePathname();
   const isEditorRoute = pathname?.startsWith("/build") ?? false;
-  const account = useAccountState();
+  const locale = useLocale();
+  const account = useAccountState(t(locale, "account.fallbackLabel"));
+  const navLinks: ReadonlyArray<{ href: string; label: string }> = [
+    { href: "/", label: t(locale, "nav.myComps") },
+  ];
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const mobileNavTriggerRef = useRef<HTMLButtonElement | null>(null);
   const mobileNavPanelRef = useRef<HTMLDivElement | null>(null);
@@ -107,7 +111,7 @@ export function Header(): React.JSX.Element {
       </Link>
 
       <nav aria-label="Principal" className="hidden items-center gap-6 text-sm md:flex">
-        {NAV_LINKS.map((link) => {
+        {navLinks.map((link) => {
           const active = pathname === link.href;
           return (
             <Link
@@ -126,6 +130,9 @@ export function Header(): React.JSX.Element {
       </nav>
 
       <div className="flex items-center gap-2">
+        <div className="hidden md:block">
+          <LocaleToggle />
+        </div>
         {isEditorRoute ? (
           <div className="flex h-9 w-24 items-center justify-end" data-testid="header-account-slot">
             {account.kind === "loading" && (
@@ -137,7 +144,7 @@ export function Header(): React.JSX.Element {
                 href="/api/auth/signin"
                 className="text-sm text-foreground/70 transition-colors hover:text-foreground focus-visible:transition-none"
               >
-                Entrar
+                {t(locale, "account.signIn")}
               </a>
             )}
             {account.kind === "authenticated" && (
@@ -151,34 +158,38 @@ export function Header(): React.JSX.Element {
             href="/build/new"
             className="hidden rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none md:inline-block"
           >
-            Nova build
+            {t(locale, "account.newBuild")}
           </Link>
         )}
 
         {!isEditorRoute && (
           <Link
             href="/build/new"
-            aria-label="Nova build"
+            aria-label={t(locale, "account.newBuildAriaLabel")}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-accent)] text-lg font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none md:hidden"
           >
             +
           </Link>
         )}
 
+        <div className="md:hidden">
+          <LocaleToggle />
+        </div>
+
         {/*
           The mobile disclosure only earns its place once there's a route
           beyond Home to navigate to (doc-004 §4: "não abrir painel vazio").
-          `/builds` doesn't exist yet (§1.1), so `NAV_LINKS` has exactly one
+          `/builds` doesn't exist yet (§1.1), so `navLinks` has exactly one
           entry today and the trigger stays hidden.
         */}
-        {NAV_LINKS.length > 1 && (
+        {navLinks.length > 1 && (
           <div className="relative md:hidden">
             <button
               ref={mobileNavTriggerRef}
               type="button"
               aria-expanded={mobileNavOpen}
               aria-haspopup="true"
-              aria-label="Abrir navegação"
+              aria-label={t(locale, "account.openNav")}
               onClick={() => setMobileNavOpen((open) => !open)}
               className="flex h-11 w-11 items-center justify-center rounded-full text-foreground/70 transition-colors hover:text-foreground focus-visible:transition-none"
             >
@@ -190,7 +201,7 @@ export function Header(): React.JSX.Element {
                 role="menu"
                 className="absolute right-0 top-full z-40 mt-2 min-w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] py-1 shadow-[0_8px_24px_-12px_#000000]"
               >
-                {NAV_LINKS.map((link) => (
+                {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}

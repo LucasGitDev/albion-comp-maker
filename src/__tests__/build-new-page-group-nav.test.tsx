@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AOItem } from "@/data/ao-data.d";
 
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(() => ({ refresh: vi.fn() })),
+}));
+
 vi.mock("@/components/editor/use-item-catalogue", () => {
   const items: AOItem[] = [
     {
@@ -25,7 +29,16 @@ vi.mock("@/actions/builds", () => ({
 }));
 
 import NewBuildPage from "@/app/(editor)/build/new/page";
+import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { useBuildStore } from "@/store/build-store";
+
+function renderPage() {
+  return render(
+    <LocaleProvider initialLocale="en-US">
+      <NewBuildPage />
+    </LocaleProvider>
+  );
+}
 
 beforeEach(() => {
   useBuildStore.getState().actions.reset();
@@ -44,7 +57,7 @@ describe("/build/new — mobile group-nav strip (ACM-041)", () => {
       8,
       0
     );
-    render(<NewBuildPage />);
+    renderPage();
     // 10 slots total minus the locked offhand = 9 reachable; only mainhand
     // is filled, so 1/9 — never 1/10 (unreachable) and never 0/9 (offhand
     // silently dropped from the numerator too).
@@ -58,12 +71,12 @@ describe("/build/new — mobile group-nav strip (ACM-041)", () => {
       8,
       0
     );
-    render(<NewBuildPage />);
+    renderPage();
     expect(screen.getByRole("link", { name: /armas 1 de 1/i })).toBeInTheDocument();
   });
 
   it("clicking a group chip moves focus to that group's heading, not <body>", () => {
-    render(<NewBuildPage />);
+    renderPage();
     const chip = screen.getByRole("link", { name: /consumíveis 0 de 2/i });
     fireEvent.click(chip);
     const heading = document.getElementById("slot-group-consumiveis");
@@ -72,7 +85,7 @@ describe("/build/new — mobile group-nav strip (ACM-041)", () => {
   });
 
   it("the item picker's focus trap still works with the group-nav strip mounted", async () => {
-    render(<NewBuildPage />);
+    renderPage();
     // Scoped to `[data-testid="slot-grid"]` so this doesn't accidentally match
     // the read-only build-card preview tile, which shares the same
     // `data-slot`/`data-slot-state` attributes (ACM-092 always renders the
@@ -122,7 +135,7 @@ describe("/build/new — mobile group-nav strip (ACM-041)", () => {
    * the strip's ~554px min-content size all the way up to `<main>`).
    */
   it("every flex ancestor between <main> and the group-nav strip sets min-w-0 (prevents the strip's content width from forcing horizontal overflow at 390px)", () => {
-    render(<NewBuildPage />);
+    renderPage();
     const nav = screen.getByRole("navigation", { name: /grupos de slots/i });
     expect(nav.className).toContain("min-w-0");
 
