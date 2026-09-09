@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeMaxEnchant, humanizeSpellName, resolveSpellLocalizedNames } from "./sync-ao-data";
+import { computeMaxEnchant, humanizeSpellName, isEmittedConsumable, resolveSpellLocalizedNames } from "./sync-ao-data";
 
 describe("computeMaxEnchant", () => {
   it("returns 0 when the enchantments key is absent (e.g. a mount)", () => {
@@ -58,6 +58,24 @@ describe("resolveSpellLocalizedNames", () => {
   it("returns undefined when no strategy finds a match", () => {
     const index = new Map<string, Record<string, string>>();
     expect(resolveSpellLocalizedNames("PYROBLAST_SKILLSHOT", index)).toBeUndefined();
+  });
+});
+
+describe("isEmittedConsumable", () => {
+  it("emits food (T4_MEAL_OMELETTE: consumables/food)", () => {
+    expect(isEmittedConsumable({ "@shopcategory": "consumables", "@shopsubcategory1": "food" })).toBe(true);
+  });
+
+  it("emits potions (T4_POTION_HEAL: consumables/potions)", () => {
+    expect(isEmittedConsumable({ "@shopcategory": "consumables", "@shopsubcategory1": "potions" })).toBe(true);
+  });
+
+  it("excludes raw fish (T4_FISH_FRESHWATER_ALL_COMMON: crafting/fish)", () => {
+    expect(isEmittedConsumable({ "@shopcategory": "crafting", "@shopsubcategory1": "fish" })).toBe(false);
+  });
+
+  it("excludes vanity fireworks (T3_VANITY_CONSUMABLE_FIREWORKS_BLUE: consumables/other)", () => {
+    expect(isEmittedConsumable({ "@shopcategory": "consumables", "@shopsubcategory1": "other" })).toBe(false);
   });
 });
 
