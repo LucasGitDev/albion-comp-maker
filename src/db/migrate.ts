@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
@@ -63,8 +64,17 @@ function pendingMigrationsNeedFkOff(sqlite: Database.Database, migrationsFolder:
   });
 }
 
+/**
+ * Next.js can boot multiple worker processes, each calling `runMigrations()`
+ * independently (see `src/instrumentation.ts`). A fixed backup path would let
+ * two workers racing a FK-off migration overwrite each other's snapshot —
+ * e.g. worker A's backup gets clobbered by worker B's `copyFileSync`, then
+ * worker A restores worker B's (unrelated) snapshot. Suffixing with the PID
+ * and a random UUID makes every run's backup path unique, so concurrent runs
+ * never share a file to race over (ACM-061).
+ */
 function backupFilePath(databasePath: string): string {
-  return `${databasePath}.pre-migration-backup`;
+  return `${databasePath}.pre-migration-backup.${process.pid}.${crypto.randomUUID()}`;
 }
 
 /**
