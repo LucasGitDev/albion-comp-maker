@@ -2,8 +2,10 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AOItem } from "@/data/ao-data.d";
 
+const mockRouterPush = vi.fn();
+
 vi.mock("next/navigation", () => ({
-  useRouter: vi.fn(() => ({ refresh: vi.fn() })),
+  useRouter: vi.fn(() => ({ refresh: vi.fn(), push: mockRouterPush })),
 }));
 
 vi.mock("@/components/editor/use-item-catalogue", () => {
@@ -72,6 +74,7 @@ function mockSession(authenticated: boolean) {
 beforeEach(() => {
   useBuildStore.getState().actions.reset();
   mockSaveBuild.mockReset();
+  mockRouterPush.mockReset();
 });
 
 afterEach(() => {
@@ -228,6 +231,10 @@ describe("/build/new — Salvar persists via the real saveBuild Server Action (A
     // implementation resolved without ever calling `saveBuild`, so
     // "Build salva." rendered without anything actually persisted.
     expect(await screen.findByText("Build salva.")).toBeInTheDocument();
+
+    // ACM-112: a second click on "new" without this redirect hits `saveBuild`
+    // again and silently creates a duplicate row.
+    expect(mockRouterPush).toHaveBeenCalledWith("/build/b1/edit");
   });
 
   it("surfaces the real saveBuild failure instead of always reporting success", async () => {
