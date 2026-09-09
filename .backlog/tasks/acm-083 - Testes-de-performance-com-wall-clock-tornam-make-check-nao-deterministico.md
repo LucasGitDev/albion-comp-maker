@@ -1,10 +1,10 @@
 ---
 id: ACM-083
 title: Testes de performance com wall-clock tornam make check nao-deterministico
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-08 13:18'
-updated_date: '2026-09-09 03:18'
+updated_date: '2026-09-09 03:23'
 labels: []
 dependencies: []
 priority: medium
