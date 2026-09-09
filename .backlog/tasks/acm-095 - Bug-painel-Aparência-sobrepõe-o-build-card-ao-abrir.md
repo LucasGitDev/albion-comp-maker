@@ -4,11 +4,8 @@ title: 'Bug: painel Aparência sobrepõe o build card ao abrir'
 status: Done
 assignee: []
 created_date: '2026-09-09 02:31'
-<<<<<<< Updated upstream
-updated_date: '2026-09-09 03:27'
-=======
 updated_date: '2026-09-09 12:58'
->>>>>>> Stashed changes
+
 labels: []
 milestone: m-3
 dependencies: []
