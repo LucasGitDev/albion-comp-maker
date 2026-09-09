@@ -1,9 +1,10 @@
 ---
 id: ACM-114
 title: 'BuildShareStatus e CompShareStatus: adicionar try/catch em todas as mutações'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-09 17:38'
+updated_date: '2026-09-09 18:31'
 labels:
   - ux
   - reliability
@@ -22,8 +23,14 @@ handleToggle, handleRegenerate (BuildShareStatus) e handleToggleComp, handleMake
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Todas as mutações em BuildShareStatus têm try/catch
-- [ ] #2 Todas as mutações em CompShareStatus têm try/catch
-- [ ] #3 Erro exibe toast.error() com mensagem PT-BR (após ACM-109) ou ErrorBanner inline
-- [ ] #4 Toggle revertido para estado anterior em caso de falha (igual a BuildsListManager)
+- [x] #1 Todas as mutações em BuildShareStatus têm try/catch
+- [x] #2 Todas as mutações em CompShareStatus têm try/catch
+- [x] #3 Erro exibe toast.error() com mensagem PT-BR (após ACM-109) ou ErrorBanner inline
+- [x] #4 Toggle revertido para estado anterior em caso de falha (igual a BuildsListManager)
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+handleToggle e handleRegenerate (BuildShareStatus) e handleMakeBuildPublic (CompShareStatus) agora têm try/catch com toast.error PT-BR. handleToggleComp já tinha. Commitado direto em main. Gate: tsc/lint/test OK (850 testes).
+<!-- SECTION:NOTES:END -->

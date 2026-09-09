@@ -1,9 +1,10 @@
 ---
 id: ACM-112
 title: 'BuildEditor: redirecionar para /build/[id]/edit após primeiro save'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-09 17:37'
+updated_date: '2026-09-09 18:18'
 labels:
   - editor
   - bug
@@ -25,3 +26,9 @@ BuildEditor.handleSave em modo new chama saveBuild() e descarta o BuildRow retor
 - [ ] #2 Não é possível criar duplicata clicando Salvar duas vezes no fluxo new
 - [ ] #3 Modo edit (já em /build/[id]/edit) não é afetado — continua salvando no lugar
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Reviewer pass 2: LGTM — query params fix confirmed, 850 tests pass
+<!-- SECTION:NOTES:END -->

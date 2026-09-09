@@ -1,10 +1,10 @@
 ---
 id: ACM-113
 title: 'Comp: adicionar rename e delete (ações inexistentes)'
-status: In Review
+status: In Progress
 assignee: []
 created_date: '2026-09-09 17:38'
-updated_date: '2026-09-09 18:25'
+updated_date: '2026-09-09 18:32'
 labels:
   - comp
   - crud
@@ -33,5 +33,5 @@ Não existe server action updateComp (rename) nem deleteComp. Uma vez criada, co
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-PR opened: #88 (https://github.com/LucasGitDev/albion-comp-maker/pull/88). updateComp/deleteComp server actions already existed in src/actions/comps.ts (requireSession + ownership + cascade); this task added the missing UI: CompHeader (inline rename + delete on /comps/[id]), DeleteCompDialog (confirmation), CompsListManager (per-row delete on /comps list).
+Reviewer pass 2: LGTM. Verified commit 285ab8c: (1) CompHeader.tsx display state now renders <h1 tabIndex={0}> (confirmed via screen.getByRole('heading', {level:1})) — MEDIUM resolved. (2) 3 test files added (comp-header.test.tsx, comps-list-manager.test.tsx, delete-comp-dialog.test.tsx) covering rename success (updateComp called with new name), rename rollback on failure (name reverts + toast.error), delete confirm flow (deleteComp called + redirect/row removal), delete failure (row kept + toast.error), and dialog focus/Escape/pending-disable — HIGH resolved. Ran tests directly: 11/11 pass. Ran full make check on branch: lint, tsc, build, and full suite (91 files / 861 tests) all pass. AC#1/#2 (server actions) untouched by this PR, no regression. All 6 ACs hold. No new findings.
 <!-- SECTION:NOTES:END -->

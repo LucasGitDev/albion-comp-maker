@@ -1,10 +1,10 @@
 ---
 id: ACM-109
 title: 'Toast system: instalar sonner e wiring em todos os action handlers'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-09 17:37'
-updated_date: '2026-09-09 17:54'
+updated_date: '2026-09-09 18:18'
 labels:
   - ui
   - ux
@@ -30,3 +30,9 @@ Zero toasts no app. Todas as ações CRUD (duplicar build, toggle público/priva
 - [ ] #6 toast.error() substitui ou complementa ErrorBanner inline quando ação falha silenciosamente
 - [ ] #7 Nenhum toast duplica mensagem de erro já visível inline (sem double feedback)
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Reviewer pass 2: LGTM — double-feedback fix confirmed
+<!-- SECTION:NOTES:END -->

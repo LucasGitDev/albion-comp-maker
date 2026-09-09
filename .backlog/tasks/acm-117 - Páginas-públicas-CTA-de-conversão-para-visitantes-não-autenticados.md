@@ -1,9 +1,10 @@
 ---
 id: ACM-117
 title: 'Páginas públicas: CTA de conversão para visitantes não autenticados'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-09 17:38'
+updated_date: '2026-09-09 18:31'
 labels:
   - growth
   - ux
@@ -26,3 +27,9 @@ Páginas /build/[id] e /comp/[slug] são as únicas vistas por visitantes anôni
 - [ ] #3 CTA não aparece para usuário autenticado
 - [ ] #4 CTA leva para /api/auth/signin com callbackUrl para a página atual
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implemented GuestCTABanner (server component, reads auth() directly) rendered from /build/[id] and /comp/[slug] pages, gated on unauthenticated session. Links to /api/auth/signin?callbackUrl=<current path>. i18n strings added (guestCta.message/signIn). Committed directly to main per task instructions. Gate: tsc, lint, npm run build, npm test all green (850 tests passing).
+<!-- SECTION:NOTES:END -->

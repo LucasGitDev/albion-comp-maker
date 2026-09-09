@@ -3,9 +3,10 @@ id: ACM-115
 title: >-
   Design system: extrair primitivas Button, Dialog, EmptyState, ErrorBanner,
   Skeleton
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-09 17:38'
+updated_date: '2026-09-09 18:06'
 labels:
   - ui
   - design-system
