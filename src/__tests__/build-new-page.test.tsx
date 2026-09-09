@@ -247,15 +247,16 @@ describe("/build/new — main slot grid shows ability slots and item names (ACM-
 
     render(<NewBuildPage />);
 
-    // Scoped to `[data-slot-state]` (only the editable SlotCard sets it) so
-    // this doesn't accidentally match the read-only build-card preview tile,
-    // which shares the same `data-slot` attribute but never renders a spell
-    // picker of any kind.
-    const mainhandCard = document.querySelector('[data-slot="mainhand"][data-slot-state]')!;
+    // Scoped to `[data-testid="slot-grid"]` so this doesn't accidentally
+    // match the read-only build-card preview tile, which shares the same
+    // `data-slot`/`data-slot-state` attributes (ACM-092 added the latter to
+    // the preview tile too) but never renders a spell picker of any kind.
+    const slotGrid = document.querySelector('[data-testid="slot-grid"]')!;
+    const mainhandCard = slotGrid.querySelector('[data-slot="mainhand"]')!;
     expect(mainhandCard.querySelector('[data-testid="spell-picker"]')).toBeInTheDocument();
     expect(mainhandCard.querySelector('[data-testid="spell-picker-empty"]')).not.toBeInTheDocument();
 
-    const bagCard = document.querySelector('[data-slot="bag"][data-slot-state]')!;
+    const bagCard = slotGrid.querySelector('[data-slot="bag"]')!;
     expect(bagCard.querySelector('[data-testid="spell-picker"]')).not.toBeInTheDocument();
     expect(bagCard.querySelector('[data-testid="spell-picker-empty"]')).toBeInTheDocument();
   });

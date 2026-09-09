@@ -89,17 +89,70 @@ describe("BuildCard layout prop (AC#1)", () => {
     expect(container.textContent).toContain("Bruiser de Frontline");
   });
 
-  it("keeps 'vertical' output identical to before this task", () => {
+  it("renders 'vertical' with a filled build", () => {
     const state = buildWithFullEquipment();
     const { container } = render(<BuildCard state={state} layout="vertical" />);
     expect(container.querySelector('[data-slot="head"]')).toBeTruthy();
     expect(container.textContent).toContain("Bruiser de Frontline");
   });
 
-  it("keeps 'grid' output identical to before this task", () => {
+  it("renders 'grid' with a filled build", () => {
     const state = buildWithFullEquipment();
     const { container } = render(<BuildCard state={state} layout="grid" />);
     expect(container.querySelector('[data-slot="head"]')).toBeTruthy();
+  });
+});
+
+describe("BuildCardVertical / BuildCardGrid empty and partial slots (ACM-092 AC#3)", () => {
+  it("renders every equipment slot, filled or placeholder, without dropping empty ones (vertical)", () => {
+    const state = buildWithFullEquipment();
+    const { container } = render(<BuildCard state={state} layout="vertical" />);
+    for (const slot of SLOT_ORDER) {
+      if (slot === "mainhand") continue;
+      expect(container.querySelector(`[data-slot="${slot}"]`)).toBeTruthy();
+    }
+    const emptySlots = container.querySelectorAll('[data-slot-state="empty"]');
+    // 9 non-mainhand slots minus the 2 that are filled (head, mount) = 7 placeholders.
+    expect(emptySlots.length).toBe(SLOT_ORDER.length - 1 - 2);
+  });
+
+  it("renders a mainhand placeholder and still shows a filled non-mainhand item when mainhand is empty (vertical)", () => {
+    const state = createEmptyBuild();
+    state.name = "Só capacete";
+    state.slots.head = {
+      itemId: "T8_HEAD_PLATE_SET1",
+      tier: 8,
+      enchant: 0,
+      spells: { q: null, w: null, e: null, passive: null },
+      twohanded: false,
+      maxEnchant: 4,
+    };
+    const { container } = render(<BuildCard state={state} layout="vertical" />);
+    expect(container.querySelector('[data-slot="mainhand"][data-slot-state="empty"]')).toBeTruthy();
+    expect(container.querySelector('[data-slot="head"][data-slot-state="filled"]')).toBeTruthy();
+    expect(container.textContent).toContain("Só capacete");
+  });
+
+  it("renders the friendly empty state, not a crash, when zero slots are filled (vertical)", () => {
+    const state = createEmptyBuild();
+    const { container } = render(<BuildCard state={state} layout="vertical" />);
+    expect(container.textContent).toContain("Sem nome");
+    expect(container.querySelector("#capture-root")).toBeTruthy();
+  });
+
+  it("renders every equipment slot, filled or placeholder, without dropping empty ones (grid)", () => {
+    const state = buildWithFullEquipment();
+    const { container } = render(<BuildCard state={state} layout="grid" />);
+    for (const slot of SLOT_ORDER) {
+      if (slot === "mainhand") continue;
+      expect(container.querySelector(`[data-slot="${slot}"]`)).toBeTruthy();
+    }
+  });
+
+  it("renders without crashing when zero slots are filled (grid)", () => {
+    const state = createEmptyBuild();
+    const { container } = render(<BuildCard state={state} layout="grid" />);
+    expect(container.querySelector('[data-slot="mainhand"][data-slot-state="empty"]')).toBeTruthy();
   });
 });
 
