@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { listMyBuilds } from "@/actions/builds";
+import { BuildsListErrorRetry } from "@/components/builds/BuildsListErrorRetry";
 import { BuildsListManager } from "@/components/builds/BuildsListManager";
 
 /**
@@ -22,7 +22,11 @@ export default async function BuildsPage(): Promise<React.JSX.Element> {
   try {
     myBuilds = await listMyBuilds();
   } catch {
-    redirect("/");
+    return (
+      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-4xl flex-1 flex-col p-8 outline-none">
+        <BuildsListErrorRetry />
+      </main>
+    );
   }
 
   return (

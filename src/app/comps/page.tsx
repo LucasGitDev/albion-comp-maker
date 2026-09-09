@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { listMyCompsWithStatus } from "@/actions/comps";
+import { CompListErrorRetry } from "@/components/comp/CompListErrorRetry";
 
 /**
  * Lists the current user's comps with a share-status badge (ACM-066). Mirrors
@@ -15,7 +15,11 @@ export default async function CompsPage(): Promise<React.JSX.Element> {
   try {
     items = await listMyCompsWithStatus();
   } catch {
-    redirect("/");
+    return (
+      <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-4xl flex-1 flex-col p-8 outline-none">
+        <CompListErrorRetry />
+      </main>
+    );
   }
 
   return (
