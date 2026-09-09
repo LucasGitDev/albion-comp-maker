@@ -392,7 +392,48 @@ describe("comp Server Actions (ACM-019)", () => {
   });
 });
 
-describe("count and label edits", () => {
+describe("loadOwnedCompBuild not-found (owned comp, wrong compBuild id)", () => {
+    it("removeBuildFromComp throws Comp not found when compBuildId doesn't belong to the (owned) comp", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, removeBuildFromComp } = await import("@/actions/comps");
+      const comp = await createComp({ name: "User A Comp" });
+
+      await expect(removeBuildFromComp(comp.id, "nonexistent-comp-build-id")).rejects.toThrow("Comp not found");
+    });
+
+    it("updateCompBuild throws Comp not found when compBuildId doesn't belong to the (owned) comp", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, updateCompBuild } = await import("@/actions/comps");
+      const comp = await createComp({ name: "User A Comp" });
+
+      await expect(
+        updateCompBuild({ compId: comp.id, compBuildId: "nonexistent-comp-build-id", label: "x" }),
+      ).rejects.toThrow("Comp not found");
+    });
+  });
+
+  describe("getComp", () => {
+    it("returns the comp owned by the current user", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, getComp } = await import("@/actions/comps");
+      const created = await createComp({ name: "User A Comp" });
+
+      const loaded = await getComp(created.id);
+      expect(loaded.id).toBe(created.id);
+      expect(loaded.name).toBe("User A Comp");
+    });
+
+    it("throws Comp not found for another user's comp", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { createComp, getComp } = await import("@/actions/comps");
+      const created = await createComp({ name: "User A Comp" });
+
+      mockRequireSession.mockResolvedValue(sessionFor("user-b"));
+      await expect(getComp(created.id)).rejects.toThrow("Comp not found");
+    });
+  });
+
+  describe("count and label edits", () => {
     it("updates count and label independently", async () => {
       mockRequireSession.mockResolvedValue(sessionFor("user-a"));
       const [aBuild] = await db

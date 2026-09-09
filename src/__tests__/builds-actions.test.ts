@@ -121,6 +121,15 @@ describe("build Server Actions (ACM-018)", () => {
       expect(build.slug.startsWith("fire-staff-carry-")).toBe(true);
       expect(build.userId).toBe("user-a");
     });
+
+    it("persists an explicit role instead of falling back to null", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild } = await import("@/actions/builds");
+
+      const build = await saveBuild({ name: "Fire Staff Carry", content: validBuildContent(), role: "dps" });
+
+      expect(build.role).toBe("dps");
+    });
   });
 
   describe("theme_json write path (ACM-014, decision-019)", () => {
@@ -285,6 +294,31 @@ describe("build Server Actions (ACM-018)", () => {
 
       expect(updated.name).toBe("Renamed");
       expect(updated.slug).toBe(build.slug); // slug stays immutable across edits
+    });
+
+    it("applies role, content, and theme updates together", async () => {
+      mockRequireSession.mockResolvedValue(sessionFor("user-a"));
+      const { saveBuild, updateBuild } = await import("@/actions/builds");
+      const build = await saveBuild({ name: "Original", content: validBuildContent() });
+
+      const newContent = validBuildContent({ name: "New content name" });
+      const updated = await updateBuild({
+        id: build.id,
+        role: "support",
+        content: newContent,
+        theme: JSON.stringify({
+          preset: "dark-purple",
+          aspectRatio: "auto",
+          fontFamily: "sans",
+          showItemNames: false,
+          showSpellNames: true,
+          background: null,
+        }),
+      });
+
+      expect(updated.role).toBe("support");
+      expect(updated.content).toBe(newContent);
+      expect(updated.themeJson).toBeTruthy();
     });
   });
 

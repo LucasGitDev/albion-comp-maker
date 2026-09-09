@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_LOCALE, FALLBACK_NAME_LOCALE, normalizeLocale } from "@/lib/i18n/locales";
+import { DEFAULT_LOCALE, FALLBACK_NAME_LOCALE, isLocale, normalizeLocale, otherLocaleOf } from "@/lib/i18n/locales";
 
 describe("locale constants (ACM-093 visual-review fix)", () => {
   it("defaults the UI locale to pt-BR, matching the app's hardcoded PT-BR chrome", () => {
@@ -29,5 +29,29 @@ describe("normalizeLocale", () => {
 
   it("falls back to the default locale for an empty string", () => {
     expect(normalizeLocale("")).toBe(DEFAULT_LOCALE);
+  });
+});
+
+describe("isLocale", () => {
+  it("returns true for a supported locale string", () => {
+    expect(isLocale("en-US")).toBe(true);
+    expect(isLocale("pt-BR")).toBe(true);
+  });
+
+  it("returns false for an unsupported string", () => {
+    expect(isLocale("fr-FR")).toBe(false);
+  });
+
+  it("returns false for a non-string value", () => {
+    expect(isLocale(42)).toBe(false);
+    expect(isLocale(undefined)).toBe(false);
+    expect(isLocale(null)).toBe(false);
+  });
+});
+
+describe("otherLocaleOf", () => {
+  it("returns the other supported locale", () => {
+    expect(otherLocaleOf("en-US")).toBe("pt-BR");
+    expect(otherLocaleOf("pt-BR")).toBe("en-US");
   });
 });
