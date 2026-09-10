@@ -212,7 +212,7 @@ export function EditorActionBar({
       className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-4 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:sticky md:top-[var(--header-h)] md:bottom-auto md:border-b md:border-t-0 md:pb-3"
     >
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
-        <span data-testid="slot-count" className="hidden shrink-0 text-foreground/70 md:inline">
+        <span data-testid="slot-count" className="shrink-0 text-foreground/70">
           {filledCount}/{totalSlots} slots
         </span>
         <span
