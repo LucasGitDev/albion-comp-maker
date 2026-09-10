@@ -43,6 +43,7 @@ function makePublicBuild(overrides: Partial<PublicBuild> = {}): PublicBuild {
     role: "dps",
     slug: "fire-staff-abc123",
     content,
+    authorName: "Author Name",
     ...overrides,
   };
 }
@@ -81,6 +82,7 @@ describe("public comp page (ACM-021)", () => {
       name: "ZvZ Comp",
       slug: "zvz-comp-1",
       contentType: null,
+      authorName: "Author Name",
       entries: [
         { compBuildId: "cb-0", position: 0, count: 1, label: "Front", build: buildA },
         { compBuildId: "cb-1", position: 1, count: 2, label: "Back", build: buildB },

@@ -101,6 +101,36 @@ describe("public read throttle (proxy)", () => {
     expect(res?.status).toBe(302);
   });
 
+  it("shares the public-read budget with /build/:slug for /api/og/build/:slug (ACM-022, decision-030)", async () => {
+    const proxy = (await import("@/proxy")).default;
+    const { PUBLIC_READ_MAX_PER_IP } = await import("@/lib/public-read-rate-limit");
+
+    for (let i = 0; i < PUBLIC_READ_MAX_PER_IP; i++) {
+      (proxy as (r: unknown) => unknown)(makeRequest("/build/abc12345"));
+    }
+
+    const res = (proxy as (r: unknown) => unknown)(
+      makeRequest("/api/og/build/abc12345"),
+    ) as Response;
+
+    expect(res.status).toBe(429);
+  });
+
+  it("shares the public-read budget with /comp/:slug for /api/og/comp/:slug (ACM-022, decision-030)", async () => {
+    const proxy = (await import("@/proxy")).default;
+    const { PUBLIC_READ_MAX_PER_IP } = await import("@/lib/public-read-rate-limit");
+
+    for (let i = 0; i < PUBLIC_READ_MAX_PER_IP; i++) {
+      (proxy as (r: unknown) => unknown)(makeRequest("/comp/zvz-comp-1"));
+    }
+
+    const res = (proxy as (r: unknown) => unknown)(
+      makeRequest("/api/og/comp/zvz-comp-1"),
+    ) as Response;
+
+    expect(res.status).toBe(429);
+  });
+
   it("routes both /build/new and /comp/new to the auth branch (not the public-read regex match)", async () => {
     const proxy = (await import("@/proxy")).default;
 

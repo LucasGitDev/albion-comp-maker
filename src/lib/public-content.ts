@@ -1,9 +1,10 @@
 import "server-only";
 
 import { and, asc, count, eq } from "drizzle-orm";
+import { cache } from "react";
 
 import { getDb } from "@/db/client";
-import { builds, compBuilds, comps } from "@/db/schema";
+import { builds, compBuilds, comps, users } from "@/db/schema";
 import { parseBuildContent } from "@/lib/build-schema";
 import type { BuildState } from "@/types/build";
 
@@ -29,6 +30,13 @@ export type PublicBuild = {
   role: string | null;
   slug: string;
   content: BuildState;
+  /**
+   * Owning user's display name (`users.name`), for attribution surfaces
+   * like the ACM-022 OG image. `null` when the account has no `name` set
+   * (Auth.js does not require one from every provider) — callers must
+   * render an "Unknown" fallback, never assume non-null.
+   */
+  authorName: string | null;
 };
 
 /**
@@ -37,12 +45,17 @@ export type PublicBuild = {
  * read). A private build, a nonexistent slug, and a public build with
  * unparseable/legacy content all resolve to `null` here — the page layer
  * cannot tell them apart, by design (see module doc above).
+ *
+ * Wrapped in React's `cache()` so a page component and its `generateMetadata`
+ * (both invoked per-request during the same render, e.g. ACM-022's OG image
+ * routes) share one DB round-trip instead of querying twice.
  */
-export async function getPublicBuildBySlug(slug: string): Promise<PublicBuild | null> {
+export const getPublicBuildBySlug = cache(async (slug: string): Promise<PublicBuild | null> => {
   const db = getDb();
   const [row] = await db
-    .select()
+    .select({ build: builds, authorName: users.name })
     .from(builds)
+    .innerJoin(users, eq(builds.userId, users.id))
     .where(and(eq(builds.slug, slug), eq(builds.isPublic, true)))
     .limit(1);
 
@@ -50,19 +63,20 @@ export async function getPublicBuildBySlug(slug: string): Promise<PublicBuild | 
     return null;
   }
 
-  const parsed = parseBuildContent(row.content);
+  const parsed = parseBuildContent(row.build.content);
   if (!parsed.ok) {
     return null;
   }
 
   return {
-    id: row.id,
-    name: row.name,
-    role: row.role,
-    slug: row.slug,
+    id: row.build.id,
+    name: row.build.name,
+    role: row.build.role,
+    slug: row.build.slug,
     content: parsed.data,
+    authorName: row.authorName,
   };
-}
+});
 
 export type PublicCompBuildEntry = {
   compBuildId: string;
@@ -77,6 +91,8 @@ export type PublicComp = {
   name: string;
   slug: string;
   contentType: string | null;
+  /** Comp owner's display name — see `PublicBuild.authorName` for the null contract. */
+  authorName: string | null;
   entries: PublicCompBuildEntry[];
 };
 
@@ -106,14 +122,20 @@ export type PublicComp = {
  * WHERE-filtered row count against the true attached-build count: any
  * mismatch means at least one attached build failed the `is_public` WHERE
  * and the comp is unreachable.
+ *
+ * Wrapped in React's `cache()` so a page component and its `generateMetadata`
+ * (both invoked per-request during the same render, e.g. ACM-022's OG image
+ * routes) share one DB round-trip instead of querying twice.
  */
-export async function getPublicCompBySlug(slug: string): Promise<PublicComp | null> {
+export const getPublicCompBySlug = cache(async (slug: string): Promise<PublicComp | null> => {
   const db = getDb();
-  const [comp] = await db
-    .select()
+  const [row] = await db
+    .select({ comp: comps, authorName: users.name })
     .from(comps)
+    .innerJoin(users, eq(comps.userId, users.id))
     .where(and(eq(comps.slug, slug), eq(comps.isPublic, true)))
     .limit(1);
+  const comp = row?.comp;
 
   if (!comp) {
     return null;
@@ -129,12 +151,13 @@ export async function getPublicCompBySlug(slug: string): Promise<PublicComp | nu
   }
 
   const rows = await db
-    .select({ compBuild: compBuilds, build: builds })
+    .select({ compBuild: compBuilds, build: builds, buildAuthorName: users.name })
     .from(compBuilds)
     .innerJoin(
       builds,
       and(eq(compBuilds.buildId, builds.id), eq(builds.isPublic, true)),
     )
+    .innerJoin(users, eq(builds.userId, users.id))
     .where(eq(compBuilds.compId, comp.id))
     .orderBy(asc(compBuilds.position));
 
@@ -143,7 +166,7 @@ export async function getPublicCompBySlug(slug: string): Promise<PublicComp | nu
   }
 
   const entries: PublicCompBuildEntry[] = [];
-  for (const { compBuild, build } of rows) {
+  for (const { compBuild, build, buildAuthorName } of rows) {
     const parsed = parseBuildContent(build.content);
     if (!parsed.ok) {
       return null;
@@ -160,6 +183,7 @@ export async function getPublicCompBySlug(slug: string): Promise<PublicComp | nu
         role: build.role,
         slug: build.slug,
         content: parsed.data,
+        authorName: buildAuthorName,
       },
     });
   }
@@ -169,6 +193,7 @@ export async function getPublicCompBySlug(slug: string): Promise<PublicComp | nu
     name: comp.name,
     slug: comp.slug,
     contentType: comp.contentType,
+    authorName: row.authorName,
     entries,
   };
-}
+});
