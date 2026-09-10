@@ -125,6 +125,13 @@ export type PublicComp = {
  * of its attached builds is guaranteed public, so the second query's join
  * can never return a partial row set — there is nothing left to compare.
  *
+ * Both queries run inside a single `db.transaction(...)` (default isolation
+ * is READ COMMITTED, but a shared transaction still guarantees the second
+ * query sees a snapshot no older than the first's): without it, a build
+ * could flip private between the two round-trips, and the join would
+ * silently drop that build's row, producing exactly the partial-comp leak
+ * this function's contract forbids.
+ *
  * Wrapped in React's `cache()` so a page component and its `generateMetadata`
  * (both invoked per-request during the same render, e.g. ACM-022's OG image
  * routes) share one DB round-trip instead of querying twice.
@@ -132,81 +139,88 @@ export type PublicComp = {
 export const getPublicCompBySlug = cache(async (slug: string): Promise<PublicComp | null> => {
   const db = getDb();
 
-  const hasAttachedBuilds = exists(
-    db.select({ n: sql`1` }).from(compBuilds).where(eq(compBuilds.compId, comps.id)),
-  );
+  // better-sqlite3's `db.transaction()` callback must run fully synchronously
+  // (the driver rejects a callback that returns a Promise), so this reads via
+  // `.all()` instead of `await`-ing the query builders directly.
+  return db.transaction((tx) => {
+    const hasAttachedBuilds = exists(
+      tx.select({ n: sql`1` }).from(compBuilds).where(eq(compBuilds.compId, comps.id)),
+    );
 
-  const noNonPublicAttachedBuild = notExists(
-    db
-      .select({ n: sql`1` })
-      .from(compBuilds)
-      .where(
-        and(
-          eq(compBuilds.compId, comps.id),
-          notExists(
-            db
-              .select({ n: sql`1` })
-              .from(builds)
-              .where(and(eq(builds.id, compBuilds.buildId), eq(builds.isPublic, true))),
+    const noNonPublicAttachedBuild = notExists(
+      tx
+        .select({ n: sql`1` })
+        .from(compBuilds)
+        .where(
+          and(
+            eq(compBuilds.compId, comps.id),
+            notExists(
+              tx
+                .select({ n: sql`1` })
+                .from(builds)
+                .where(and(eq(builds.id, compBuilds.buildId), eq(builds.isPublic, true))),
+            ),
           ),
         ),
-      ),
-  );
+    );
 
-  const [row] = await db
-    .select({ comp: comps, authorName: users.name })
-    .from(comps)
-    .innerJoin(users, eq(comps.userId, users.id))
-    .where(
-      and(eq(comps.slug, slug), eq(comps.isPublic, true), hasAttachedBuilds, noNonPublicAttachedBuild),
-    )
-    .limit(1);
-  const comp = row?.comp;
+    const [row] = tx
+      .select({ comp: comps, authorName: users.name })
+      .from(comps)
+      .innerJoin(users, eq(comps.userId, users.id))
+      .where(
+        and(eq(comps.slug, slug), eq(comps.isPublic, true), hasAttachedBuilds, noNonPublicAttachedBuild),
+      )
+      .limit(1)
+      .all();
+    const comp = row?.comp;
 
-  if (!comp) {
-    return null;
-  }
-
-  const rows = await db
-    .select({ compBuild: compBuilds, build: builds, buildAuthorName: users.name })
-    .from(compBuilds)
-    .innerJoin(
-      builds,
-      and(eq(compBuilds.buildId, builds.id), eq(builds.isPublic, true)),
-    )
-    .innerJoin(users, eq(builds.userId, users.id))
-    .where(eq(compBuilds.compId, comp.id))
-    .orderBy(asc(compBuilds.position));
-
-  const entries: PublicCompBuildEntry[] = [];
-  for (const { compBuild, build, buildAuthorName } of rows) {
-    const parsed = parseBuildContent(build.content);
-    if (!parsed.ok) {
+    if (!comp) {
       return null;
     }
 
-    entries.push({
-      compBuildId: compBuild.id,
-      position: compBuild.position,
-      count: compBuild.count,
-      label: compBuild.label,
-      build: {
-        id: build.id,
-        name: build.name,
-        role: build.role,
-        slug: build.slug,
-        content: parsed.data,
-        authorName: buildAuthorName,
-      },
-    });
-  }
+    const rows = tx
+      .select({ compBuild: compBuilds, build: builds, buildAuthorName: users.name })
+      .from(compBuilds)
+      .innerJoin(
+        builds,
+        and(eq(compBuilds.buildId, builds.id), eq(builds.isPublic, true)),
+      )
+      .innerJoin(users, eq(builds.userId, users.id))
+      .where(eq(compBuilds.compId, comp.id))
+      .orderBy(asc(compBuilds.position))
+      .all();
 
-  return {
-    id: comp.id,
-    name: comp.name,
-    slug: comp.slug,
-    contentType: comp.contentType,
-    authorName: row.authorName,
-    entries,
-  };
+    const entries: PublicCompBuildEntry[] = [];
+    for (const { compBuild, build, buildAuthorName } of rows) {
+      const parsed = parseBuildContent(build.content);
+      if (!parsed.ok) {
+        return null;
+      }
+
+      entries.push({
+        compBuildId: compBuild.id,
+        position: compBuild.position,
+        count: compBuild.count,
+        label: compBuild.label,
+        build: {
+          id: build.id,
+          name: build.name,
+          role: build.role,
+          slug: build.slug,
+          content: parsed.data,
+          authorName: buildAuthorName,
+        },
+      });
+    }
+
+    return {
+      id: comp.id,
+      name: comp.name,
+      slug: comp.slug,
+      contentType: comp.contentType,
+      authorName: row.authorName,
+      entries,
+    };
+  });
 });
