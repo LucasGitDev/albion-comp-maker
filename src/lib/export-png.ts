@@ -175,6 +175,25 @@ export async function exportNodeToClipboard(
   await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 }
 
+/**
+ * Resolves the capture DOM node from a wrapper ref, given the `id` the
+ * capture root was rendered with (decision-030). A build card's capture
+ * root can either be the ref'd element itself (the common single-card
+ * case, `captureId="capture-root"`) or a nested descendant identified by
+ * `captureId` (e.g. a per-entry `capture-root-{compBuildId}` inside a
+ * shared comp-wide container ref, ACM-020). This is the single source of
+ * truth for that lookup — `ExportBar` and `EditorActionBar` both delegate
+ * to it instead of duplicating the literal `#capture-root` selector.
+ */
+export function resolveCaptureNode(
+  container: HTMLElement | null,
+  captureId: string
+): HTMLElement | null {
+  if (container === null) return null;
+  if (container.id === captureId) return container;
+  return container.querySelector<HTMLElement>("#" + CSS.escape(captureId));
+}
+
 /** Derives a safe filename from the build name, falling back to a generic name. */
 export function buildExportFilename(buildName: string): string {
   const slug = buildName

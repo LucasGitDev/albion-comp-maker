@@ -8,25 +8,27 @@ import {
   exportNodeToClipboard,
   exportNodeToPng,
   isClipboardImageSupported,
+  resolveCaptureNode,
 } from "@/lib/export-png";
 
 export type ExportBarProps = {
   /**
    * Ref to a wrapper around the BuildCard preview (never the interactive
-   * editor tree). The actual capture node is resolved via
-   * `#capture-root` inside it, per decision-010 — this component never
+   * editor tree). The actual capture node is resolved via `captureId`
+   * inside it, per decision-010/decision-030 — this component never
    * renders inside that subtree, only reads it.
    */
   captureNodeRef: React.RefObject<HTMLElement | null>;
   /** Used to derive the downloaded file's name. */
   buildName: string;
+  /**
+   * DOM id of the capture root to resolve inside `captureNodeRef`.
+   * Defaults to `"capture-root"` (ACM-015's single-build case). ACM-020
+   * passes a per-entry id (`capture-root-{compBuildId}`) when several
+   * `ExportBar`s share one comp-wide container ref.
+   */
+  captureId?: string;
 };
-
-function resolveCaptureNode(container: HTMLElement | null): HTMLElement | null {
-  if (container === null) return null;
-  if (container.id === "capture-root") return container;
-  return container.querySelector<HTMLElement>("#capture-root");
-}
 
 type ExportStatus =
   | { kind: "idle" }
@@ -39,7 +41,11 @@ type ExportStatus =
  * OUTSIDE `#capture-root` and only ever read the node through a ref, never
  * rendering inside the capture tree.
  */
-export function ExportBar({ captureNodeRef, buildName }: ExportBarProps): React.JSX.Element {
+export function ExportBar({
+  captureNodeRef,
+  buildName,
+  captureId = "capture-root",
+}: ExportBarProps): React.JSX.Element {
   const [status, setStatus] = useState<ExportStatus>({ kind: "idle" });
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clipboardSupported = isClipboardImageSupported();
@@ -51,7 +57,7 @@ export function ExportBar({ captureNodeRef, buildName }: ExportBarProps): React.
   }, []);
 
   const handleDownload = useCallback(async () => {
-    const node = resolveCaptureNode(captureNodeRef.current);
+    const node = resolveCaptureNode(captureNodeRef.current, captureId);
     if (node === null) {
       scheduleReset({ kind: "error", message: "Card não está pronto para exportar." });
       return;
@@ -67,10 +73,10 @@ export function ExportBar({ captureNodeRef, buildName }: ExportBarProps): React.
         message: error instanceof Error ? error.message : "Falha ao exportar PNG.",
       });
     }
-  }, [buildName, captureNodeRef, scheduleReset]);
+  }, [buildName, captureId, captureNodeRef, scheduleReset]);
 
   const handleCopy = useCallback(async () => {
-    const node = resolveCaptureNode(captureNodeRef.current);
+    const node = resolveCaptureNode(captureNodeRef.current, captureId);
     if (node === null) {
       scheduleReset({ kind: "error", message: "Card não está pronto para exportar." });
       return;
@@ -101,7 +107,7 @@ export function ExportBar({ captureNodeRef, buildName }: ExportBarProps): React.
         message: error instanceof Error ? error.message : "Falha ao copiar PNG.",
       });
     }
-  }, [buildName, captureNodeRef, scheduleReset]);
+  }, [buildName, captureId, captureNodeRef, scheduleReset]);
 
   const isBusy = status.kind === "busy";
 

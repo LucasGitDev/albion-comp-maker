@@ -94,6 +94,42 @@ describe("ExportBar", () => {
     expect(await screen.findByText("boom")).toBeInTheDocument();
   });
 
+  it("resolves a custom captureId instead of the default #capture-root", async () => {
+    exportNodeToPngMock.mockResolvedValue("data:image/png;base64,CCCC");
+    const ref = createRef<HTMLDivElement>();
+    render(
+      <div>
+        <div ref={ref}>
+          <div id="capture-root-abc123" />
+        </div>
+        <ExportBar captureNodeRef={ref} buildName="Frontline" captureId="capture-root-abc123" />
+      </div>
+    );
+
+    fireEvent.click(screen.getByText("Baixar PNG"));
+
+    await waitFor(() => expect(exportNodeToPngMock).toHaveBeenCalledTimes(1));
+    const [node] = exportNodeToPngMock.mock.calls[0] as [HTMLElement];
+    expect(node.id).toBe("capture-root-abc123");
+  });
+
+  it("errors out when the custom captureId does not exist inside the ref", async () => {
+    const ref = createRef<HTMLDivElement>();
+    render(
+      <div>
+        <div ref={ref}>
+          <div id="capture-root-other" />
+        </div>
+        <ExportBar captureNodeRef={ref} buildName="Frontline" captureId="capture-root-abc123" />
+      </div>
+    );
+
+    fireEvent.click(screen.getByText("Baixar PNG"));
+
+    expect(await screen.findByText("Card não está pronto para exportar.")).toBeInTheDocument();
+    expect(exportNodeToPngMock).not.toHaveBeenCalled();
+  });
+
   describe("structural invariant: never a descendant of #capture-root", () => {
     /**
      * ExportBar uses Tailwind palette utilities (bg-blue-600, etc.) that

@@ -21,6 +21,7 @@ const {
   exportNodeToClipboard,
   exportNodeToPng,
   isClipboardImageSupported,
+  resolveCaptureNode,
 } = await import("@/lib/export-png");
 
 function makeStalledImg(): HTMLImageElement {
@@ -192,6 +193,33 @@ describe("export-png", () => {
       appendSpy.mockRestore();
       removeSpy.mockRestore();
       createElementSpy.mockRestore();
+    });
+  });
+
+  describe("resolveCaptureNode", () => {
+    it("returns the container itself when its id matches captureId", () => {
+      const container = document.createElement("div");
+      container.id = "capture-root-full-comp";
+      expect(resolveCaptureNode(container, "capture-root-full-comp")).toBe(container);
+    });
+
+    it("returns a nested descendant matching #captureId when the container id differs", () => {
+      const container = document.createElement("div");
+      container.id = "wrapper";
+      const nested = document.createElement("div");
+      nested.id = "capture-root-abc123";
+      container.appendChild(nested);
+      expect(resolveCaptureNode(container, "capture-root-abc123")).toBe(nested);
+    });
+
+    it("returns null when no matching node exists", () => {
+      const container = document.createElement("div");
+      container.id = "wrapper";
+      expect(resolveCaptureNode(container, "capture-root-missing")).toBeNull();
+    });
+
+    it("returns null when the container is null", () => {
+      expect(resolveCaptureNode(null, "capture-root")).toBeNull();
     });
   });
 
