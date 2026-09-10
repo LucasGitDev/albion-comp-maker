@@ -155,7 +155,7 @@ export function SlotPickerPopover({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-24"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-24 max-[430px]:items-stretch max-[430px]:pt-0"
       onClick={onClose}
       data-testid="item-picker-backdrop"
     >
@@ -165,7 +165,7 @@ export function SlotPickerPopover({
         aria-modal="true"
         aria-label={label}
         tabIndex={-1}
-        className="flex w-[320px] flex-col gap-2 outline-none"
+        className="flex w-[320px] flex-col gap-2 outline-none max-[430px]:h-full max-[430px]:w-full max-[430px]:max-w-none max-[430px]:overflow-y-auto max-[430px]:bg-surface max-[430px]:p-3"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={handleKeyDown}
         onKeyDownCapture={handleKeyDownCapture}

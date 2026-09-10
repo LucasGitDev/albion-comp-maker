@@ -152,12 +152,12 @@ export function ItemResultList({
             aria-posinset={index + 1}
             onMouseEnter={() => onHover(index)}
             onClick={() => onSelect(item)}
-            className={`relative flex h-11 cursor-pointer items-center gap-2 px-2 text-sm text-white ${
+            className={`relative flex h-11 cursor-pointer items-center gap-2 px-2 text-sm text-white max-[430px]:h-auto max-[430px]:min-h-11 max-[430px]:py-2 ${
               isActive ? "bg-item-row-active" : "hover:bg-icon-slot"
             } ${isEquipped ? "before:absolute before:left-0 before:top-0 before:h-full before:w-[3px] before:bg-item-accent" : ""}`}
           >
             <ItemIcon itemId={item.uniquename} alt={activeName} size="sm" decorative />
-            <span className="flex-1 truncate">
+            <span className="flex-1 truncate max-[430px]:whitespace-normal max-[430px]:break-words max-[430px]:[overflow:visible] max-[430px]:[text-overflow:clip]">
               {renderSegments(primarySegments, "p")}
               {secondarySegments && (
                 <span className="ml-1 text-icon-muted">
