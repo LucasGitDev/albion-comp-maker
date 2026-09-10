@@ -150,12 +150,14 @@ describe("EditorActionBar (ACM-037 AC#2, AC#5, AC#6)", () => {
     expect(screen.getByTestId("slot-count")).toHaveTextContent("4/9");
   });
 
-  it("hides the decorative slot counter on narrow screens so the status text isn't squeezed (390px review finding)", () => {
+  it("keeps the slot counter visible on narrow screens without truncating the status text (ACM-065, 390px)", () => {
     mockSession(true);
     renderBar({ buildName: "", filledCount: 0, totalSlots: 9 });
     const status = screen.getByText("Dê um nome pra build");
     expect(status.className).not.toMatch(/truncate/);
-    expect(screen.getByTestId("slot-count").className).toMatch(/hidden/);
+    const slotCount = screen.getByTestId("slot-count");
+    expect(slotCount.className).not.toMatch(/hidden/);
+    expect(slotCount).toBeVisible();
   });
 
   describe("save error messages (ACM-056)", () => {

@@ -368,11 +368,11 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
     return selectableGroups.every((group) => equipped.spells[group] !== null);
   });
   /**
-   * Denominator for the mobile group-nav strip (ACM-041, doc-005 §7): a
-   * locked offhand (two-handed mainhand) is excluded from both its group's
-   * and the global total, not counted as pending. `EditorActionBar` still
-   * passes `SLOT_ORDER.length` unmodified (ACM-065 tracks aligning it) — the
-   * two numbers can legitimately disagree on screen until that lands.
+   * Denominator for the mobile group-nav strip (ACM-041, doc-005 §7) and for
+   * `EditorActionBar`'s slot counter (ACM-065): a locked offhand (two-handed
+   * mainhand) is excluded from both its group's and the global total, not
+   * counted as pending, so both counters agree and 9/9 (or 8/8 when
+   * two-handed) is actually reachable.
    */
   const groupCounters = useMemo(
     () =>
@@ -434,7 +434,7 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
       <EditorActionBar
         buildName={build.name}
         filledCount={filledCount}
-        totalSlots={SLOT_ORDER.length}
+        totalSlots={totalReachableSlots}
         hasReadyItem={hasReadyItem}
         captureNodeRef={previewContainerRef}
         onSave={handleSave}
