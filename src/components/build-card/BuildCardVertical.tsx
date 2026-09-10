@@ -95,7 +95,7 @@ export function BuildCardVertical({
                 {lookups.itemNames[mainhand.itemId] ?? mainhand.itemId}
                 {mainhand.tier > 0 ? ` · T${mainhand.tier}${mainhand.enchant > 0 ? `.${mainhand.enchant}` : ""}` : ""}
               </p>
-            ) : (
+            ) : hideMainhandEmpty ? null : (
               <p className="text-[15px] font-medium italic" style={{ color: tokens.fgMuted }}>
                 Vazio
               </p>

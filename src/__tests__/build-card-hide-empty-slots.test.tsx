@@ -34,6 +34,13 @@ describe("BuildCard hideEmptySlots (ACM-122)", () => {
     expect(container.querySelectorAll('[data-slot-state="filled"]')).toHaveLength(1);
   });
 
+  it("omits the 'Vazio' mainhand text label in the vertical layout when hideEmptySlots is set", () => {
+    const { queryByText } = render(
+      <BuildCard state={partiallyFilledBuild()} layout="vertical" hideEmptySlots />
+    );
+    expect(queryByText("Vazio")).toBeNull();
+  });
+
   it("keeps rendering empty slots in the vertical layout by default (editor preview, ACM-092)", () => {
     const { container } = render(<BuildCard state={partiallyFilledBuild()} layout="vertical" />);
     expect(container.querySelectorAll('[data-slot-state="empty"]').length).toBeGreaterThan(0);
