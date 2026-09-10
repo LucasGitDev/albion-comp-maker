@@ -1,16 +1,13 @@
 import { createHash } from "node:crypto";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { NextRequest, NextResponse } from "next/server";
-import type { AOData, AOItem } from "@/data/ao-data.d";
+import type { AOItem } from "@/data/ao-data.d";
 import {
   checkItemsRateLimit,
   clientKeyFromHeaders,
   throttledApiResponse,
 } from "@/lib/editor-api-rate-limit";
-
-const ARTIFACT_PATH = path.join(process.cwd(), "src", "data", "ao-data.json");
+import { getAoData } from "@/lib/ao-data-cache";
 
 // The URL is bare and unversioned (`/api/items`, see
 // use-item-catalogue.tsx), so `immutable`/a long max-age is NOT legitimate
@@ -23,11 +20,12 @@ const ARTIFACT_PATH = path.join(process.cwd(), "src", "data", "ao-data.json");
 // re-download, while a genuinely new artifact is served immediately.
 const CACHE_CONTROL = "public, max-age=0, must-revalidate";
 
-let cachedItems: AOItem[] | null = null;
 let cachedItemsJson: string | null = null;
 let cachedItemsGzip: Buffer | null = null;
 let cachedItemsEtag: string | null = null;
 let inflightItemsJson: Promise<string> | null = null;
+
+class CatalogueMissingError extends Error {}
 
 /**
  * Only the fields ItemPicker/SlotCard actually read (see AOItem). Excludes
@@ -61,10 +59,12 @@ async function loadItemsJson(): Promise<string> {
   if (inflightItemsJson) return inflightItemsJson;
 
   inflightItemsJson = (async () => {
-    const raw = await fs.readFile(ARTIFACT_PATH, "utf-8");
-    const data = JSON.parse(raw) as AOData;
-    cachedItems = data.items.map(toWireItem);
-    cachedItemsJson = JSON.stringify(cachedItems);
+    const data = await getAoData();
+    if (!data) {
+      throw new CatalogueMissingError("ao-data.json not found");
+    }
+    const items = data.items.map(toWireItem);
+    cachedItemsJson = JSON.stringify(items);
     cachedItemsEtag = `"${createHash("sha1").update(cachedItemsJson).digest("hex")}"`;
     return cachedItemsJson;
   })();
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error) {
-    const isMissing = (error as NodeJS.ErrnoException)?.code === "ENOENT";
+    const isMissing = error instanceof CatalogueMissingError;
     if (!isMissing) {
       // Malformed artifact or unexpected fs error: still typed, still 503,
       // but worth distinguishing in logs from the expected missing-file case.
