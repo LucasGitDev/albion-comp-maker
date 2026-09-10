@@ -7,7 +7,7 @@ import { resolveOgIcons } from "@/lib/og-icons";
 
 // Node.js runtime (the default — no `export const runtime = 'edge'` here).
 // `getPublicBuildBySlug` goes through `getDb()` (better-sqlite3, a native
-// Node addon) and cannot load on the Edge runtime (decision-031).
+// Node addon) and cannot load on the Edge runtime (decision-030).
 export const dynamic = "force-dynamic";
 
 const WIDTH = 1200;

@@ -11,7 +11,7 @@ import "server-only";
  * (ACM-006/007)'s upstream contract — same `ID_PATTERN` allow-list, same
  * upstream base URL — but resolves to a base64 `data:` URI instead of
  * proxying bytes through a Response, and is deliberately a separate code
- * path from `/api/icon` (decision-031): Satori cannot consume a same-origin
+ * path from `/api/icon` (decision-030): Satori cannot consume a same-origin
  * proxied `<img>` URL, so a second server-side fetch is required.
  */
 

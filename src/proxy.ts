@@ -26,7 +26,7 @@ const AUTH_ONLY_LITERAL_PATHS = new Set(["/build/new", "/comp/new"]);
 // A single segment after "build" or "comp" — `/build/:slug` / `/comp/:slug`
 // — plus their ACM-022 OG-image counterparts, `/api/og/build/:slug` and
 // `/api/og/comp/:slug`, which share the same anonymous-read shape (public
-// content, no auth) and so share the same per-IP budget (decision-031).
+// content, no auth) and so share the same per-IP budget (decision-030).
 // `/build/new` and `/comp/new` must be excluded here (checked before this
 // regex in the router below via AUTH_ONLY_LITERAL_PATHS), otherwise the
 // build/comp creation pages would be treated as anonymous public routes

@@ -5,7 +5,7 @@ import path from "node:path";
 
 /**
  * Loads the OG-image webfont from disk (Node.js runtime only — see
- * decision-031: these routes intentionally do NOT run on the Edge
+ * decision-030: these routes intentionally do NOT run on the Edge
  * runtime, so `fs.readFile` is available, unlike the
  * `fetch(new URL(...))` pattern typical Edge `next/og` examples use).
  *

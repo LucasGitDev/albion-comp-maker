@@ -1,6 +1,7 @@
 import "server-only";
 
 import { and, asc, count, eq } from "drizzle-orm";
+import { cache } from "react";
 
 import { getDb } from "@/db/client";
 import { builds, compBuilds, comps, users } from "@/db/schema";
@@ -44,8 +45,12 @@ export type PublicBuild = {
  * read). A private build, a nonexistent slug, and a public build with
  * unparseable/legacy content all resolve to `null` here — the page layer
  * cannot tell them apart, by design (see module doc above).
+ *
+ * Wrapped in React's `cache()` so a page component and its `generateMetadata`
+ * (both invoked per-request during the same render, e.g. ACM-022's OG image
+ * routes) share one DB round-trip instead of querying twice.
  */
-export async function getPublicBuildBySlug(slug: string): Promise<PublicBuild | null> {
+export const getPublicBuildBySlug = cache(async (slug: string): Promise<PublicBuild | null> => {
   const db = getDb();
   const [row] = await db
     .select({ build: builds, authorName: users.name })
@@ -71,7 +76,7 @@ export async function getPublicBuildBySlug(slug: string): Promise<PublicBuild | 
     content: parsed.data,
     authorName: row.authorName,
   };
-}
+});
 
 export type PublicCompBuildEntry = {
   compBuildId: string;
@@ -117,8 +122,12 @@ export type PublicComp = {
  * WHERE-filtered row count against the true attached-build count: any
  * mismatch means at least one attached build failed the `is_public` WHERE
  * and the comp is unreachable.
+ *
+ * Wrapped in React's `cache()` so a page component and its `generateMetadata`
+ * (both invoked per-request during the same render, e.g. ACM-022's OG image
+ * routes) share one DB round-trip instead of querying twice.
  */
-export async function getPublicCompBySlug(slug: string): Promise<PublicComp | null> {
+export const getPublicCompBySlug = cache(async (slug: string): Promise<PublicComp | null> => {
   const db = getDb();
   const [row] = await db
     .select({ comp: comps, authorName: users.name })
@@ -187,4 +196,4 @@ export async function getPublicCompBySlug(slug: string): Promise<PublicComp | nu
     authorName: row.authorName,
     entries,
   };
-}
+});
