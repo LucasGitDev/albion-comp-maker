@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, eq, exists, notExists, sql } from "drizzle-orm";
 import { cache } from "react";
 
 import { getDb } from "@/db/client";
@@ -117,11 +117,20 @@ export type PublicComp = {
  *
  * `builds.is_public` lives in the join's WHERE clause (not a post-fetch JS
  * filter), matching the mutation-side ownership predicates (ACM-018/019).
- * Because a single private build must still make the WHOLE comp
- * unreachable rather than silently dropping that one slot, we compare the
- * WHERE-filtered row count against the true attached-build count: any
- * mismatch means at least one attached build failed the `is_public` WHERE
- * and the comp is unreachable.
+ * The all-or-nothing invariant itself is expressed in SQL, not JS: the comp
+ * lookup's WHERE requires `EXISTS` at least one attached `comp_builds` row
+ * (non-empty comp) AND `NOT EXISTS` any attached row whose build fails the
+ * `is_public` test (correlated subquery-in-a-subquery — no attached build
+ * may be private or missing). If the comp row is returned at all, every one
+ * of its attached builds is guaranteed public, so the second query's join
+ * can never return a partial row set — there is nothing left to compare.
+ *
+ * Both queries run inside a single `db.transaction(...)` (default isolation
+ * is READ COMMITTED, but a shared transaction still guarantees the second
+ * query sees a snapshot no older than the first's): without it, a build
+ * could flip private between the two round-trips, and the join would
+ * silently drop that build's row, producing exactly the partial-comp leak
+ * this function's contract forbids.
  *
  * Wrapped in React's `cache()` so a page component and its `generateMetadata`
  * (both invoked per-request during the same render, e.g. ACM-022's OG image
@@ -129,71 +138,89 @@ export type PublicComp = {
  */
 export const getPublicCompBySlug = cache(async (slug: string): Promise<PublicComp | null> => {
   const db = getDb();
-  const [row] = await db
-    .select({ comp: comps, authorName: users.name })
-    .from(comps)
-    .innerJoin(users, eq(comps.userId, users.id))
-    .where(and(eq(comps.slug, slug), eq(comps.isPublic, true)))
-    .limit(1);
-  const comp = row?.comp;
 
-  if (!comp) {
-    return null;
-  }
+  // better-sqlite3's `db.transaction()` callback must run fully synchronously
+  // (the driver rejects a callback that returns a Promise), so this reads via
+  // `.all()` instead of `await`-ing the query builders directly.
+  return db.transaction((tx) => {
+    const hasAttachedBuilds = exists(
+      tx.select({ n: sql`1` }).from(compBuilds).where(eq(compBuilds.compId, comps.id)),
+    );
 
-  const [{ totalCount }] = await db
-    .select({ totalCount: count() })
-    .from(compBuilds)
-    .where(eq(compBuilds.compId, comp.id));
+    const noNonPublicAttachedBuild = notExists(
+      tx
+        .select({ n: sql`1` })
+        .from(compBuilds)
+        .where(
+          and(
+            eq(compBuilds.compId, comps.id),
+            notExists(
+              tx
+                .select({ n: sql`1` })
+                .from(builds)
+                .where(and(eq(builds.id, compBuilds.buildId), eq(builds.isPublic, true))),
+            ),
+          ),
+        ),
+    );
 
-  if (totalCount === 0) {
-    return null;
-  }
+    const [row] = tx
+      .select({ comp: comps, authorName: users.name })
+      .from(comps)
+      .innerJoin(users, eq(comps.userId, users.id))
+      .where(
+        and(eq(comps.slug, slug), eq(comps.isPublic, true), hasAttachedBuilds, noNonPublicAttachedBuild),
+      )
+      .limit(1)
+      .all();
+    const comp = row?.comp;
 
-  const rows = await db
-    .select({ compBuild: compBuilds, build: builds, buildAuthorName: users.name })
-    .from(compBuilds)
-    .innerJoin(
-      builds,
-      and(eq(compBuilds.buildId, builds.id), eq(builds.isPublic, true)),
-    )
-    .innerJoin(users, eq(builds.userId, users.id))
-    .where(eq(compBuilds.compId, comp.id))
-    .orderBy(asc(compBuilds.position));
-
-  if (rows.length !== totalCount) {
-    return null;
-  }
-
-  const entries: PublicCompBuildEntry[] = [];
-  for (const { compBuild, build, buildAuthorName } of rows) {
-    const parsed = parseBuildContent(build.content);
-    if (!parsed.ok) {
+    if (!comp) {
       return null;
     }
 
-    entries.push({
-      compBuildId: compBuild.id,
-      position: compBuild.position,
-      count: compBuild.count,
-      label: compBuild.label,
-      build: {
-        id: build.id,
-        name: build.name,
-        role: build.role,
-        slug: build.slug,
-        content: parsed.data,
-        authorName: buildAuthorName,
-      },
-    });
-  }
+    const rows = tx
+      .select({ compBuild: compBuilds, build: builds, buildAuthorName: users.name })
+      .from(compBuilds)
+      .innerJoin(
+        builds,
+        and(eq(compBuilds.buildId, builds.id), eq(builds.isPublic, true)),
+      )
+      .innerJoin(users, eq(builds.userId, users.id))
+      .where(eq(compBuilds.compId, comp.id))
+      .orderBy(asc(compBuilds.position))
+      .all();
 
-  return {
-    id: comp.id,
-    name: comp.name,
-    slug: comp.slug,
-    contentType: comp.contentType,
-    authorName: row.authorName,
-    entries,
-  };
+    const entries: PublicCompBuildEntry[] = [];
+    for (const { compBuild, build, buildAuthorName } of rows) {
+      const parsed = parseBuildContent(build.content);
+      if (!parsed.ok) {
+        return null;
+      }
+
+      entries.push({
+        compBuildId: compBuild.id,
+        position: compBuild.position,
+        count: compBuild.count,
+        label: compBuild.label,
+        build: {
+          id: build.id,
+          name: build.name,
+          role: build.role,
+          slug: build.slug,
+          content: parsed.data,
+          authorName: buildAuthorName,
+        },
+      });
+    }
+
+    return {
+      id: comp.id,
+      name: comp.name,
+      slug: comp.slug,
+      contentType: comp.contentType,
+      authorName: row.authorName,
+      entries,
+    };
+  });
 });
