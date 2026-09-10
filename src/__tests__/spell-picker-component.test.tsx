@@ -18,6 +18,7 @@ describe("SpellPicker (ACM-010)", () => {
   it("AC #2/#3: renders a row only for groups with candidates, skipping W and E entirely", () => {
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Guardian Armor"
         selected={{ q: null, w: null, e: null, passive: null }}
         candidatesByGroup={{ q: Q_CANDIDATES, passive: PASSIVE_CANDIDATES }}
@@ -34,6 +35,7 @@ describe("SpellPicker (ACM-010)", () => {
   it("ACM-089: hides the picker row entirely for a group with exactly one candidate (auto-selected upstream)", () => {
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Trumpet Vanity"
         selected={{ q: null, w: null, e: "TRUMPET_TUNE", passive: null }}
         candidatesByGroup={{ e: SINGLE_E_CANDIDATE }}
@@ -50,6 +52,7 @@ describe("SpellPicker (ACM-010)", () => {
   it("ACM-089: still renders the picker row for other groups when only one group has a single candidate", () => {
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Guardian Armor"
         selected={{ q: null, w: null, e: "TRUMPET_TUNE", passive: null }}
         candidatesByGroup={{ q: Q_CANDIDATES, e: SINGLE_E_CANDIDATE }}
@@ -63,6 +66,7 @@ describe("SpellPicker (ACM-010)", () => {
   it("ACM-074 AC#1/#3: renders an explicit empty state (not nothing) when the item exposes no spells at all", () => {
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Any Offhand"
         selected={{ q: null, w: null, e: null, passive: null }}
         candidatesByGroup={{}}
@@ -79,6 +83,7 @@ describe("SpellPicker (ACM-010)", () => {
   it("ACM-074 AC#6: the empty state text stays within a single line at the SlotCard's real width", () => {
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Any Offhand"
         selected={{ q: null, w: null, e: null, passive: null }}
         candidatesByGroup={{}}
@@ -108,6 +113,7 @@ describe("SpellPicker (ACM-010)", () => {
   it("ACM-074 AC#4: the empty state is not interactive — no button role and not focusable by Tab", () => {
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Any Offhand"
         selected={{ q: null, w: null, e: null, passive: null }}
         candidatesByGroup={{}}
@@ -123,6 +129,7 @@ describe("SpellPicker (ACM-010)", () => {
   it("AC #4: tooltip (title) shows the spell name in the active locale", () => {
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Guardian Armor"
         selected={{ q: null, w: null, e: null, passive: null }}
         candidatesByGroup={{ q: Q_CANDIDATES }}
@@ -136,6 +143,7 @@ describe("SpellPicker (ACM-010)", () => {
   it("AC #5: uses SpellIcon per chip (icon status attribute present)", () => {
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Guardian Armor"
         selected={{ q: "TAUNT", w: null, e: null, passive: null }}
         candidatesByGroup={{ q: Q_CANDIDATES }}
@@ -150,6 +158,7 @@ describe("SpellPicker (ACM-010)", () => {
     const onSelect = vi.fn();
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Guardian Armor"
         selected={{ q: "TAUNT", w: null, e: null, passive: null }}
         candidatesByGroup={{ q: Q_CANDIDATES }}
@@ -167,6 +176,7 @@ describe("SpellPicker (ACM-010)", () => {
   it("only ever offers candidates the item itself exposes — no spell option outside candidatesByGroup", () => {
     render(
       <SpellPicker
+        locale="pt-BR"
         itemName="Guardian Armor"
         selected={{ q: null, w: null, e: null, passive: null }}
         candidatesByGroup={{ q: Q_CANDIDATES }}

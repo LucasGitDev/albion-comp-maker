@@ -10,6 +10,7 @@ import type { SpellCandidate } from "./spell-groups";
 import { SpellPicker } from "./SpellPicker";
 import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { t, tf } from "@/lib/i18n/messages";
 
 const SLOT_CATEGORY: Record<Slot, Exclude<IconCategory, "generic">> = {
   mainhand: "weapon",
@@ -91,9 +92,11 @@ export function SwapRow({
     >
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">Slot</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
+            {t(locale, "swap.slot")}
+          </span>
           <select
-            aria-label={`Slot do swap ${index + 1}`}
+            aria-label={tf(locale, "swap.ariaSlot", { n: index + 1 })}
             value={slot}
             onChange={(event) => onSlotChange(event.target.value as Slot)}
             className="rounded-md border border-icon-slot-empty bg-icon-placeholder px-2 py-1 text-[13px]"
@@ -108,7 +111,7 @@ export function SwapRow({
 
         <div className="flex items-center gap-2">
           <div className="flex flex-col items-center gap-1">
-            <span className="text-[11px] uppercase tracking-[0.04em] text-icon-muted">Atual</span>
+            <span className="text-[11px] uppercase tracking-[0.04em] text-icon-muted">{t(locale, "swap.current")}</span>
             {buildItemForSlot ? (
               <ItemIcon
                 itemId={buildItemForSlot.itemId}
@@ -119,7 +122,7 @@ export function SwapRow({
             ) : (
               <span
                 className="flex size-8 items-center justify-center rounded-md bg-icon-placeholder opacity-40"
-                aria-label="Slot vazio no build principal"
+                aria-label={t(locale, "swap.emptySlotAlt")}
               >
                 <CategorySilhouette category={category} size={16} />
               </span>
@@ -133,10 +136,10 @@ export function SwapRow({
           <button
             type="button"
             onClick={onRequestItemPick}
-            aria-label={`Escolher item alternativo para ${slotLabels[slot]}`}
+            aria-label={tf(locale, "swap.ariaPickAlternative", { slot: slotLabels[slot] })}
             className="flex flex-col items-center gap-1 rounded-md p-1 transition-opacity duration-150 ease-out hover:opacity-90"
           >
-            <span className="text-[11px] uppercase tracking-[0.04em] text-icon-muted">Alternativo</span>
+            <span className="text-[11px] uppercase tracking-[0.04em] text-icon-muted">{t(locale, "swap.alternative")}</span>
             {swapItem ? (
               <ItemIcon itemId={swapItem.itemId} alt={swapItemName ?? swapItem.itemId} size="sm" category={category} />
             ) : (
@@ -158,7 +161,7 @@ export function SwapRow({
             type="button"
             onClick={onMoveUp}
             disabled={index === 0}
-            aria-label={`Mover swap ${index + 1} para cima`}
+            aria-label={tf(locale, "swap.ariaMoveUp", { n: index + 1 })}
             className="flex size-7 items-center justify-center rounded-md border border-icon-slot-empty text-icon-muted transition-colors duration-150 ease-out hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
           >
             ↑
@@ -167,7 +170,7 @@ export function SwapRow({
             type="button"
             onClick={onMoveDown}
             disabled={index === total - 1}
-            aria-label={`Mover swap ${index + 1} para baixo`}
+            aria-label={tf(locale, "swap.ariaMoveDown", { n: index + 1 })}
             className="flex size-7 items-center justify-center rounded-md border border-icon-slot-empty text-icon-muted transition-colors duration-150 ease-out hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
           >
             ↓
@@ -176,7 +179,7 @@ export function SwapRow({
             ref={removeButtonRef}
             type="button"
             onClick={onRemove}
-            aria-label={`Remover swap ${index + 1}`}
+            aria-label={tf(locale, "swap.ariaRemove", { n: index + 1 })}
             className="flex size-7 items-center justify-center rounded-md border border-icon-slot-empty text-icon-muted transition-colors duration-150 ease-out hover:text-icon-error-fg"
           >
             ×
@@ -197,20 +200,19 @@ export function SwapRow({
           // (ACM-012 review round 2).
           if (swap.label.trim() === "") onLabelChange(DEFAULT_SWAP_LABEL);
         }}
-        placeholder="Quando usar? ex.: fights de bridge"
-        aria-label={`Rótulo do swap ${index + 1}`}
+        placeholder={t(locale, "swap.labelPlaceholder")}
+        aria-label={tf(locale, "swap.ariaLabelInput", { n: index + 1 })}
         maxLength={60}
         className="rounded-md border border-transparent bg-transparent px-1 py-1 text-[13px] transition-colors duration-150 ease-out focus:border-icon-slot-empty focus:outline-none"
       />
 
       {!buildItemForSlot && (
-        <p className="text-[12px] text-icon-muted">
-          Este slot está vazio no build principal. O swap será exibido como item avulso.
-        </p>
+        <p className="text-[12px] text-icon-muted">{t(locale, "swap.emptySlotNote")}</p>
       )}
 
       {swapItem && (
         <SpellPicker
+          locale={locale}
           itemName={swapItemName ?? swapItem.itemId}
           selected={swapItem.spells}
           candidatesByGroup={spellCandidatesByGroup}

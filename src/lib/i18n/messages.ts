@@ -4,10 +4,11 @@ import type { Locale } from "@/lib/i18n/locales";
  * ACM-101 extends the ACM-093/decision-026 dictionary beyond the global
  * chrome into the hero, home empty states, and the `/build/new` editor
  * surface (`SLOT_LABELS`, `SwapsSection` headers, `ThemePanel`, breadcrumbs,
- * `metadata`). Deep per-row strings inside `SwapRow`/`TierEnchantSelectors`/
- * `SpellPicker` (aria-labels built from dynamic item/slot names) remain
- * PT-BR hardcoded — those are enumerable-value labels, not the kind of
- * static copy this dictionary shape suits, and are tracked as a follow-up.
+ * `metadata`). ACM-120 closes the follow-up it left open: the deep per-row
+ * strings inside `SwapRow`/`TierEnchantSelectors`/`SpellPicker`
+ * (aria-labels built from dynamic item/slot names, via `tf`) and
+ * `EditorActionBar`'s `KNOWN_SAVE_ERROR_MESSAGES`/`ThemePanel` upload
+ * errors are now translated too.
  * No i18n library: the feature those libraries exist for (locale routing)
  * was already rejected in ACM-023.
  */
@@ -72,7 +73,49 @@ export type MessageKey =
   | "theme.preset"
   | "theme.background"
   | "theme.colorsAndTypography"
-  | "theme.contentAndFormat";
+  | "theme.contentAndFormat"
+  | "swap.slot"
+  | "swap.current"
+  | "swap.alternative"
+  | "swap.emptySlotAlt"
+  | "swap.emptySlotNote"
+  | "swap.labelPlaceholder"
+  | "swap.defaultLabel"
+  | "swap.ariaSlot"
+  | "swap.ariaPickAlternative"
+  | "swap.ariaMoveUp"
+  | "swap.ariaMoveDown"
+  | "swap.ariaRemove"
+  | "swap.ariaLabelInput"
+  | "tierEnchant.tier"
+  | "tierEnchant.enchant"
+  | "tierEnchant.ariaTier"
+  | "tierEnchant.ariaEnchant"
+  | "spellPicker.noAbilities"
+  | "spellPicker.noAbilitiesTitle"
+  | "spellPicker.ariaLabel"
+  | "editorAction.errorUnauthorized"
+  | "editorAction.errorTooManyRequests"
+  | "editorAction.errorBuildNotFound"
+  | "editorAction.errorInvalidBackground"
+  | "editorAction.errorBuildTooLarge"
+  | "editorAction.errorThemeTooLarge"
+  | "editorAction.errorInvalidSource"
+  | "editorAction.errorGeneric"
+  | "editorAction.tryAgain"
+  | "editorAction.saved"
+  | "editorAction.nameRequired"
+  | "editorAction.needsReadyItem"
+  | "editorAction.unsaved"
+  | "editorAction.notReadyToExport"
+  | "editorAction.exportFailed"
+  | "editorAction.signInDialogLabel"
+  | "editorAction.signInDialogMessage"
+  | "editorAction.notNow"
+  | "editorAction.signIn"
+  | "theme.uploadUnsupportedFormat"
+  | "theme.uploadTooLarge"
+  | "theme.uploadFailed";
 
 export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
   "en-US": {
@@ -138,6 +181,48 @@ export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
     "theme.background": "Background",
     "theme.colorsAndTypography": "Colors and typography",
     "theme.contentAndFormat": "Content and format",
+    "swap.slot": "Slot",
+    "swap.current": "Current",
+    "swap.alternative": "Alternative",
+    "swap.emptySlotAlt": "Empty slot in the main build",
+    "swap.emptySlotNote": "This slot is empty in the main build. The swap will be shown as a standalone item.",
+    "swap.labelPlaceholder": "When to use it? e.g.: bridge fights",
+    "swap.defaultLabel": "New swap",
+    "swap.ariaSlot": "Swap {n} slot",
+    "swap.ariaPickAlternative": "Choose an alternative item for {slot}",
+    "swap.ariaMoveUp": "Move swap {n} up",
+    "swap.ariaMoveDown": "Move swap {n} down",
+    "swap.ariaRemove": "Remove swap {n}",
+    "swap.ariaLabelInput": "Swap {n} label",
+    "tierEnchant.tier": "Tier",
+    "tierEnchant.enchant": "Enchant",
+    "tierEnchant.ariaTier": "Tier for {slot}",
+    "tierEnchant.ariaEnchant": "Enchant for {slot}",
+    "spellPicker.noAbilities": "No abilities",
+    "spellPicker.noAbilitiesTitle": "This item has no abilities.",
+    "spellPicker.ariaLabel": "{group} for {item}: {spell}",
+    "editorAction.errorUnauthorized": "Your session expired. Sign in again.",
+    "editorAction.errorTooManyRequests": "Too many attempts. Please wait a moment.",
+    "editorAction.errorBuildNotFound": "We couldn't find this build. It may have been removed.",
+    "editorAction.errorInvalidBackground": "The selected background image is invalid. Choose another and try again.",
+    "editorAction.errorBuildTooLarge": "The build content is too large to save.",
+    "editorAction.errorThemeTooLarge": "The theme is too large to save.",
+    "editorAction.errorInvalidSource": "Couldn't save: the source content is invalid.",
+    "editorAction.errorGeneric": "Couldn't save.",
+    "editorAction.tryAgain": "Try again",
+    "editorAction.saved": "Build saved.",
+    "editorAction.nameRequired": "Give the build a name",
+    "editorAction.needsReadyItem": "Equip at least one item with its abilities filled in",
+    "editorAction.unsaved": "unsaved",
+    "editorAction.notReadyToExport": "Card isn't ready to export.",
+    "editorAction.exportFailed": "Failed to export PNG.",
+    "editorAction.signInDialogLabel": "Sign in to save",
+    "editorAction.signInDialogMessage": "Sign in to save this build. It won't be lost.",
+    "editorAction.notNow": "Not now",
+    "editorAction.signIn": "Sign in",
+    "theme.uploadUnsupportedFormat": "Unsupported format. Use JPEG, PNG, or WebP.",
+    "theme.uploadTooLarge": "This image is {size} MB. The limit is {limit} MB.",
+    "theme.uploadFailed": "Couldn't upload the image.",
   },
   "pt-BR": {
     "nav.myComps": "Minhas comps",
@@ -202,9 +287,65 @@ export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
     "theme.background": "Fundo",
     "theme.colorsAndTypography": "Cores e tipografia",
     "theme.contentAndFormat": "Conteúdo e formato",
+    "swap.slot": "Slot",
+    "swap.current": "Atual",
+    "swap.alternative": "Alternativo",
+    "swap.emptySlotAlt": "Slot vazio no build principal",
+    "swap.emptySlotNote": "Este slot está vazio no build principal. O swap será exibido como item avulso.",
+    "swap.labelPlaceholder": "Quando usar? ex.: fights de bridge",
+    "swap.defaultLabel": "Novo swap",
+    "swap.ariaSlot": "Slot do swap {n}",
+    "swap.ariaPickAlternative": "Escolher item alternativo para {slot}",
+    "swap.ariaMoveUp": "Mover swap {n} para cima",
+    "swap.ariaMoveDown": "Mover swap {n} para baixo",
+    "swap.ariaRemove": "Remover swap {n}",
+    "swap.ariaLabelInput": "Rótulo do swap {n}",
+    "tierEnchant.tier": "Tier",
+    "tierEnchant.enchant": "Encantamento",
+    "tierEnchant.ariaTier": "Tier de {slot}",
+    "tierEnchant.ariaEnchant": "Encantamento de {slot}",
+    "spellPicker.noAbilities": "Sem abilities",
+    "spellPicker.noAbilitiesTitle": "Este item não possui abilities.",
+    "spellPicker.ariaLabel": "{group} de {item}: {spell}",
+    "editorAction.errorUnauthorized": "Sua sessão expirou. Entre novamente.",
+    "editorAction.errorTooManyRequests": "Muitas tentativas. Aguarde um instante.",
+    "editorAction.errorBuildNotFound": "Não encontramos essa build. Ela pode ter sido removida.",
+    "editorAction.errorInvalidBackground": "A imagem de fundo selecionada não é válida. Escolha outra e tente novamente.",
+    "editorAction.errorBuildTooLarge": "O conteúdo da build é grande demais para salvar.",
+    "editorAction.errorThemeTooLarge": "O tema é grande demais para salvar.",
+    "editorAction.errorInvalidSource": "Não foi possível salvar: o conteúdo de origem é inválido.",
+    "editorAction.errorGeneric": "Não deu para salvar.",
+    "editorAction.tryAgain": "Tentar de novo",
+    "editorAction.saved": "Build salva.",
+    "editorAction.nameRequired": "Dê um nome pra build",
+    "editorAction.needsReadyItem": "Equipe pelo menos um item com as habilidades preenchidas",
+    "editorAction.unsaved": "não salvo",
+    "editorAction.notReadyToExport": "Card não está pronto para exportar.",
+    "editorAction.exportFailed": "Falha ao exportar PNG.",
+    "editorAction.signInDialogLabel": "Entrar para salvar",
+    "editorAction.signInDialogMessage": "Entre para salvar esta build. Ela não será perdida.",
+    "editorAction.notNow": "Agora não",
+    "editorAction.signIn": "Entrar",
+    "theme.uploadUnsupportedFormat": "Formato não suportado. Use JPEG, PNG ou WebP.",
+    "theme.uploadTooLarge": "Essa imagem tem {size} MB. O limite é {limit} MB.",
+    "theme.uploadFailed": "Não deu para enviar a imagem.",
   },
 };
 
 export function t(locale: Locale, key: MessageKey): string {
   return MESSAGES[locale][key];
+}
+
+/**
+ * Template variant of `t` for the handful of dynamic strings (aria-labels
+ * built from a slot/item name, an index, or a formatted size) added by
+ * ACM-120. Placeholders are `{name}` tokens inside the dictionary string,
+ * replaced positionally — kept separate from `t` so every other call site
+ * (the vast majority, all static) keeps its simpler signature.
+ */
+export function tf(locale: Locale, key: MessageKey, params: Record<string, string | number>): string {
+  return Object.entries(params).reduce<string>(
+    (message, [name, value]) => message.replaceAll(`{${name}}`, String(value)),
+    t(locale, key)
+  );
 }

@@ -301,6 +301,7 @@ export function SlotCard({
           {tierOptions.length > 0 && onTierChange && (
             <TierSelect
               slotLabel={label}
+              locale={locale}
               tier={item.tier}
               options={tierOptions}
               onChange={(option) => onTierChange(slot, option)}
@@ -309,6 +310,7 @@ export function SlotCard({
           {enchantOptions.length > 1 && onEnchantChange && (
             <EnchantSelect
               slotLabel={label}
+              locale={locale}
               enchant={item.enchant}
               options={enchantOptions}
               onChange={(enchant) => onEnchantChange(slot, enchant)}
@@ -318,6 +320,7 @@ export function SlotCard({
       )}
       {onSpellChange && (
         <SpellPicker
+          locale={locale}
           itemName={itemName ?? item.itemId}
           selected={item.spells}
           candidatesByGroup={selectableSpellCandidatesByGroup}

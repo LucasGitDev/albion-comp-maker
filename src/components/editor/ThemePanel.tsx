@@ -16,8 +16,8 @@ import {
   BG_SCALE_MIN,
 } from "@/lib/validation-constants";
 import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import { t } from "@/lib/i18n/messages";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { t, tf } from "@/lib/i18n/messages";
 
 /**
  * ACM-014 theme panel (doc-007, simplified against decision-019's leaner
@@ -76,13 +76,13 @@ function markCustomIfNamed(theme: BuildCardTheme): BuildCardTheme {
   return theme;
 }
 
-async function uploadBackground(file: File): Promise<string> {
+async function uploadBackground(locale: Locale, file: File): Promise<string> {
   const formData = new FormData();
   formData.set("file", file);
   const response = await fetch("/api/background", { method: "POST", body: formData });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error ?? "Não deu para enviar a imagem.");
+    throw new Error(body?.error ?? t(locale, "theme.uploadFailed"));
   }
   const body = (await response.json()) as { id: string };
   return body.id;
@@ -128,29 +128,35 @@ export function ThemePanel({
       if (!file) return;
 
       if (!(BG_ALLOWED_MIME as readonly string[]).includes(file.type)) {
-        setUpload({ kind: "error", message: "Formato não suportado. Use JPEG, PNG ou WebP." });
+        setUpload({ kind: "error", message: t(locale, "theme.uploadUnsupportedFormat") });
         return;
       }
 
       if (file.size > BG_MAX_UPLOAD_BYTES) {
         setUpload({
           kind: "error",
-          message: `Essa imagem tem ${formatMegabytes(file.size)} MB. O limite é ${formatMegabytes(BG_MAX_UPLOAD_BYTES)} MB.`,
+          message: tf(locale, "theme.uploadTooLarge", {
+            size: formatMegabytes(file.size),
+            limit: formatMegabytes(BG_MAX_UPLOAD_BYTES),
+          }),
         });
         return;
       }
 
       setUpload({ kind: "uploading" });
       try {
-        const imageId = await uploadBackground(file);
+        const imageId = await uploadBackground(locale, file);
         onChange(markCustomIfNamed({ ...theme, background: { imageId, blur: 0, darken: 0.4, scale: 1 } }));
         setUpload({ kind: "idle" });
         setAnnouncement("Imagem de fundo aplicada.");
       } catch (error) {
-        setUpload({ kind: "error", message: error instanceof Error ? error.message : "Não deu para enviar a imagem." });
+        setUpload({
+          kind: "error",
+          message: error instanceof Error ? error.message : t(locale, "theme.uploadFailed"),
+        });
       }
     },
-    [theme, onChange]
+    [theme, onChange, locale]
   );
 
   const handleRemoveBackground = useCallback(() => {
