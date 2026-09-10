@@ -64,7 +64,7 @@ export default async function Home(): Promise<React.JSX.Element> {
     <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">
       <section className="flex flex-1 flex-col gap-4 px-6 py-12">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold text-foreground">{t(locale, "home.myComps")}</h2>
+          <h1 className="text-xl font-semibold text-foreground">{t(locale, "home.myComps")}</h1>
           <div className="flex items-center gap-4">
             <Link
               href="/build/new"
