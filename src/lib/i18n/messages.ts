@@ -50,6 +50,8 @@ export type MessageKey =
   | "editor.buildNamePlaceholder"
   | "editor.roleLabel"
   | "editor.rolePlaceholder"
+  | "editor.nameCharsRemaining"
+  | "editor.roleCharsRemaining"
   | "editor.save"
   | "editor.saving"
   | "editor.exportPng"
@@ -159,6 +161,8 @@ export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
     "editor.buildNameLabel": "Build name",
     "editor.buildNamePlaceholder": "Frontline bruiser",
     "editor.roleLabel": "Role",
+    "editor.nameCharsRemaining": "{n} characters left for the build name",
+    "editor.roleCharsRemaining": "{n} characters left for the role",
     "editor.rolePlaceholder": "Tank",
     "editor.save": "Save",
     "editor.saving": "Saving…",
@@ -268,6 +272,8 @@ export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
     "editor.buildNameLabel": "Nome do build",
     "editor.buildNamePlaceholder": "Bruiser de frontline",
     "editor.roleLabel": "Papel",
+    "editor.nameCharsRemaining": "{n} caracteres restantes para o nome do build",
+    "editor.roleCharsRemaining": "{n} caracteres restantes para o papel",
     "editor.rolePlaceholder": "Tank",
     "editor.save": "Salvar",
     "editor.saving": "Salvando…",
