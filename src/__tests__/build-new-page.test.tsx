@@ -133,8 +133,9 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
     expect(useBuildStore.getState().build.slots.mainhand).toBeNull();
   });
 
-  it("locked offhand (mainhand two-handed) never opens the picker", () => {
+  it("offhand slot is removed from the DOM when mainhand is two-handed (ACM-121)", () => {
     renderPage();
+    expect(screen.getByTestId("slot-grid").querySelector('[data-slot="offhand"]')).toBeInTheDocument();
     act(() => {
       useBuildStore.getState().actions.setItem(
         "mainhand",
@@ -143,8 +144,18 @@ describe("/build/new — ItemPicker wiring (ACM-034)", () => {
         0,
       );
     });
-    expect(screen.getByText("Ocupada por arma de duas mãos")).toBeInTheDocument();
+    expect(screen.getByTestId("slot-grid").querySelector('[data-slot="offhand"]')).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    act(() => {
+      useBuildStore.getState().actions.setItem(
+        "mainhand",
+        { uniquename: "T8_SWORD", twohanded: false, maxEnchant: 4 },
+        8,
+        0,
+      );
+    });
+    expect(screen.getByTestId("slot-grid").querySelector('[data-slot="offhand"]')).toBeInTheDocument();
   });
 });
 
