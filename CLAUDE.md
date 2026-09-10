@@ -123,6 +123,13 @@ with UI or user-facing behavior is reported as passing:
    an independent check, not a formality — it is the control that caught the
    ACM-039 false positive.
 
+Before removing a task worktree with `git worktree remove --force`, the orchestrator MUST run
+`git -C <worktree-path> status --porcelain -- .backlog/` and verify the output is empty. Any
+untracked or uncommitted `.backlog/` file listed there (decision, doc, task file) must be
+committed and pushed, or explicitly discarded on purpose, before the worktree is force-removed.
+`--force` destroys untracked files irreversibly — never run it against `.backlog/` output without
+this check.
+
 ## Quality gate
 
 Single command: `make check` → runs `scripts/check.sh`.
@@ -166,6 +173,13 @@ Record any relevant decision made during work:
 
 Do not implement silently. If you pick a non-obvious approach, write it down before writing code.
 
+**Worktree survival rule**: `.backlog/` files (decisions, docs) created or edited inside a task
+worktree are untracked by default and are destroyed if the worktree is later removed with
+`--force`. Immediately after creating or editing a decision/doc in a worktree, run
+`git add .backlog/` and include those files in the same commit as the task work (or a dedicated
+`docs:` commit) before opening the PR. A decision/doc that only exists on disk in the worktree,
+and not in a commit, does not count as recorded.
+
 ## Multi-Agent Harness
 
 When multiple agents run in parallel, these rules are mandatory. Prose instructions without enforcement — an agent that ignores them causes merge conflicts and lost work.
@@ -200,7 +214,12 @@ Never push directly to master.
 
 1. Implementer: run `make check` → pass → open PR → `backlog task edit --status "In Review"` → stop
 2. If `make check` fails: fix and retry, max 3 attempts, then move task back to "To Do" with blocker note
-3. Reviewer: findings → if approved, comment LGTM on PR → Orchestrator merges
+3. Reviewer: findings → if approved, comment LGTM on PR → Orchestrator merges.
+   If the task notes or implementer report reference a `backlog decision create` or
+   `backlog doc create` artifact, the reviewer MUST confirm that file appears in the PR diff
+   (`gh pr diff` or equivalent), not just on disk in the worktree. A decision/doc that exists
+   only in the worktree filesystem and not in the diff is NOT considered delivered — block
+   approval until it is committed and pushed.
 4. After merge: Orchestrator runs `make check` on master → if pass, moves task to Done
 
 ### Parallelism boundaries
