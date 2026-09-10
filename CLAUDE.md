@@ -89,6 +89,40 @@ A task is Done only when ALL of the following pass, in order:
 7. **Branch cleanup** — after merge, delete the local task branch: `git branch -d task/<id>-slug`
    (use `-D` only if the branch was closed without merging to master)
 
+## Manual Verification Protocol
+
+A manual "OK" that isn't checked against a clean build is worthless: it can report
+success even when the feature is completely absent (verified false-positive on
+ACM-039 — a stale `.next` build served pre-change HTML and the implementer reported
+all steps passing). Manual verification MUST follow this protocol before any task
+with UI or user-facing behavior is reported as passing:
+
+1. **Clean build, every time.** Kill any running dev server, then:
+   ```bash
+   pkill -f "next dev" || true
+   rm -rf .next
+   npm run dev
+   ```
+   Never verify against an already-running dev server you did not just start
+   from a clean `.next`.
+2. **Positive assertion per step, not narration.** Each of the 1–3 manual test
+   steps in the task must include a concrete, falsifiable assertion tied to the
+   specific change — e.g. a `grep`/`curl` check for a marker (data attribute,
+   class name, string, status code) that only exists if the change shipped.
+   "Looks OK" / "visually confirmed" is not an acceptable verification step.
+   Example:
+   ```bash
+   curl -s http://localhost:3000/editor | grep -q 'data-slot-category' \
+     && echo "PASS: marker present" || echo "FAIL: marker absent"
+   ```
+3. **Absence of the marker is an explicit failure.** If the assertion does not
+   match, the step fails — do not fall back to visual inspection or re-report
+   success. Fix the build/cache/code and re-run the clean-build procedure.
+4. **ui-reviewer remains mandatory** for any task touching UI surface,
+   regardless of whether the implementer's manual verification passed. It is
+   an independent check, not a formality — it is the control that caught the
+   ACM-039 false positive.
+
 ## Quality gate
 
 Single command: `make check` → runs `scripts/check.sh`.
