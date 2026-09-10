@@ -59,6 +59,7 @@
     "jscpd": "^5.2.0",
     "jsdom": "^30.0.1",
     "knip": "^6.35.1",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5",

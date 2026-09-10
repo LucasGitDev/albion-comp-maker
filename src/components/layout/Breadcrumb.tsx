@@ -27,8 +27,8 @@ export type BreadcrumbProps = {
 export function Breadcrumb({ current, comp }: BreadcrumbProps): React.JSX.Element {
   const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
   return (
-    <nav aria-label="Trilha" className="text-sm">
-      <ol className="flex items-center gap-2">
+    <nav aria-label="Trilha" className="min-w-0 text-sm">
+      <ol className="flex min-w-0 items-center gap-2">
         <li>
           <Link
             href="/"

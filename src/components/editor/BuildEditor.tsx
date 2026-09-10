@@ -428,7 +428,7 @@ export function BuildEditor(props: BuildEditorProps): React.JSX.Element {
     <main
       id="main-content"
       tabIndex={-1}
-      className={`mx-auto flex min-w-0 flex-col gap-6 p-8 pb-24 outline-none md:pb-8 ${themePanelOpen ? "max-w-[1600px]" : "max-w-6xl"}`}
+      className={`mx-auto flex w-full min-w-0 flex-col gap-6 p-8 pb-24 outline-none md:pb-8 ${themePanelOpen ? "max-w-[1600px]" : "max-w-6xl"}`}
     >
       <Breadcrumb current={build.name.trim() || t(locale, "editor.newBuild")} comp={compTrail} />
       <EditorActionBar
