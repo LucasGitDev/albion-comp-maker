@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildExportFilename, downloadDataUrl, exportNodeToPng, resolveCaptureNode } from "@/lib/export-png";
 import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { t } from "@/lib/i18n/messages";
 
 export type EditorActionBarProps = {
@@ -57,31 +57,23 @@ export type EditorActionBarProps = {
  * else — including a message we don't recognize at all — falls back to the
  * generic copy below, same as before this fix.
  */
-const KNOWN_SAVE_ERROR_MESSAGES: ReadonlyArray<{ test: RegExp; message: string }> = [
-  { test: /^Unauthorized$/, message: "Sua sessão expirou. Entre novamente." },
-  { test: /^Too many requests/i, message: "Muitas tentativas. Aguarde um instante." },
-  { test: /^Build not found$/, message: "Não encontramos essa build. Ela pode ter sido removida." },
-  {
-    test: /^The referenced background image does not belong to you$/,
-    message: "A imagem de fundo selecionada não é válida. Escolha outra e tente novamente.",
-  },
-  {
-    test: /^Build content exceeds the \d+-byte limit$/,
-    message: "O conteúdo da build é grande demais para salvar.",
-  },
-  { test: /^theme_json exceeds the \d+-byte limit$/, message: "O tema é grande demais para salvar." },
+const KNOWN_SAVE_ERROR_MESSAGES: ReadonlyArray<{ test: RegExp; key: Parameters<typeof t>[1] }> = [
+  { test: /^Unauthorized$/, key: "editorAction.errorUnauthorized" },
+  { test: /^Too many requests/i, key: "editorAction.errorTooManyRequests" },
+  { test: /^Build not found$/, key: "editorAction.errorBuildNotFound" },
+  { test: /^The referenced background image does not belong to you$/, key: "editorAction.errorInvalidBackground" },
+  { test: /^Build content exceeds the \d+-byte limit$/, key: "editorAction.errorBuildTooLarge" },
+  { test: /^theme_json exceeds the \d+-byte limit$/, key: "editorAction.errorThemeTooLarge" },
   {
     test: /^Source build content is invalid or from an unsupported legacy format$/,
-    message: "Não foi possível salvar: o conteúdo de origem é inválido.",
+    key: "editorAction.errorInvalidSource",
   },
 ];
 
-const GENERIC_SAVE_ERROR_MESSAGE = "Não deu para salvar.";
-
-function resolveSaveErrorMessage(rawMessage: string | undefined): string {
-  if (rawMessage === undefined) return GENERIC_SAVE_ERROR_MESSAGE;
+function resolveSaveErrorMessage(locale: Locale, rawMessage: string | undefined): string {
+  if (rawMessage === undefined) return t(locale, "editorAction.errorGeneric");
   const known = KNOWN_SAVE_ERROR_MESSAGES.find(({ test }) => test.test(rawMessage));
-  return known ? known.message : GENERIC_SAVE_ERROR_MESSAGE;
+  return known ? t(locale, known.key) : t(locale, "editorAction.errorGeneric");
 }
 
 type SaveStatus =
@@ -164,16 +156,16 @@ export function EditorActionBar({
     } catch (error) {
       setSaveStatus({
         kind: "error",
-        message: resolveSaveErrorMessage(error instanceof Error ? error.message : undefined),
+        message: resolveSaveErrorMessage(locale, error instanceof Error ? error.message : undefined),
       });
     }
-  }, [canSave, onSave, saveStatus.kind, scheduleSavedReset]);
+  }, [canSave, locale, onSave, saveStatus.kind, scheduleSavedReset]);
 
   const handleExportClick = useCallback(async () => {
     if (!hasReadyItem) return;
     const node = resolveCaptureNode(captureNodeRef.current, "capture-root");
     if (node === null) {
-      setExportStatus({ kind: "error", message: "Card não está pronto para exportar." });
+      setExportStatus({ kind: "error", message: t(locale, "editorAction.notReadyToExport") });
       return;
     }
     setExportStatus({ kind: "busy" });
@@ -184,10 +176,10 @@ export function EditorActionBar({
     } catch (error) {
       setExportStatus({
         kind: "error",
-        message: error instanceof Error ? error.message : "Falha ao exportar PNG.",
+        message: error instanceof Error ? error.message : t(locale, "editorAction.exportFailed"),
       });
     }
-  }, [buildName, captureNodeRef, hasReadyItem]);
+  }, [buildName, captureNodeRef, hasReadyItem, locale]);
 
   const saving = saveStatus.kind === "saving";
   const exporting = exportStatus.kind === "busy";
@@ -203,15 +195,15 @@ export function EditorActionBar({
     statusMessage = exportStatus.message;
     statusIsError = true;
   } else if (saveStatus.kind === "saving") {
-    statusMessage = "Salvando…";
+    statusMessage = t(locale, "editor.saving");
   } else if (saveStatus.kind === "saved") {
-    statusMessage = "Build salva.";
+    statusMessage = t(locale, "editorAction.saved");
   } else if (buildName.trim() === "") {
-    statusMessage = "Dê um nome pra build";
+    statusMessage = t(locale, "editorAction.nameRequired");
   } else if (!hasReadyItem) {
-    statusMessage = "Equipe pelo menos um item com as habilidades preenchidas";
+    statusMessage = t(locale, "editorAction.needsReadyItem");
   } else {
-    statusMessage = saveStatus.dirty ? "não salvo" : "";
+    statusMessage = saveStatus.dirty ? t(locale, "editorAction.unsaved") : "";
   }
 
   return (
@@ -237,7 +229,7 @@ export function EditorActionBar({
             onClick={() => void handleSaveClick()}
             className="shrink-0 text-sm font-medium text-foreground underline underline-offset-2 transition-colors hover:text-foreground/80 focus-visible:transition-none"
           >
-            Tentar de novo
+            {t(locale, "editorAction.tryAgain")}
           </button>
         )}
       </div>
@@ -277,10 +269,10 @@ export function EditorActionBar({
         {gateOpen && (
           <div
             role="dialog"
-            aria-label="Entrar para salvar"
+            aria-label={t(locale, "editorAction.signInDialogLabel")}
             className="absolute bottom-full right-0 z-40 mb-2 w-72 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-sm shadow-[0_8px_24px_-12px_#000000]"
           >
-            <p className="text-foreground">Entre para salvar esta build. Ela não será perdida.</p>
+            <p className="text-foreground">{t(locale, "editorAction.signInDialogMessage")}</p>
             <div className="mt-3 flex justify-end gap-2">
               <button
                 type="button"
@@ -290,14 +282,14 @@ export function EditorActionBar({
                 }}
                 className="rounded-md px-3 py-1.5 text-foreground/70 transition-colors hover:text-foreground focus-visible:transition-none"
               >
-                Agora não
+                {t(locale, "editorAction.notNow")}
               </button>
               {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- /api/auth/signin is a NextAuth route handler, not an app-router page. */}
               <a
                 href="/api/auth/signin"
                 className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:transition-none"
               >
-                Entrar
+                {t(locale, "editorAction.signIn")}
               </a>
             </div>
           </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import { SpellIcon, type SpellSlotLabel } from "@/components/icons/SpellIcon";
+import type { Locale } from "@/lib/i18n/locales";
+import { t, tf } from "@/lib/i18n/messages";
 import type { SpellGroup } from "@/types/build";
 import type { SpellCandidate } from "./spell-groups";
 
@@ -12,6 +14,7 @@ const GROUP_ORDER: readonly { group: SpellGroup; label: SpellSlotLabel }[] = [
 ];
 
 export type SpellPickerProps = {
+  locale: Locale;
   itemName: string;
   /** Selected spell uniquename per group (null when nothing picked yet). */
   selected: Record<SpellGroup, string | null>;
@@ -26,6 +29,7 @@ export type SpellPickerProps = {
 
 /** Interactive chip row per spell group: only abilities the item's own resolved spell list exposes are ever offered. */
 export function SpellPicker({
+  locale,
   itemName,
   selected,
   candidatesByGroup,
@@ -48,10 +52,10 @@ export function SpellPicker({
     return (
       <p
         className="truncate whitespace-nowrap text-[12px] text-icon-muted"
-        title="Este item não possui abilities."
+        title={t(locale, "spellPicker.noAbilitiesTitle")}
         data-testid="spell-picker-empty"
       >
-        Sem abilities
+        {t(locale, "spellPicker.noAbilities")}
       </p>
     );
   }
@@ -78,7 +82,11 @@ export function SpellPicker({
                   type="button"
                   title={candidate.name}
                   aria-pressed={isSelected}
-                  aria-label={`${label} de ${itemName}: ${candidate.name}`}
+                  aria-label={tf(locale, "spellPicker.ariaLabel", {
+                    group: label,
+                    item: itemName,
+                    spell: candidate.name,
+                  })}
                   onClick={() => onSelect(group, isSelected ? null : candidate.uniquename)}
                   className={`rounded-md transition-[filter,opacity] duration-150 ease-out ${
                     isSelected ? "opacity-100" : "grayscale opacity-60 hover:opacity-90"

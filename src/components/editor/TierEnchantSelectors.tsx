@@ -1,20 +1,23 @@
 "use client";
 
+import type { Locale } from "@/lib/i18n/locales";
+import { t, tf } from "@/lib/i18n/messages";
 import type { EnchantOption, TierOption } from "./tier-enchant";
 
 export type TierSelectProps = {
   slotLabel: string;
+  locale: Locale;
   tier: number;
   options: readonly TierOption[];
   onChange: (option: TierOption) => void;
 };
 
-export function TierSelect({ slotLabel, tier, options, onChange }: TierSelectProps): React.JSX.Element {
+export function TierSelect({ slotLabel, locale, tier, options, onChange }: TierSelectProps): React.JSX.Element {
   return (
     <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
-      Tier
+      {t(locale, "tierEnchant.tier")}
       <select
-        aria-label={`Tier de ${slotLabel}`}
+        aria-label={tf(locale, "tierEnchant.ariaTier", { slot: slotLabel })}
         className="rounded border border-icon-slot-empty bg-icon-slot px-1 py-0.5 text-[11px] font-normal normal-case text-white"
         value={tier}
         onChange={(event) => {
@@ -35,6 +38,7 @@ export function TierSelect({ slotLabel, tier, options, onChange }: TierSelectPro
 
 export type EnchantSelectProps = {
   slotLabel: string;
+  locale: Locale;
   enchant: EnchantOption;
   options: readonly EnchantOption[];
   onChange: (enchant: EnchantOption) => void;
@@ -45,14 +49,20 @@ export type EnchantSelectProps = {
  * (`SlotCard`) is expected to gate on `maxEnchant > 0` (ACM-031 AC#2), but
  * this component also degrades gracefully if handed a single-option list.
  */
-export function EnchantSelect({ slotLabel, enchant, options, onChange }: EnchantSelectProps): React.JSX.Element | null {
+export function EnchantSelect({
+  slotLabel,
+  locale,
+  enchant,
+  options,
+  onChange,
+}: EnchantSelectProps): React.JSX.Element | null {
   if (options.length <= 1) return null;
 
   return (
     <label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
-      Encantamento
+      {t(locale, "tierEnchant.enchant")}
       <select
-        aria-label={`Encantamento de ${slotLabel}`}
+        aria-label={tf(locale, "tierEnchant.ariaEnchant", { slot: slotLabel })}
         className="rounded border border-icon-slot-empty bg-icon-slot px-1 py-0.5 text-[11px] font-normal normal-case text-white"
         value={enchant}
         onChange={(event) => {
