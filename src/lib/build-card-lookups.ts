@@ -1,46 +1,35 @@
 import "server-only";
 
-import { promises as fs } from "node:fs";
-import path from "node:path";
-
-import type { AOData, AOItem } from "@/data/ao-data.d";
+import type { AOItem } from "@/data/ao-data.d";
 import { groupSpellsForItem } from "@/components/editor/spell-groups";
 import type { BuildCardLookups } from "@/components/build-card/types";
 import type { BuildState, SpellGroup } from "@/types/build";
 import { resolveLocalizedName } from "@/lib/localized-name";
 import type { Locale } from "@/lib/i18n/locales";
-
-const ARTIFACT_PATH = path.join(process.cwd(), "src", "data", "ao-data.json");
+import { getAoData } from "@/lib/ao-data-cache";
 
 let cachedItemsByUniquename: Map<string, AOItem> | null = null;
-let inflight: Promise<Map<string, AOItem>> | null = null;
 
 /**
- * Reads the ao-data.json artifact directly via `fs` (this runs at SSR time
- * on the server, not in the browser — mirrors `src/app/api/items/route.ts`'s
- * own read, but skips the HTTP round-trip since we're already on the
- * server). Cached at module scope like the route handler's own cache.
+ * Derives the uniquename -> item map from the shared `getAoData()` cache
+ * (this runs at SSR time on the server, not in the browser — mirrors
+ * `src/app/api/items/route.ts`'s own read, but skips the HTTP round-trip
+ * since we're already on the server). The derived map is cached separately
+ * at module scope so repeated calls don't rebuild it from the shared
+ * artifact on every request.
  */
 async function loadItemsByUniquename(): Promise<Map<string, AOItem>> {
   if (cachedItemsByUniquename) return cachedItemsByUniquename;
-  if (inflight) return inflight;
 
-  inflight = (async () => {
-    const raw = await fs.readFile(ARTIFACT_PATH, "utf-8");
-    const data = JSON.parse(raw) as AOData;
-    const map = new Map<string, AOItem>();
+  const data = await getAoData();
+  const map = new Map<string, AOItem>();
+  if (data) {
     for (const item of data.items) {
       map.set(item.uniquename, item);
     }
-    cachedItemsByUniquename = map;
-    return map;
-  })();
-
-  try {
-    return await inflight;
-  } finally {
-    inflight = null;
   }
+  cachedItemsByUniquename = map;
+  return map;
 }
 
 /** Every `itemId` a `BuildState` references, across the main slots and every swap. */
