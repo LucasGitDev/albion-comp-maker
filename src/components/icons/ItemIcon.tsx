@@ -42,7 +42,7 @@ export function ItemIcon({
 }: ItemIconProps): React.JSX.Element {
   const isValidId = ICON_ID_PATTERN.test(itemId);
   const src = isValidId ? buildItemIconUrl(itemId, quality) : null;
-  const { status, handleLoad, handleError } = useIconStatus(src);
+  const { status, handleLoad, handleError, refCallback } = useIconStatus(src);
   const resolvedStatus = isValidId ? status : "error";
 
   useEffect(() => {
@@ -94,6 +94,7 @@ export function ItemIcon({
       {isValidId && src !== null && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          ref={refCallback}
           src={src}
           alt={displayAlt}
           aria-hidden={decorative || undefined}

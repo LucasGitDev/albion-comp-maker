@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 export type IconStatus = "loading" | "loaded" | "missing" | "error";
 
@@ -20,6 +20,7 @@ export function useIconStatus(src: string | null): {
   status: IconStatus;
   handleLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void;
   handleError: () => void;
+  refCallback: (node: HTMLImageElement | null) => void;
 } {
   const [state, setState] = useState<IconStatusState>({ src, status: "loading" });
 
@@ -36,5 +37,38 @@ export function useIconStatus(src: string | null): {
     setState((prev) => ({ ...prev, status: "error" }));
   }
 
-  return { status: state.src === src ? state.status : "loading", handleLoad, handleError };
+  /**
+   * On server-rendered pages (ACM-123: public build/comp share views) the
+   * `<img>` tag is already present in the initial HTML with its final
+   * `src`, so the browser starts fetching it while parsing — often before
+   * React hydrates and attaches the `onLoad`/`onError` listeners below. A
+   * load/error that completes in that window fires no React event at all,
+   * so `status` gets stuck at "loading" forever and the icon renders as an
+   * invisible (opacity-0) image over its grey placeholder. This callback
+   * ref runs at mount/commit time and checks `HTMLImageElement.complete`
+   * synchronously, catching exactly that race for images that finished
+   * before hydration attached the handlers. Images still in flight at
+   * mount (`complete === false`) are unaffected and resolve normally via
+   * `handleLoad`/`handleError` once they finish.
+   */
+  const refCallback = useCallback(
+    (node: HTMLImageElement | null) => {
+      if (!node || !node.complete) return;
+      // `naturalWidth === 0` on a `complete` image means the load failed
+      // (mirrors `onError`, which native `<img>` never re-fires once
+      // `complete` is already true) — `1` is the real 1x1 blank sprite
+      // (mirrors `onLoad`'s "missing" branch).
+      const nextStatus: IconStatus =
+        node.naturalWidth === 0 ? "error" : node.naturalWidth <= 1 ? "missing" : "loaded";
+      setState((prev) => (prev.src === src ? { ...prev, status: nextStatus } : prev));
+    },
+    [src]
+  );
+
+  return {
+    status: state.src === src ? state.status : "loading",
+    handleLoad,
+    handleError,
+    refCallback,
+  };
 }
