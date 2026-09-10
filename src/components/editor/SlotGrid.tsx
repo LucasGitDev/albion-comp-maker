@@ -13,9 +13,10 @@ export type SlotGridProps = {
   /** Candidate spells per slot, keyed by group (ACM-010). See SlotCard. */
   spellCandidatesBySlot?: Partial<Record<Slot, Partial<Record<SpellGroup, readonly SpellCandidate[]>>>>;
   /**
-   * True when mainhand holds a two-handed item, so the offhand card renders
-   * locked. Callers derive this from the item catalog (mainhand's
-   * `AOItem.twohanded`); this component has no catalog access.
+   * True when mainhand holds a two-handed item, so the offhand card is
+   * omitted from the DOM entirely (ACM-121). Callers derive this from the
+   * item catalog (mainhand's `AOItem.twohanded`); this component has no
+   * catalog access.
    */
   offhandLocked?: boolean;
   /** Tier options per slot, derived from the catalogue by the caller (ACM-009). */
@@ -65,14 +66,15 @@ export function SlotGrid({
             {column.title}
           </h3>
           <div className="grid grid-cols-2 gap-3 md:flex md:flex-col">
-            {column.slots.map((slot) => (
+            {column.slots
+              .filter((slot) => !(slot === "offhand" && offhandLocked))
+              .map((slot) => (
               <SlotCard
                 key={slot}
                 slot={slot}
                 item={build.slots[slot]}
                 itemName={itemNames?.[slot]}
                 spellCandidatesByGroup={spellCandidatesBySlot?.[slot]}
-                locked={slot === "offhand" && offhandLocked}
                 tierOptions={tierOptionsBySlot?.[slot]}
                 enchantOptions={enchantOptionsBySlot?.[slot]}
                 onRequestItemPick={onRequestItemPick}
