@@ -79,7 +79,7 @@ export default async function PublicBuildPage({ params }: PageProps): Promise<Re
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center gap-6 p-8 outline-none">
-      <BuildCard state={build.content} layout="vertical" {...lookups} />
+      <BuildCard state={build.content} layout="vertical" hideEmptySlots {...lookups} />
       {guestCta}
     </main>
   );
