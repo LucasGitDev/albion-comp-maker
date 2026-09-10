@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AOItem } from "@/data/ao-data.d";
+import type { ReactNode } from "react";
 
 vi.mock("@/actions/builds", () => ({
   listMyBuilds: vi.fn().mockResolvedValue([]),
@@ -21,10 +22,20 @@ vi.mock("@/auth/config", () => ({ auth: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/actions/comps", () => ({ listMyCompsWithStatus: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/lib/i18n/server-locale", () => ({ getRequestLocale: vi.fn().mockResolvedValue("pt-BR") }));
 
+// `RootLayout` pulls in `next/font/google`, which relies on Next.js's build
+// pipeline (SWC font-loader transform) to resolve to real font data — it
+// throws when imported directly under Vitest/jsdom. Stubbed here with the
+// minimal shape `RootLayout` actually consumes (`.variable`) so the *real*
+// `RootLayout` tree — including its one true skip-link `<a>` — renders.
+vi.mock("next/font/google", () => ({
+  Geist: () => ({ variable: "font-sans" }),
+  Geist_Mono: () => ({ variable: "font-mono" }),
+}));
+
+import RootLayout from "@/app/layout";
 import Home from "@/app/page";
 import BuildsPage from "@/app/builds/page";
 import NewBuildPage from "@/app/(editor)/build/new/page";
-import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 
 vi.mock("next/navigation", async () => {
   const actual = await vi.importActual<typeof import("next/navigation")>("next/navigation");
@@ -32,45 +43,43 @@ vi.mock("next/navigation", async () => {
 });
 
 /**
- * The global skip link in `src/app/layout.tsx` always points at
- * `#main-content`. Every route it renders on must expose that landmark, or
- * the link is a dead anchor (ACM-037 review finding).
+ * Renders the *real* `RootLayout` (src/app/layout.tsx) — the single source
+ * of the skip link — around each route's real page content, instead of
+ * hardcoding `#main-content` on both sides (ACM-053: the previous version of
+ * this suite asserted the skip link's href and the landmark's id matched a
+ * literal string independently, which would still pass if the anchor's
+ * `href` were renamed but the landmark id were not, or vice versa).
  */
-describe("global skip link target (ACM-037 review fix)", () => {
-  it("renders a focusable #main-content landmark on the home route", async () => {
-    render(await Home());
-    const main = document.getElementById("main-content");
-    expect(main).toBeInTheDocument();
-    expect(main?.tagName).toBe("MAIN");
-    expect(main).toHaveAttribute("tabindex", "-1");
+async function renderRoute(children: ReactNode) {
+  const layout = await RootLayout({ children });
+  return render(layout);
+}
+
+describe("global skip link target (ACM-037 review fix, ACM-053 rewrite)", () => {
+  it.each([
+    ["/", async () => await renderRoute(await Home())],
+    [
+      "/build/new",
+      async () => await renderRoute(<NewBuildPage />),
+    ],
+    ["/builds", async () => await renderRoute(await BuildsPage())],
+  ])("resolves the skip link's real href to a focusable landmark on %s", async (_route, renderPage) => {
+    const { container } = await renderPage();
+
+    const skipLink = container.querySelector<HTMLAnchorElement>('a[href^="#"]');
+    expect(skipLink).not.toBeNull();
+
+    const href = skipLink?.getAttribute("href") ?? "";
+    expect(href).toMatch(/^#.+/);
+
+    const target = document.querySelector(href);
+    expect(target).not.toBeNull();
+    expect(target?.tagName).toBe("MAIN");
+    expect(target).toHaveAttribute("tabindex", "-1");
   });
 
-  it("renders a focusable #main-content landmark on /build/new", () => {
-    render(
-    <LocaleProvider initialLocale="pt-BR">
-      <NewBuildPage />
-    </LocaleProvider>
-  );
-    const main = document.getElementById("main-content");
-    expect(main).toBeInTheDocument();
-    expect(main?.tagName).toBe("MAIN");
-    expect(main).toHaveAttribute("tabindex", "-1");
-  });
-
-  it("renders a focusable #main-content landmark on /builds", async () => {
-    render(await BuildsPage());
-    const main = document.getElementById("main-content");
-    expect(main).toBeInTheDocument();
-    expect(main?.tagName).toBe("MAIN");
-    expect(main).toHaveAttribute("tabindex", "-1");
-  });
-
-  it("does not steal initial focus away from the skip link on /build/new", () => {
-    render(
-    <LocaleProvider initialLocale="pt-BR">
-      <NewBuildPage />
-    </LocaleProvider>
-  );
-    expect(screen.queryByLabelText("Nome do build")).not.toHaveFocus();
+  it("does not steal initial focus away from the skip link on /build/new", async () => {
+    const { getByLabelText } = await renderRoute(<NewBuildPage />);
+    expect(getByLabelText("Nome do build")).not.toHaveFocus();
   });
 });
