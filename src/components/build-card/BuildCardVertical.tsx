@@ -13,15 +13,26 @@ export type BuildCardVerticalProps = {
   theme: BuildCardTheme;
   lookups: BuildCardLookups;
   tokens: BuildCardTokenSet;
+  /** See `BuildCardProps.hideEmptySlots` (ACM-122). */
+  hideEmptySlots?: boolean;
 };
 
 /** Fixed logical width (§1 of the ACM-013 spec): 960px, scale:2 on export → 1920px PNG. */
 const CARD_WIDTH = 960;
 
-export function BuildCardVertical({ state, theme, lookups, tokens }: BuildCardVerticalProps): React.JSX.Element {
+export function BuildCardVertical({
+  state,
+  theme,
+  lookups,
+  tokens,
+  hideEmptySlots = false,
+}: BuildCardVerticalProps): React.JSX.Element {
   const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
-  const equipmentSlots = SLOT_ORDER.filter((slot) => slot !== "mainhand");
+  const equipmentSlots = SLOT_ORDER.filter(
+    (slot) => slot !== "mainhand" && (!hideEmptySlots || state.slots[slot] !== null)
+  );
+  const hideMainhandEmpty = hideEmptySlots && mainhand === null;
 
   return (
     <div
@@ -63,7 +74,7 @@ export function BuildCardVertical({ state, theme, lookups, tokens }: BuildCardVe
                 </span>
               )}
             </div>
-          ) : (
+          ) : hideMainhandEmpty ? null : (
             <div
               className="flex size-36 shrink-0 items-center justify-center rounded-md"
               style={{ backgroundColor: tokens.surface2, border: `1px dashed ${tokens.slotEmptyBorder}` }}
@@ -84,7 +95,7 @@ export function BuildCardVertical({ state, theme, lookups, tokens }: BuildCardVe
                 {lookups.itemNames[mainhand.itemId] ?? mainhand.itemId}
                 {mainhand.tier > 0 ? ` · T${mainhand.tier}${mainhand.enchant > 0 ? `.${mainhand.enchant}` : ""}` : ""}
               </p>
-            ) : (
+            ) : hideMainhandEmpty ? null : (
               <p className="text-[15px] font-medium italic" style={{ color: tokens.fgMuted }}>
                 Vazio
               </p>

@@ -33,6 +33,14 @@ export type BuildCardProps = {
    * resolve to the first one only.
    */
   captureId?: string;
+  /**
+   * Omit slots with no item entirely instead of rendering an empty-state
+   * placeholder (ACM-122). Off by default so the editor's live preview
+   * keeps showing empty slots as placeholders (ACM-092 AC#3, this is the
+   * surface where a user decides what still needs filling) — public
+   * read-only surfaces (`/build/[id]`, `/comp/[slug]`) opt in explicitly.
+   */
+  hideEmptySlots?: boolean;
 };
 
 /** `wide`/`square` wrapper dimensions (doc-007 §8), logical px before export `scale: 2`. */
@@ -123,6 +131,7 @@ export function BuildCard({
   spellNames,
   spellGroupsByItem,
   captureId = "capture-root",
+  hideEmptySlots = false,
 }: BuildCardProps): React.JSX.Element {
   const resolvedTheme: BuildCardTheme = { ...DEFAULT_BUILD_CARD_THEME, ...theme };
   const tokens = resolvePresetTokens(resolvedTheme.preset);
@@ -194,13 +203,25 @@ export function BuildCard({
       )}
       <div style={{ position: "relative" }}>
         {layout === "grid" ? (
-          <BuildCardGrid state={state} theme={resolvedTheme} lookups={lookups} tokens={tokens} />
+          <BuildCardGrid
+            state={state}
+            theme={resolvedTheme}
+            lookups={lookups}
+            tokens={tokens}
+            hideEmptySlots={hideEmptySlots}
+          />
         ) : layout === "compressed" ? (
           <BuildCardCompressed state={state} theme={resolvedTheme} lookups={lookups} tokens={tokens} />
         ) : layout === "list" ? (
           <BuildCardList state={state} theme={resolvedTheme} lookups={lookups} tokens={tokens} />
         ) : (
-          <BuildCardVertical state={state} theme={resolvedTheme} lookups={lookups} tokens={tokens} />
+          <BuildCardVertical
+            state={state}
+            theme={resolvedTheme}
+            lookups={lookups}
+            tokens={tokens}
+            hideEmptySlots={hideEmptySlots}
+          />
         )}
       </div>
       </div>

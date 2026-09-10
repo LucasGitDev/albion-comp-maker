@@ -80,6 +80,23 @@ describe("export-png", () => {
       expect(options.skipFonts).not.toBe(true);
     });
 
+    it("passes a filter to toPng that excludes empty-slot placeholders (ACM-122)", async () => {
+      toPngMock.mockResolvedValue("data:image/png;base64,AAAA");
+      const node = makeCaptureNode([makeImg({ complete: true, naturalWidth: 32 })]);
+
+      await exportNodeToPng(node);
+
+      const [, options] = toPngMock.mock.calls[0] as [HTMLElement, Record<string, unknown>];
+      const filter = options.filter as (el: HTMLElement) => boolean;
+      expect(typeof filter).toBe("function");
+      const emptySlot = document.createElement("div");
+      emptySlot.setAttribute("data-slot-state", "empty");
+      const filledSlot = document.createElement("div");
+      filledSlot.setAttribute("data-slot-state", "filled");
+      expect(filter(emptySlot)).toBe(false);
+      expect(filter(filledSlot)).toBe(true);
+    });
+
     it("rejects with ExportImageLoadError when an <img> under the node failed to load", async () => {
       const node = makeCaptureNode([makeImg({ complete: false, naturalWidth: 0, failOnListen: true })]);
 

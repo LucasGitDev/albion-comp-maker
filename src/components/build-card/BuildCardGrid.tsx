@@ -12,6 +12,8 @@ export type BuildCardGridProps = {
   theme: BuildCardTheme;
   lookups: BuildCardLookups;
   tokens: BuildCardTokenSet;
+  /** See `BuildCardProps.hideEmptySlots` (ACM-122). */
+  hideEmptySlots?: boolean;
 };
 
 /**
@@ -21,10 +23,19 @@ export type BuildCardGridProps = {
  */
 const COLUMN_WIDTH = 320;
 
-export function BuildCardGrid({ state, theme, lookups, tokens }: BuildCardGridProps): React.JSX.Element {
+export function BuildCardGrid({
+  state,
+  theme,
+  lookups,
+  tokens,
+  hideEmptySlots = false,
+}: BuildCardGridProps): React.JSX.Element {
   const accent = resolveAccent(state.role, state.accent, tokens.accent);
   const mainhand = state.slots.mainhand;
-  const equipmentSlots = SLOT_ORDER.filter((slot) => slot !== "mainhand");
+  const equipmentSlots = SLOT_ORDER.filter(
+    (slot) => slot !== "mainhand" && (!hideEmptySlots || state.slots[slot] !== null)
+  );
+  const hideMainhandEmpty = hideEmptySlots && mainhand === null;
 
   return (
     <div
@@ -53,7 +64,7 @@ export function BuildCardGrid({ state, theme, lookups, tokens }: BuildCardGridPr
               </span>
             )}
           </div>
-        ) : (
+        ) : hideMainhandEmpty ? null : (
           <div
             className="flex size-24 items-center justify-center rounded-md"
             style={{ backgroundColor: tokens.surface2, border: `1px dashed ${tokens.slotEmptyBorder}` }}

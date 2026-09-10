@@ -98,6 +98,7 @@ export default async function PublicCompPage({ params }: PageProps): Promise<Rea
                     state={entry.build.content}
                     layout="grid"
                     captureId={`capture-root-${entry.compBuildId}`}
+                    hideEmptySlots
                     {...lookups}
                   />
                   {entry.count > 1 && (

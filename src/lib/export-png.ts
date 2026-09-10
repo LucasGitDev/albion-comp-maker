@@ -54,6 +54,21 @@ export class ExportUnsupportedError extends Error {
  */
 export const DEFAULT_IMAGE_LOAD_TIMEOUT_MS = 8000;
 
+/**
+ * Excludes empty-slot placeholder tiles (`data-slot-state="empty"`,
+ * `CardSlotTile`/`BuildCardGrid`/`BuildCardVertical`) from every PNG export
+ * (ACM-122 AC#2), independent of `BuildCard`'s `hideEmptySlots` prop. The
+ * editor's own live preview deliberately keeps rendering those placeholders
+ * (ACM-092 AC#3 — the user needs to see what's still unfilled while
+ * editing), and `ExportBar`/`EditorActionBar` capture that exact DOM node
+ * (decision-010), so the only place left to drop empty slots from the
+ * *exported* PNG without also hiding them from the live editor preview is
+ * html-to-image's own clone step.
+ */
+function excludeEmptySlots(domNode: HTMLElement): boolean {
+  return domNode.getAttribute("data-slot-state") !== "empty";
+}
+
 function waitForImage(img: HTMLImageElement, timeoutMs: number): Promise<boolean> {
   if (img.complete) {
     return Promise.resolve(img.naturalWidth > 0);
@@ -113,7 +128,7 @@ export async function exportNodeToPng(
   imageTimeoutMs: number = DEFAULT_IMAGE_LOAD_TIMEOUT_MS
 ): Promise<string> {
   await waitForImages(node, imageTimeoutMs);
-  return toPng(node, { pixelRatio: EXPORT_PIXEL_RATIO, cacheBust: true });
+  return toPng(node, { pixelRatio: EXPORT_PIXEL_RATIO, cacheBust: true, filter: excludeEmptySlots });
 }
 
 /**
@@ -124,7 +139,7 @@ export async function exportNodeToBlob(
   imageTimeoutMs: number = DEFAULT_IMAGE_LOAD_TIMEOUT_MS
 ): Promise<Blob> {
   await waitForImages(node, imageTimeoutMs);
-  const blob = await toBlob(node, { pixelRatio: EXPORT_PIXEL_RATIO, cacheBust: true });
+  const blob = await toBlob(node, { pixelRatio: EXPORT_PIXEL_RATIO, cacheBust: true, filter: excludeEmptySlots });
   if (blob === null) {
     throw new Error("html-to-image failed to produce a PNG blob.");
   }
