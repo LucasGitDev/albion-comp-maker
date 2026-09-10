@@ -173,4 +173,56 @@ describe("public read throttle (proxy)", () => {
 
     expect(res).toBeUndefined();
   });
+
+  it("routes /build/new/ (trailing slash) to the auth branch, not the public-read regex match (ACM-102)", async () => {
+    const proxy = (await import("@/proxy")).default;
+
+    const res = (proxy as (r: unknown) => unknown)(
+      makeRequest("/build/new/"),
+    ) as Response | undefined;
+
+    expect(res).toBeInstanceOf(Response);
+    expect(res?.status).toBe(302);
+  });
+
+  it("routes /build/%6Ee%77 (percent-encoded 'new') to the auth branch (ACM-102)", async () => {
+    const proxy = (await import("@/proxy")).default;
+
+    const res = (proxy as (r: unknown) => unknown)(
+      makeRequest("/build/%6Ee%77"),
+    ) as Response | undefined;
+
+    expect(res).toBeInstanceOf(Response);
+    expect(res?.status).toBe(302);
+  });
+
+  it("does not treat /BUILD/new as the auth-only literal (case-sensitive, falls through to the final auth branch)", async () => {
+    const proxy = (await import("@/proxy")).default;
+
+    const res = (proxy as (r: unknown) => unknown)(
+      makeRequest("/BUILD/new"),
+    ) as Response | undefined;
+
+    expect(res).toBeInstanceOf(Response);
+    expect(res?.status).toBe(302);
+  });
+
+  it("does not treat //build/new as the auth-only literal (falls through to the final auth branch)", async () => {
+    const proxy = (await import("@/proxy")).default;
+
+    const res = (proxy as (r: unknown) => unknown)(
+      makeRequest("//build/new"),
+    ) as Response | undefined;
+
+    expect(res).toBeInstanceOf(Response);
+    expect(res?.status).toBe(302);
+  });
+
+  it("still routes /build/<real-slug> to the public-read branch after normalization (ACM-102 non-regression)", async () => {
+    const proxy = (await import("@/proxy")).default;
+
+    const res = (proxy as (r: unknown) => unknown)(makeRequest("/build/real-build-slug"));
+
+    expect(res).toBeUndefined();
+  });
 });

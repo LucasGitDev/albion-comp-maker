@@ -23,6 +23,29 @@ const authProxy = auth((req) => {
 // 120/60s public-read budget).
 const AUTH_ONLY_LITERAL_PATHS = new Set(["/build/new", "/comp/new"]);
 
+/**
+ * Normalizes a pathname before the AUTH_ONLY_LITERAL_PATHS equality check:
+ * percent-decodes it (so `/build/%6Ee%77` reads as `/build/new`, matching
+ * what the Next.js router itself decodes and serves) and strips a single
+ * trailing slash (so `/build/new/` matches too, mirroring the trailing-slash
+ * tolerance already built into PUBLIC_READ_PATHS). Falls back to the raw
+ * pathname on a malformed percent-escape — decodeURIComponent throws on
+ * invalid sequences, and failing open into the auth-required branch is the
+ * safe direction (worst case: an extra redirect, never a bypass).
+ */
+function normalizePathname(pathname: string): string {
+  let decoded = pathname;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    decoded = pathname;
+  }
+  if (decoded.length > 1 && decoded.endsWith("/")) {
+    decoded = decoded.slice(0, -1);
+  }
+  return decoded;
+}
+
 // A single segment after "build" or "comp" — `/build/:slug` / `/comp/:slug`
 // — plus their ACM-022 OG-image counterparts, `/api/og/build/:slug` and
 // `/api/og/comp/:slug`, which share the same anonymous-read shape (public
@@ -62,7 +85,7 @@ export default function proxy(
   req: Parameters<typeof authProxy>[0],
   ctx: Parameters<typeof authProxy>[1],
 ) {
-  if (AUTH_ONLY_LITERAL_PATHS.has(req.nextUrl.pathname)) {
+  if (AUTH_ONLY_LITERAL_PATHS.has(normalizePathname(req.nextUrl.pathname))) {
     return authProxy(req, ctx);
   }
 
