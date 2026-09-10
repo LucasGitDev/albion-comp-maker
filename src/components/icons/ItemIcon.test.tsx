@@ -132,4 +132,28 @@ describe("ItemIcon", () => {
     completeSpy.mockRestore();
     widthSpy.mockRestore();
   });
+
+  // ACM-123: mirrors the `onLoad`/`onError` pre-hydration race, but for a
+  // network failure — `complete` is already true at mount and `naturalWidth`
+  // is `0`, which never re-fires `onError` once `complete` is set. The
+  // refCallback must resolve this to "error" instead of leaving the icon
+  // stuck at "loading".
+  it("resolves to error via the mount-time complete check when onLoad never fires and naturalWidth is 0 (SSR hydration race, network failure)", () => {
+    const completeSpy = vi
+      .spyOn(HTMLImageElement.prototype, "complete", "get")
+      .mockReturnValue(true);
+    const widthSpy = vi
+      .spyOn(HTMLImageElement.prototype, "naturalWidth", "get")
+      .mockReturnValue(0);
+
+    const { container } = render(<ItemIcon itemId="T4_BAG" alt="Bag" />);
+
+    expect(container.querySelector('[data-icon-status="error"]')).toBeTruthy();
+    expect(screen.getByText("!")).toBeInTheDocument();
+    const img = getImg(container);
+    expect(img.className).toContain("opacity-0");
+
+    completeSpy.mockRestore();
+    widthSpy.mockRestore();
+  });
 });
