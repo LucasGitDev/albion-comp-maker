@@ -3,10 +3,10 @@ id: ACM-088
 title: >-
   Artefatos de backlog (decisions/docs) ficam untracked no worktree e se perdem
   na limpeza
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-09-08 13:44'
-updated_date: '2026-09-09 03:07'
+updated_date: '2026-09-10 03:46'
 labels: []
 dependencies: []
 priority: low
@@ -41,3 +41,9 @@ Mitigacoes a avaliar:
 - [ ] #3 A limpeza de worktree do orchestrator inspeciona untracked antes de usar --force
 - [ ] #4 A regra esta refletida no CLAUDE.md e/ou nas definicoes dos agentes implementer e reviewer
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+PR opened: #105 (https://github.com/LucasGitDev/albion-comp-maker/pull/105). Added CLAUDE.md guardrails: commit .backlog/ artifacts immediately in worktree, orchestrator checks 'git status --porcelain -- .backlog/' before worktree remove --force, reviewer validates decision/doc presence in PR diff not worktree filesystem.
+<!-- SECTION:NOTES:END -->
