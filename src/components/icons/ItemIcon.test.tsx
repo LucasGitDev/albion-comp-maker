@@ -92,4 +92,44 @@ describe("ItemIcon", () => {
     expect(img.getAttribute("alt")).toBe("");
     expect(container.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
   });
+
+  // ACM-123: on a server-rendered page (the public build/comp share view)
+  // the browser can finish fetching the `<img>` before React hydrates and
+  // attaches `onLoad`. `HTMLImageElement.prototype.complete`/`naturalWidth`
+  // are stubbed to already report "finished" at the moment the element is
+  // inserted into the DOM, simulating that race — real `onLoad` never
+  // fires in this scenario.
+  it("resolves to loaded via the mount-time complete check when onLoad never fires (SSR hydration race)", () => {
+    const completeSpy = vi
+      .spyOn(HTMLImageElement.prototype, "complete", "get")
+      .mockReturnValue(true);
+    const widthSpy = vi
+      .spyOn(HTMLImageElement.prototype, "naturalWidth", "get")
+      .mockReturnValue(64);
+
+    const { container } = render(<ItemIcon itemId="T4_BAG" alt="Bag" />);
+
+    expect(container.querySelector('[data-icon-status="loaded"]')).toBeTruthy();
+    const img = getImg(container);
+    expect(img.className).toContain("opacity-100");
+
+    completeSpy.mockRestore();
+    widthSpy.mockRestore();
+  });
+
+  it("resolves to missing via the mount-time complete check for an already-loaded 1x1 sprite", () => {
+    const completeSpy = vi
+      .spyOn(HTMLImageElement.prototype, "complete", "get")
+      .mockReturnValue(true);
+    const widthSpy = vi
+      .spyOn(HTMLImageElement.prototype, "naturalWidth", "get")
+      .mockReturnValue(1);
+
+    const { container } = render(<ItemIcon itemId="T4_BAG" alt="Bag" />);
+
+    expect(container.querySelector('[data-icon-status="missing"]')).toBeTruthy();
+
+    completeSpy.mockRestore();
+    widthSpy.mockRestore();
+  });
 });

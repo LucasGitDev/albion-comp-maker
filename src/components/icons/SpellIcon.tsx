@@ -34,7 +34,7 @@ export function SpellIcon({
   const isEmpty = sprite === null;
   const isValidId = sprite !== null && ICON_ID_PATTERN.test(sprite);
   const src = isValidId && sprite !== null ? buildSpellIconUrl(sprite) : null;
-  const { status, handleLoad, handleError } = useIconStatus(src);
+  const { status, handleLoad, handleError, refCallback } = useIconStatus(src);
   const resolvedStatus = isEmpty ? "empty" : isValidId ? status : "error";
 
   useEffect(() => {
@@ -116,6 +116,7 @@ export function SpellIcon({
       {isValidId && src !== null && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          ref={refCallback}
           src={src}
           alt={displayAlt}
           aria-hidden={decorative || undefined}
