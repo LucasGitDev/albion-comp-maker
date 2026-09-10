@@ -74,6 +74,9 @@ export type MessageKey =
   | "theme.background"
   | "theme.colorsAndTypography"
   | "theme.contentAndFormat"
+  | "theme.announcePresetChanged"
+  | "theme.announceBackgroundApplied"
+  | "theme.announceBackgroundRemoved"
   | "swap.slot"
   | "swap.current"
   | "swap.alternative"
@@ -181,6 +184,9 @@ export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
     "theme.background": "Background",
     "theme.colorsAndTypography": "Colors and typography",
     "theme.contentAndFormat": "Content and format",
+    "theme.announcePresetChanged": "Preset changed to {preset}.",
+    "theme.announceBackgroundApplied": "Background image applied.",
+    "theme.announceBackgroundRemoved": "Background image removed.",
     "swap.slot": "Slot",
     "swap.current": "Current",
     "swap.alternative": "Alternative",
@@ -287,6 +293,9 @@ export const MESSAGES: Record<Locale, Record<MessageKey, string>> = {
     "theme.background": "Fundo",
     "theme.colorsAndTypography": "Cores e tipografia",
     "theme.contentAndFormat": "Conteúdo e formato",
+    "theme.announcePresetChanged": "Preset alterado para {preset}.",
+    "theme.announceBackgroundApplied": "Imagem de fundo aplicada.",
+    "theme.announceBackgroundRemoved": "Imagem de fundo removida.",
     "swap.slot": "Slot",
     "swap.current": "Atual",
     "swap.alternative": "Alternativo",

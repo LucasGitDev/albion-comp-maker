@@ -117,9 +117,9 @@ export function ThemePanel({
   const handlePresetClick = useCallback(
     (preset: NamedThemePreset) => {
       onChange({ ...theme, preset });
-      setAnnouncement(`Preset alterado para ${PRESET_LABELS[preset]}.`);
+      setAnnouncement(tf(locale, "theme.announcePresetChanged", { preset: PRESET_LABELS[preset] }));
     },
-    [theme, onChange]
+    [theme, onChange, locale]
   );
 
   const handleFileSelected = useCallback(
@@ -148,7 +148,7 @@ export function ThemePanel({
         const imageId = await uploadBackground(locale, file);
         onChange(markCustomIfNamed({ ...theme, background: { imageId, blur: 0, darken: 0.4, scale: 1 } }));
         setUpload({ kind: "idle" });
-        setAnnouncement("Imagem de fundo aplicada.");
+        setAnnouncement(t(locale, "theme.announceBackgroundApplied"));
       } catch (error) {
         setUpload({
           kind: "error",
@@ -161,8 +161,8 @@ export function ThemePanel({
 
   const handleRemoveBackground = useCallback(() => {
     onChange(markCustomIfNamed({ ...theme, background: null }));
-    setAnnouncement("Imagem de fundo removida.");
-  }, [theme, onChange]);
+    setAnnouncement(t(locale, "theme.announceBackgroundRemoved"));
+  }, [theme, onChange, locale]);
 
   const handleAccentCommit = useCallback(
     (value: string) => {
@@ -223,7 +223,7 @@ export function ThemePanel({
         <div className="flex flex-col gap-3">
           {background ? (
             <div className="flex items-center justify-between gap-2 text-xs text-foreground">
-              <span>Imagem de fundo aplicada.</span>
+              <span>{t(locale, "theme.announceBackgroundApplied")}</span>
               <div className="flex gap-2">
                 <button type="button" className="underline" onClick={() => fileInputRef.current?.click()}>
                   Trocar

@@ -25,9 +25,6 @@ const SLOT_CATEGORY: Record<Slot, Exclude<IconCategory, "generic">> = {
   potion: "consumable",
 };
 
-/** Applied on blur when the label is left empty — see `addSwap`/`setSwapLabel` in build-store.ts (ACM-012 review round 2, ACM-060). */
-export const DEFAULT_SWAP_LABEL = "Novo swap";
-
 export type SwapRowProps = {
   swap: Swap;
   index: number;
@@ -198,7 +195,7 @@ export function SwapRow({
           // ...") visible until the leader actually leaves the field,
           // then swapping in a friendlier default than a blank input
           // (ACM-012 review round 2).
-          if (swap.label.trim() === "") onLabelChange(DEFAULT_SWAP_LABEL);
+          if (swap.label.trim() === "") onLabelChange(t(locale, "swap.defaultLabel"));
         }}
         placeholder={t(locale, "swap.labelPlaceholder")}
         aria-label={tf(locale, "swap.ariaLabelInput", { n: index + 1 })}

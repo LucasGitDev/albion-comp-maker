@@ -1,8 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SwapsSection, SWAP_SOFT_CAP } from "@/components/editor/SwapsSection";
-import { DEFAULT_SWAP_LABEL } from "@/components/editor/SwapRow";
 import { selectActions, selectBuild, useBuildStore } from "@/store/build-store";
+import { t } from "@/lib/i18n/messages";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+
+const DEFAULT_SWAP_LABEL = t(DEFAULT_LOCALE, "swap.defaultLabel");
 
 /**
  * Thin wrapper subscribing to the real store so `SwapsSection` receives the
