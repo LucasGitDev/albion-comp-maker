@@ -112,12 +112,15 @@ describe("public comp page (ACM-021)", () => {
     const captureNodes = Array.from(container.querySelectorAll('[id^="capture-root"]'));
     const ids = captureNodes.map((node) => node.id);
 
-    // Every card must expose a capture node, and none may share an id —
+    // ACM-020's CompExportView wraps the grid in its own
+    // `#capture-root-full-comp` container, on top of the two per-entry
+    // nodes below — 3 total, all distinct ids. None may share an id:
     // duplicate `id="capture-root"` is invalid HTML and makes
     // `getElementById`/`querySelector("#capture-root")` resolve to only the
     // first match, silently pointing export/capture logic at the wrong card.
-    expect(ids.length).toBe(2);
+    expect(ids.length).toBe(3);
     expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain("capture-root-full-comp");
 
     // Each card's own capture node must be reachable by its own id and
     // must contain that card's own content (not the other card's).

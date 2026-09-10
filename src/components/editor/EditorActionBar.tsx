@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { buildExportFilename, downloadDataUrl, exportNodeToPng } from "@/lib/export-png";
+import { buildExportFilename, downloadDataUrl, exportNodeToPng, resolveCaptureNode } from "@/lib/export-png";
 import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { t } from "@/lib/i18n/messages";
@@ -23,7 +23,8 @@ export type EditorActionBarProps = {
   /**
    * Sibling of the (future) preview wrapper — this component only *reads*
    * `#capture-root` through the ref, it never renders inside it (decision-010,
-   * ACM-029). Resolution mirrors `ExportBar.resolveCaptureNode`.
+   * ACM-029). Resolution delegates to `resolveCaptureNode` in
+   * `@/lib/export-png` (decision-030), shared with `ExportBar`.
    */
   captureNodeRef: React.RefObject<HTMLElement | null>;
   /**
@@ -42,12 +43,6 @@ export type EditorActionBarProps = {
   themePanelOpen?: boolean;
   onToggleThemePanel?: () => void;
 };
-
-function resolveCaptureNode(container: HTMLElement | null): HTMLElement | null {
-  if (container === null) return null;
-  if (container.id === "capture-root") return container;
-  return container.querySelector<HTMLElement>("#capture-root");
-}
 
 /**
  * ACM-056: `saveBuild`/`updateBuild` (`src/actions/builds.ts`) throw plain
@@ -176,7 +171,7 @@ export function EditorActionBar({
 
   const handleExportClick = useCallback(async () => {
     if (!hasReadyItem) return;
-    const node = resolveCaptureNode(captureNodeRef.current);
+    const node = resolveCaptureNode(captureNodeRef.current, "capture-root");
     if (node === null) {
       setExportStatus({ kind: "error", message: "Card não está pronto para exportar." });
       return;
