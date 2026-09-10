@@ -128,7 +128,19 @@ export function runMigrations(databasePath?: string, migrationsFolder: string = 
     }
 
     const db = createDb(sqlite);
-    migrate(db, { migrationsFolder });
+    try {
+      migrate(db, { migrationsFolder });
+    } catch (err) {
+      // drizzle's migrator failing here is unrelated to the FK-violation
+      // recovery path below (e.g. a malformed migration SQL file) — there is
+      // no half-migrated-but-FK-clean state to restore from, so leaving the
+      // backup around would only mislead an operator into thinking a FK
+      // restore happened. Clean it up before rethrowing.
+      if (backup !== undefined) {
+        fs.rmSync(backup, { force: true });
+      }
+      throw err;
+    }
 
     if (!needsFkOff) {
       // FK enforcement was never suspended, so SQLite itself would have
