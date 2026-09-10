@@ -4,13 +4,18 @@ import { BUILD_NAME_MAX_LENGTH, BUILD_ROLE_MAX_LENGTH } from "@/lib/validation-c
 import type { BuildState } from "@/types/build";
 import { useOptionalLocale } from "@/components/i18n/LocaleProvider";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import { t } from "@/lib/i18n/messages";
+import { t, tf } from "@/lib/i18n/messages";
 
 export type BuildHeaderProps = {
   build: BuildState;
   onNameChange: (name: string) => void;
   onRoleChange: (role: string) => void;
 };
+
+/** Only announce once the field is this close to `maxLength` — avoids a
+ * live region firing on every keystroke while the user is still far from
+ * the limit (ACM-070). */
+const REMAINING_CHARS_WARNING_THRESHOLD = 10;
 
 /**
  * Identity block for the build being edited — deliberately *not* styled as a
@@ -21,6 +26,16 @@ export type BuildHeaderProps = {
  */
 export function BuildHeader({ build, onNameChange, onRoleChange }: BuildHeaderProps): React.JSX.Element {
   const locale = useOptionalLocale() ?? DEFAULT_LOCALE;
+  const nameRemaining = BUILD_NAME_MAX_LENGTH - build.name.length;
+  const roleRemaining = BUILD_ROLE_MAX_LENGTH - build.role.length;
+  const nameWarning =
+    nameRemaining <= REMAINING_CHARS_WARNING_THRESHOLD
+      ? tf(locale, "editor.nameCharsRemaining", { n: nameRemaining })
+      : "";
+  const roleWarning =
+    roleRemaining <= REMAINING_CHARS_WARNING_THRESHOLD
+      ? tf(locale, "editor.roleCharsRemaining", { n: roleRemaining })
+      : "";
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-sm font-semibold text-foreground/70">{t(locale, "editor.buildDetails")}</h1>
@@ -45,12 +60,16 @@ export function BuildHeader({ build, onNameChange, onRoleChange }: BuildHeaderPr
         */}
         <input
           aria-label={t(locale, "editor.buildNameLabel")}
+          aria-describedby="build-name-char-warning"
           value={build.name}
           onChange={(event) => onNameChange(event.target.value)}
           placeholder={t(locale, "editor.buildNamePlaceholder")}
           maxLength={BUILD_NAME_MAX_LENGTH}
           className="rounded-md border border-icon-slot-empty bg-icon-slot px-3 py-1.5 text-sm outline-none focus:border-[var(--color-enchant)]"
         />
+        <span id="build-name-char-warning" role="status" aria-live="polite" className="sr-only">
+          {nameWarning}
+        </span>
       </label>
       <label className="flex flex-col gap-1">
         <span className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-icon-muted">
@@ -65,12 +84,16 @@ export function BuildHeader({ build, onNameChange, onRoleChange }: BuildHeaderPr
         </span>
         <input
           aria-label={t(locale, "editor.roleLabel")}
+          aria-describedby="build-role-char-warning"
           value={build.role}
           onChange={(event) => onRoleChange(event.target.value)}
           placeholder={t(locale, "editor.rolePlaceholder")}
           maxLength={BUILD_ROLE_MAX_LENGTH}
           className="rounded-md border border-icon-slot-empty bg-icon-slot px-3 py-1.5 text-sm outline-none focus:border-[var(--color-enchant)]"
         />
+        <span id="build-role-char-warning" role="status" aria-live="polite" className="sr-only">
+          {roleWarning}
+        </span>
       </label>
       </div>
     </div>

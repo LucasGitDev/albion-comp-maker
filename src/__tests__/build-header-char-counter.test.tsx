@@ -76,3 +76,39 @@ describe("BuildHeader name/role character counters (ACM-036)", () => {
     expect(accentedName.length <= BUILD_NAME_MAX_LENGTH ? nameIssue : null).toBeNull();
   });
 });
+
+describe("BuildHeader accessible character limit warning (ACM-070)", () => {
+  it("keeps the accessible name of the inputs unchanged", () => {
+    const build = createEmptyBuild();
+    render(<BuildHeader build={build} onNameChange={vi.fn()} onRoleChange={vi.fn()} />);
+
+    expect(screen.getByRole("textbox", { name: "Nome do build" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Papel" })).toBeInTheDocument();
+  });
+
+  it("stays silent while far from the character limit", () => {
+    const build = { ...createEmptyBuild(), name: "Short" };
+    render(<BuildHeader build={build} onNameChange={vi.fn()} onRoleChange={vi.fn()} />);
+
+    expect(screen.getAllByRole("status").map((el) => el.textContent)).toEqual(["", ""]);
+  });
+
+  it("announces a warning via a polite live region once within the threshold of the name limit", () => {
+    const nearLimitName = "x".repeat(BUILD_NAME_MAX_LENGTH - 5);
+    const build = { ...createEmptyBuild(), name: nearLimitName };
+    render(<BuildHeader build={build} onNameChange={vi.fn()} onRoleChange={vi.fn()} />);
+
+    const statuses = screen.getAllByRole("status");
+    const nameWarning = statuses.find((el) => el.textContent && el.textContent.length > 0);
+    expect(nameWarning).toHaveTextContent("5");
+    expect(nameWarning).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("wires the warning region via aria-describedby instead of the accessible name", () => {
+    const build = createEmptyBuild();
+    render(<BuildHeader build={build} onNameChange={vi.fn()} onRoleChange={vi.fn()} />);
+
+    const nameInput = screen.getByRole("textbox", { name: "Nome do build" });
+    expect(nameInput).toHaveAttribute("aria-describedby", "build-name-char-warning");
+  });
+});
