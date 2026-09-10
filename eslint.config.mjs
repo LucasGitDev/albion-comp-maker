@@ -28,6 +28,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "coverage/**",
     "report/**",
+    // Worktree build artifacts
+    ".claude/worktrees/**",
   ]),
 ]);
 
