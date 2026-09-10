@@ -23,12 +23,15 @@ const authProxy = auth((req) => {
 // 120/60s public-read budget).
 const AUTH_ONLY_LITERAL_PATHS = new Set(["/build/new", "/comp/new"]);
 
-// A single segment after "build" or "comp" — `/build/:slug` / `/comp/:slug`.
+// A single segment after "build" or "comp" — `/build/:slug` / `/comp/:slug`
+// — plus their ACM-022 OG-image counterparts, `/api/og/build/:slug` and
+// `/api/og/comp/:slug`, which share the same anonymous-read shape (public
+// content, no auth) and so share the same per-IP budget (decision-031).
 // `/build/new` and `/comp/new` must be excluded here (checked before this
 // regex in the router below via AUTH_ONLY_LITERAL_PATHS), otherwise the
 // build/comp creation pages would be treated as anonymous public routes
 // (decision-016).
-const PUBLIC_READ_PATHS = /^\/(build|comp)\/[^/]+\/?$/;
+const PUBLIC_READ_PATHS = /^\/(?:(?:api\/og\/)?(?:build|comp))\/[^/]+\/?$/;
 
 /**
  * Constant 429 response for the public-read rate limiter. Nothing here is
@@ -75,7 +78,15 @@ export default function proxy(
 }
 
 export const config = {
-  matcher: ["/builds/:path*", "/comps/:path*", "/comp/new", "/build/:slug", "/comp/:slug"],
+  matcher: [
+    "/builds/:path*",
+    "/comps/:path*",
+    "/comp/new",
+    "/build/:slug",
+    "/comp/:slug",
+    "/api/og/build/:slug",
+    "/api/og/comp/:slug",
+  ],
   // Database-strategy sessions require a real DB lookup (via
   // `@auth/drizzle-adapter` + better-sqlite3, a native Node addon), which
   // cannot run on the Edge runtime. No runtime opt-in is needed here: the

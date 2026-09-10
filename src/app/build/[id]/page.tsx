@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BuildCard } from "@/components/build-card/BuildCard";
@@ -5,12 +6,43 @@ import { GuestCTABanner } from "@/components/layout/GuestCTABanner";
 import { getPublicBuildBySlug } from "@/lib/public-content";
 import { buildCardLookupsFor } from "@/lib/build-card-lookups";
 import { getRequestLocale } from "@/lib/i18n/server-locale";
+import { getRequestOrigin } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
+
+/**
+ * `og:image` points at the ACM-022 Satori route, not this page's own
+ * render — Discord's unfurl bot cannot execute the client bundle, so the
+ * OG image is a separate, purpose-built PNG. Only set on the success path:
+ * `getPublicBuildBySlug` returning `null` here means the page itself calls
+ * `notFound()` below, so there is nothing to advertise.
+ */
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const build = await getPublicBuildBySlug(id);
+
+  if (!build) {
+    return {};
+  }
+
+  const origin = await getRequestOrigin();
+  const title = build.name;
+  const description = `Build by ${build.authorName ?? "Unknown"} — Albion Comp Maker`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [`${origin}/api/og/build/${build.slug}`],
+    },
+  };
+}
 
 /**
  * Public, server-rendered read of a single build by its immutable slug

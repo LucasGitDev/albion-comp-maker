@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BuildCard } from "@/components/build-card/BuildCard";
@@ -5,12 +6,42 @@ import { GuestCTABanner } from "@/components/layout/GuestCTABanner";
 import { getPublicCompBySlug } from "@/lib/public-content";
 import { buildCardLookupsFor } from "@/lib/build-card-lookups";
 import { getRequestLocale } from "@/lib/i18n/server-locale";
+import { getRequestOrigin } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+/**
+ * Same reasoning as `/build/[id]/page.tsx`'s `generateMetadata`: only set
+ * on the success path, since a `null` result means the page below calls
+ * `notFound()` and there is nothing public to advertise.
+ */
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const comp = await getPublicCompBySlug(slug);
+
+  if (!comp) {
+    return {};
+  }
+
+  const origin = await getRequestOrigin();
+  const title = comp.name;
+  const buildNames = comp.entries.map((entry) => entry.build.name).join(", ");
+  const description = `Comp by ${comp.authorName ?? "Unknown"} — ${buildNames} — Albion Comp Maker`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [`${origin}/api/og/comp/${comp.slug}`],
+    },
+  };
+}
 
 /**
  * Public, server-rendered read of a comp by its immutable slug (ACM-021,

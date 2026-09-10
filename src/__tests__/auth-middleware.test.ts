@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe("middleware", () => {
-  it("scopes the matcher to /builds/:path*, /comps/:path*, /comp/new, /build/:slug and /comp/:slug (allow-list, not global)", async () => {
+  it("scopes the matcher to /builds/:path*, /comps/:path*, /comp/new, /build/:slug, /comp/:slug and the ACM-022 OG routes (allow-list, not global)", async () => {
     const { config } = await import("@/proxy");
     expect(config.matcher).toEqual([
       "/builds/:path*",
@@ -23,6 +23,8 @@ describe("middleware", () => {
       "/comp/new",
       "/build/:slug",
       "/comp/:slug",
+      "/api/og/build/:slug",
+      "/api/og/comp/:slug",
     ]);
   });
 

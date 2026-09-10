@@ -47,6 +47,7 @@ function makePublicBuild(): PublicBuild {
     role: "dps",
     slug: "broadsword-abc123",
     content,
+    authorName: "Author Name",
   };
 }
 
