@@ -65,6 +65,36 @@ describe("resolveSpellLocalizedNames", () => {
     const index = new Map<string, Record<string, string>>();
     expect(resolveSpellLocalizedNames("PYROBLAST_SKILLSHOT", index)).toBeUndefined();
   });
+
+  it("prefers the exact match over the weapon-suffix fallback when both would resolve (ACM-087)", () => {
+    // PASSIVE_ARMORCHANCE_SWORD has its own exact TMX entry here, but would
+    // *also* resolve via the weapon-suffix-strip fallback against the
+    // weapon-agnostic PASSIVE_ARMORCHANCE base entry. If the fallback branch
+    // were ever checked before the exact match, this would silently return
+    // the generic base name instead of the spell's own translation.
+    const index = new Map([
+      ["PASSIVE_ARMORCHANCE_SWORD", { "EN-US": "Sword Defense Bonus" }],
+      ["PASSIVE_ARMORCHANCE", { "EN-US": "Increased Defense" }],
+    ]);
+    expect(resolveSpellLocalizedNames("PASSIVE_ARMORCHANCE_SWORD", index)).toEqual({
+      "EN-US": "Sword Defense Bonus",
+    });
+  });
+
+  it("prefers the exact match over the tier-scan fallback when both would resolve (ACM-087)", () => {
+    // PASSIVE_BACKPACK_FIBER_T5 has its own exact TMX entry here, but would
+    // *also* resolve via the tier-scan fallback against the T4 entry of the
+    // same base spell. If the fallback branch were ever checked before the
+    // exact match, this would silently return the T4 translation instead of
+    // the spell's own T5 translation.
+    const index = new Map([
+      ["PASSIVE_BACKPACK_FIBER_T5", { "EN-US": "Fiber Carrier V" }],
+      ["PASSIVE_BACKPACK_FIBER_T4", { "EN-US": "Fiber Carrier" }],
+    ]);
+    expect(resolveSpellLocalizedNames("PASSIVE_BACKPACK_FIBER_T5", index)).toEqual({
+      "EN-US": "Fiber Carrier V",
+    });
+  });
 });
 
 describe("isEmittedConsumable", () => {
